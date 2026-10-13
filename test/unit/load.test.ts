@@ -81,6 +81,17 @@ describe('brand file and logo', () => {
     await expect(loadScript(file)).rejects.toThrow(/meta\.logo not found: .*nope\.svg/);
   });
 
+  it('blames the brand file, not the script, for a bad value inside it', async () => {
+    const root = await project();
+    await writeFile(join(root, 'showtime.config.json'), JSON.stringify({ style: { accentColor: '#f00', padding: 0.5 } }));
+    const file = join(root, 'demos', 'a.json');
+    await writeFile(file, JSON.stringify(base));
+    const err = (await loadScript(file).catch((e: Error) => e)) as Error;
+    expect(err.message).toMatch(/^Invalid .*showtime\.config\.json/);
+    expect(err.message).toMatch(/style\.padding/);
+    expect(err.message).toMatch(/accentColor/);
+  });
+
   it('rejects unknown keys in the brand file and names it', async () => {
     const root = await project();
     await writeFile(join(root, 'showtime.config.json'), JSON.stringify({ colours: {} }));

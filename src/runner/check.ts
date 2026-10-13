@@ -10,6 +10,8 @@ import { describeStep, runStep, StepError, type StepContext } from './steps';
 export interface RunOptions {
   headed?: boolean;
   log?: (line: string) => void;
+  /** Non-fatal problems, such as a failing after hook (default: stderr). */
+  warn?: (line: string) => void;
 }
 
 export interface CheckStep {
@@ -43,7 +45,7 @@ export async function check(loaded: LoadedScript, opts: RunOptions = {}): Promis
   await rm(paths.check, { recursive: true, force: true });
   await mkdir(paths.check, { recursive: true });
 
-  return withHooks(script.hooks, loaded.dir, () => rehearse(loaded, opts), opts.log);
+  return withHooks(script.hooks, loaded.dir, () => rehearse(loaded, opts), opts.warn);
 }
 
 async function rehearse(loaded: LoadedScript, opts: RunOptions): Promise<CheckReport> {

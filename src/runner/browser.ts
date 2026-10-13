@@ -90,8 +90,10 @@ export async function openSession(script: Script, opts: { headed?: boolean } = {
       timezoneId: app.timezoneId,
     });
     if (app.mask.length) await context.addInitScript({ content: maskScript(app.mask) });
-    if (app.clock) await context.clock.setFixedTime(app.clock);
-    for (const mock of app.mock) await context.route(mock.url, (route) => answer(route, mock));
+    // Starts the page clock at app.clock and lets it run: frozen time would stall Date-based debounce.
+    if (app.clock) await context.clock.install({ time: app.clock });
+    // Playwright tries the most recently added route first; reversed, the first matching mock wins.
+    for (const mock of [...app.mock].reverse()) await context.route(mock.url, (route) => answer(route, mock));
     const page = await context.newPage();
     page.setDefaultTimeout(STEP_TIMEOUT_MS);
     page.on('dialog', (dialog) => {
@@ -122,20 +124,24 @@ export async function openSession(script: Script, opts: { headed?: boolean } = {
   }
 }
 
-const CORS = { 'access-control-allow-origin': '*', 'access-control-allow-methods': '*', 'access-control-allow-headers': '*' };
-
-/** Fulfil a request from an `app.mock` entry (cross-origin friendly). */
+/**
+ * Fulfil a request from an `app.mock` entry. Cross-origin answers echo the page's origin and allow
+ * credentials (a wildcard is refused for cookie-authenticated calls); Playwright answers preflights.
+ */
 async function answer(route: Route, mock: Mock): Promise<void> {
-  const method = route.request().method().toUpperCase();
-  if (method === 'OPTIONS') return route.fulfill({ status: 204, headers: CORS }).catch(() => undefined);
-  if (mock.method && method !== mock.method.toUpperCase()) return route.fallback();
+  const request = route.request();
+  if (mock.method && request.method().toUpperCase() !== mock.method.toUpperCase()) return route.fallback();
+  const origin = request.headers().origin;
+  const cors: Record<string, string> = origin
+    ? { 'access-control-allow-origin': origin, 'access-control-allow-credentials': 'true', vary: 'Origin' }
+    : {};
   if (mock.delayMs) await sleep(mock.delayMs);
   const json = mock.json !== undefined;
   // The page may have navigated away while we waited: a closed route is not an error.
   await route
     .fulfill({
       status: mock.status,
-      headers: { ...CORS, ...(json ? { 'content-type': 'application/json' } : {}), ...mock.headers },
+      headers: { ...cors, ...(json ? { 'content-type': 'application/json' } : {}), ...mock.headers },
       body: json ? JSON.stringify(mock.json) : (mock.body ?? ''),
     })
     .catch(() => undefined);

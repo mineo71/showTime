@@ -111,7 +111,7 @@
         },
         "mock": {
           "default": [],
-          "description": "Answer matching network requests with canned responses",
+          "description": "Answer matching network requests with canned responses; the first match wins",
           "type": "array",
           "items": {
             "type": "object",
@@ -162,7 +162,7 @@
           }
         },
         "clock": {
-          "description": "Freeze Date in the page at this ISO date-time (timers keep running)",
+          "description": "Start the page clock at this ISO date-time; it then runs normally",
           "type": "string"
         },
         "dialogs": {

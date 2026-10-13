@@ -40,6 +40,20 @@ describe('app.mock', () => {
     ]);
   });
 
+  it('answers credentialed cross-origin requests', async () => {
+    await run({ mock: [{ url: 'http://api.showtime.test/stats', json: { visitors: 7 } }] }, [
+      { do: 'click', target: '#load-remote' },
+      { do: 'wait', for: 'text=Remote 7' },
+    ]);
+  });
+
+  it('lets the first matching mock win', async () => {
+    await run({ mock: [{ url: '**/api/stats', json: { visitors: 1 } }, { url: '**/api/*', json: { visitors: 2 } }] }, [
+      { do: 'click', target: '#load-stats' },
+      { do: 'wait', for: 'text=Visitors 1' },
+    ]);
+  });
+
   it('leaves other methods to the network', async () => {
     await run({ mock: [{ url: '**/api/stats', method: 'DELETE', json: { visitors: 1 } }] }, [
       { do: 'click', target: '#load-stats' },
@@ -49,8 +63,15 @@ describe('app.mock', () => {
 });
 
 describe('app.clock', () => {
-  it('freezes Date in the page', async () => {
+  it('starts the page clock at the given time', async () => {
     await run({ clock: '2030-01-02T10:00:00Z' }, [{ do: 'wait', for: 'text=Today 2030-01-02' }]);
+  });
+
+  it('keeps time moving, so Date-based debounce still fires', async () => {
+    await run({ clock: '2030-01-02T10:00:00Z' }, [
+      { do: 'type', target: '#search', text: 'abc', pace: 'fast', clear: false },
+      { do: 'wait', for: 'text=Results for abc' },
+    ]);
   });
 });
 

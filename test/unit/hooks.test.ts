@@ -38,6 +38,13 @@ describe('runHooks', () => {
     );
   });
 
+  it('finishes when the shell exits, even if it left a background process holding its output', async () => {
+    const cwd = await mkdtemp(path.join(tmpdir(), 'showtime-hooks-'));
+    const started = Date.now();
+    await runHooks([{ run: `node -e "setTimeout(() => {}, 4000)" & echo started` }], { cwd, label: 'hooks.before', timeoutMs: 3000 });
+    expect(Date.now() - started).toBeLessThan(2000);
+  });
+
   it('times out a command that hangs', async () => {
     const cwd = await mkdtemp(path.join(tmpdir(), 'showtime-hooks-'));
     const hang = { run: `node -e "setTimeout(() => {}, 20000)"` };
@@ -74,5 +81,24 @@ describe('withHooks', () => {
       }),
     ).rejects.toThrow('step failed');
     expect(await readFile(path.join(cwd, 'log.txt'), 'utf8')).toBe('[][]');
+  });
+
+  it('turns a failing after hook into a warning: the work and its result stand', async () => {
+    const cwd = await mkdtemp(path.join(tmpdir(), 'showtime-hooks-'));
+    const warnings: string[] = [];
+    const hooks = { before: [], after: [{ run: 'node -e "process.exit(2)"' }] };
+    expect(await withHooks(hooks, cwd, async () => 'take saved', (w) => warnings.push(w))).toBe('take saved');
+    await expect(
+      withHooks(
+        hooks,
+        cwd,
+        async () => {
+          throw new Error('step failed');
+        },
+        (w) => warnings.push(w),
+      ),
+    ).rejects.toThrow('step failed');
+    expect(warnings).toHaveLength(2);
+    expect(warnings[0]).toMatch(/hooks\.after\[0\].*exit code 2/);
   });
 });

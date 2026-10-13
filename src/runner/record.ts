@@ -66,13 +66,15 @@ export async function record(loaded: LoadedScript, opts: RecordOptions = {}): Pr
   await rm(tmp, { recursive: true, force: true });
   await mkdir(frames, { recursive: true });
 
-  const shot = await withHooks(
+  // After hooks run once the take is saved, so a failing one cannot cost the take.
+  return withHooks(
     script.hooks,
     loaded.dir,
     async () => {
       const session = await openSession(script, opts);
+      let shot: Shot;
       try {
-        return await shoot(session, loaded, frames, opts);
+        shot = await shoot(session, loaded, frames, opts);
       } catch (err) {
         if (err instanceof StepError) {
           const failure = path.join(tmp, 'failure.png');
@@ -85,28 +87,28 @@ export async function record(loaded: LoadedScript, opts: RecordOptions = {}): Pr
       } finally {
         await session.close();
       }
-    },
-    opts.log,
-  );
 
-  opts.log?.('Encoding raw.mp4…');
-  const raw = path.join(tmp, 'raw.mp4');
-  await encodeFrames(shot.frames, raw, { fps: TAKE_FPS, durationMs: shot.durationMs });
-  const probe = await probeVideo(raw);
-  const events: TakeEvents = {
-    version: 1,
-    actionHash: actionHash(script),
-    viewport: script.app.viewport,
-    deviceScaleFactor: script.app.deviceScaleFactor,
-    video: { file: 'raw.mp4', width: probe.width, height: probe.height, fps: TAKE_FPS, durationMs: shot.durationMs },
-    steps: shot.log.steps,
-    moves: shot.log.moves,
-    clicks: shot.log.clicks,
-    idle: shot.log.idle,
-  };
-  await writeFile(path.join(tmp, 'events.json'), JSON.stringify(events, null, 2));
-  if (!opts.keepFrames) await rm(frames, { recursive: true, force: true });
-  await rm(paths.take, { recursive: true, force: true });
-  await rename(tmp, paths.take);
-  return events;
+      opts.log?.('Encoding raw.mp4…');
+      const raw = path.join(tmp, 'raw.mp4');
+      await encodeFrames(shot.frames, raw, { fps: TAKE_FPS, durationMs: shot.durationMs });
+      const probe = await probeVideo(raw);
+      const events: TakeEvents = {
+        version: 1,
+        actionHash: actionHash(script),
+        viewport: script.app.viewport,
+        deviceScaleFactor: script.app.deviceScaleFactor,
+        video: { file: 'raw.mp4', width: probe.width, height: probe.height, fps: TAKE_FPS, durationMs: shot.durationMs },
+        steps: shot.log.steps,
+        moves: shot.log.moves,
+        clicks: shot.log.clicks,
+        idle: shot.log.idle,
+      };
+      await writeFile(path.join(tmp, 'events.json'), JSON.stringify(events, null, 2));
+      if (!opts.keepFrames) await rm(frames, { recursive: true, force: true });
+      await rm(paths.take, { recursive: true, force: true });
+      await rename(tmp, paths.take);
+      return events;
+    },
+    opts.warn,
+  );
 }

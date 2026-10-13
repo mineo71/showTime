@@ -53,7 +53,7 @@ and then prints exactly one JSON document on stdout.
 Remotion. They routinely take several minutes. In Claude Code run them with `timeout: 600000`, or
 with `run_in_background: true` and wait for the completion notification. In Codex and other
 agents, give the command a timeout of at least 10 minutes.
-Never let a `record` be killed halfway: it replaces the previous take.
+A `record` that fails or is stopped halfway leaves the previous take in place.
 
 ## Side effects
 
@@ -111,7 +111,7 @@ ask the user for one rather than guessing.
 - **`app`:** `url`, `viewport`, `deviceScaleFactor`, `storageState` (Playwright storage-state JSON,
   path relative to the script), `colorScheme`, `locale`, `timezoneId`, `mask` (CSS selectors to blur —
   plain CSS only, not `text=` / `role=`), `mock` (`[{ url: "**/api/x*", json | body, status?,
-  method?, delayMs? }]`), `clock` (ISO date-time; freezes `Date`), `dialogs` (`accept` | `dismiss`).
+  method?, delayMs? }]`), `clock` (ISO date-time the page clock starts at; first matching mock wins), `dialogs` (`accept` | `dismiss`).
   Relative `goto` URLs resolve against `app.url`.
 - **`meta`:** `title`, `subtitle` (intro card), `logo` (SVG/PNG/JPEG/WebP), `outro`
   (`{ title, subtitle?, url? }`, closing card).
@@ -129,7 +129,7 @@ ask the user for one rather than guessing.
 - Never `pause` to wait for loading — use `wait {for}`; auto-speed compresses the loader.
 - Use `setup` for cookie banners and onboarding, `app.storageState` to start logged in, `app.mask`
   to blur personal data.
-- Mock APIs that are slow, random or need real accounts (`app.mock`), and freeze the date
+- Mock APIs that are slow, random or need real accounts (`app.mock`), and pin the date
   (`app.clock`) so every take shows the same numbers and timestamps.
 - End pitch demos with `meta.outro`: the product name and the URL to visit. Put brand colours, logo
   and outro in `showtime.config.json` when a project has several demos.

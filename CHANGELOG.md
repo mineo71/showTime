@@ -8,7 +8,7 @@
 - `--json` on every command.
 - `hooks.before` / `hooks.after`: shell commands or HTTP calls around every `check` and `record`,
   so state can be reset between rehearsal and take.
-- `app.mock` (canned responses for matching requests), `app.clock` (frozen `Date`),
+- `app.mock` (canned responses for matching requests), `app.clock` (the page clock starts at a fixed date),
   `app.dialogs` (accept or dismiss native dialogs; accepted by default).
 - Safe re-takes: a failed `record` leaves the previous take untouched (`take.tmp` keeps the failure).
 - Settling ignores event streams; relative `goto` URLs resolve against `app.url`.

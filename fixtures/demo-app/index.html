@@ -57,6 +57,8 @@
         <button class="secondary" id="danger">Delete all</button> <span id="danger-result"></span>
         <button class="secondary" id="live">Go live</button> <span id="live-count"></span>
         <span id="today"></span>
+        <button class="secondary" id="load-remote">Load remote</button> <span id="remote"></span>
+        <input id="search" placeholder="Search" /> <span id="results"></span>
       </div>
       <div class="far card"><button id="export">Export CSV</button></div>
     </main>
@@ -110,6 +112,24 @@
         }
       };
       $('#danger').onclick = () => { $('#danger-result').textContent = confirm('Delete everything?') ? 'Deleted' : 'Kept'; };
+      $('#load-remote').onclick = async () => {
+        try {
+          const r = await fetch('http://api.showtime.test/stats', { credentials: 'include' });
+          $('#remote').textContent = `Remote ${(await r.json()).visitors}`;
+        } catch {
+          $('#remote').textContent = 'Remote failed';
+        }
+      };
+      // A Date-based debounce, like lodash.debounce: fires 250 ms after the last keystroke.
+      let lastKey = 0;
+      $('#search').addEventListener('input', () => {
+        lastKey = Date.now();
+        const fire = () => {
+          if (Date.now() - lastKey >= 250) $('#results').textContent = `Results for ${$('#search').value}`;
+          else setTimeout(fire, 50);
+        };
+        setTimeout(fire, 260);
+      });
       $('#live').onclick = () => {
         const source = new EventSource('/sse');
         source.onmessage = (e) => { $('#live-count').textContent = `Live ${e.data}`; };

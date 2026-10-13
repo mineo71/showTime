@@ -27,27 +27,38 @@ function runCommand(command: string, cwd: string, timeoutMs: number): Promise<vo
     // Own process group, so a timeout kills whatever the shell started too.
     const child = spawn(command, { cwd, shell: true, detached: true, stdio: ['ignore', 'pipe', 'pipe'] });
     let output = '';
+    let settled = false;
     const keep = (chunk: Buffer) => {
       output = (output + chunk.toString()).slice(-KEEP_CHARS);
     };
     child.stdout.on('data', keep);
     child.stderr.on('data', keep);
+    const finish = (err?: Error) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      // A background process the hook started (a dev server, say) may hold the pipes open: let go.
+      child.stdout.destroy();
+      child.stderr.destroy();
+      child.unref();
+      if (err) reject(err);
+      else resolve();
+    };
     const timer = setTimeout(() => {
       try {
         process.kill(-child.pid!, 'SIGKILL');
       } catch {
         child.kill('SIGKILL');
       }
-      reject(new Error(`timed out after ${timeoutMs / 1000} s${tail(output)}`));
+      finish(new Error(`timed out after ${timeoutMs / 1000} s${tail(output)}`));
     }, timeoutMs);
-    child.on('error', (err) => {
-      clearTimeout(timer);
-      reject(err);
-    });
-    child.on('close', (code) => {
-      clearTimeout(timer);
-      if (code === 0) resolve();
-      else reject(new Error(`exit code ${code}${tail(output)}`));
+    child.on('error', (err) => finish(err));
+    // Done when the shell exits, not when every process holding its output does.
+    child.on('exit', (code) => {
+      if (code === 0) return finish();
+      const fail = () => finish(new Error(`exit code ${code}${tail(output)}`));
+      child.on('close', fail); // the last output usually arrives right after exit
+      setTimeout(fail, 500);
     });
   });
 }
@@ -75,24 +86,26 @@ export async function runHooks(hooks: Hook[], opts: HookOptions): Promise<void> 
   }
 }
 
+const toStderr = (line: string) => {
+  process.stderr.write(`${line}\n`);
+};
+
 /**
- * `before` hooks, then the work, then `after` hooks, which run even when the work fails. When both
- * fail, the work's error wins and the hook's is passed to `log`.
+ * `before` hooks, then the work, then `after` hooks, which run even when the work fails. A failing
+ * `before` hook aborts; a failing `after` hook is only a warning, so it never undoes the work's
+ * result (a saved take, a check report).
  */
 export async function withHooks<T>(
   hooks: { before: Hook[]; after: Hook[] },
   cwd: string,
   work: () => Promise<T>,
-  log?: (line: string) => void,
+  warn: (line: string) => void = toStderr,
 ): Promise<T> {
   await runHooks(hooks.before, { cwd, label: 'hooks.before' });
-  let result: T;
+  const after = () => runHooks(hooks.after, { cwd, label: 'hooks.after' }).catch((err: Error) => warn(`⚠ ${err.message}`));
   try {
-    result = await work();
-  } catch (err) {
-    await runHooks(hooks.after, { cwd, label: 'hooks.after' }).catch((hookErr: Error) => log?.(`✖ ${hookErr.message}`));
-    throw err;
+    return await work();
+  } finally {
+    await after();
   }
-  await runHooks(hooks.after, { cwd, label: 'hooks.after' });
-  return result;
 }

@@ -18,6 +18,18 @@ beforeAll(async () => {
 afterAll(() => server.close());
 
 describe('record', () => {
+  it('keeps a good take when an after hook fails, and says so', async () => {
+    const loaded = await fixtureScript(server.url, (raw) => {
+      raw.scenes = [{ id: 'a', steps: [{ do: 'click', target: '#new-report' }] }];
+      raw.hooks = { after: [{ run: 'node -e "process.exit(4)"' }] };
+    });
+    const warnings: string[] = [];
+    const ev = await record(loaded, { warn: (w) => warnings.push(w) });
+    expect(ev.steps).toHaveLength(1);
+    expect(existsSync(workPaths(loaded).raw)).toBe(true);
+    expect(warnings.join('\n')).toMatch(/hooks\.after\[0\].*exit code 4/);
+  });
+
   it('a failed re-take leaves the previous take untouched', async () => {
     const loaded = await fixtureScript(server.url, (raw) => {
       raw.scenes = [{ id: 'a', steps: [{ do: 'click', target: '#new-report' }] }];

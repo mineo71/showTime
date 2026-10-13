@@ -147,7 +147,7 @@ And under the hood:
 - 🧹 **Clean state for every take.** `hooks` run a reset command or call an endpoint before and
   after each rehearsal and take, so a flow that creates data works twice in a row.
 - 🎭 **Deterministic pages.** `app.mock` answers flaky or slow APIs with canned JSON, `app.clock`
-  freezes the date, and `app.dialogs` answers `confirm()` the way the demo needs.
+  pins the date, and `app.dialogs` answers `confirm()` the way the demo needs.
 - 🎨 **One brand file.** `showtime.config.json` holds your colours, logo and outro; every script
   below it inherits them.
 - 🛟 **Safe re-takes.** A take that fails halfway leaves the last good one untouched.
@@ -313,8 +313,8 @@ Targets are Playwright selectors: `role=button[name='Save']`, `text=Save`, `#id`
 | `colorScheme`       | none       | `light` or `dark`; also picks the browser-bar theme |
 | `locale`, `timezoneId` | none    | passed to the browser context |
 | `mask`              | `[]`       | CSS selectors to blur (plain CSS, not `text=`) |
-| `mock`              | `[]`       | `[{ url, method?, status?, json? \| body?, headers?, delayMs? }]`: answer matching requests (`url` is a glob like `**/api/stats*`) |
-| `clock`             | none       | freeze `Date` at this ISO date-time; timers keep running |
+| `mock`              | `[]`       | `[{ url, method?, status?, json? \| body?, headers?, delayMs? }]`: answer matching requests (`url` is a glob like `**/api/stats*`; the first match wins) |
+| `clock`             | none       | start the page clock at this ISO date-time; it then runs normally |
 | `dialogs`           | `accept`   | answer `alert`/`confirm`/`prompt` with `accept` or `dismiss` |
 
 </details>
@@ -341,7 +341,8 @@ Targets are Playwright selectors: `role=button[name='Save']`, `text=Save`, `#id`
 ```
 
 `before` hooks run at the start of every `check` and `record` (so `make` resets between the
-rehearsal and the take); `after` hooks run when they end, even after a failure. `run` is a shell
+rehearsal and the take); `after` hooks run when they end, even after a failure, and a failing
+`after` hook is a warning that never costs you the take. `run` is a shell
 command in the script's folder (120 s timeout); `request` is an HTTP call that must answer 2xx.
 
 </details>
@@ -387,7 +388,7 @@ the script (`demo/pitch.json` → `demo/pitch.mp4`). Working files live in
 - **Never `pause` for loading.** Use `wait` with a selector and auto-speed compresses the spinner.
 - **Start clean.** Use `setup` for cookie banners, `app.storageState` to skip the login, `app.mask`
   for anything personal, and `hooks` to reset the data between `check` and `record`.
-- **Pin the world.** Mock slow or random APIs with `app.mock` and freeze the date with `app.clock`,
+- **Pin the world.** Mock slow or random APIs with `app.mock` and pin the date with `app.clock`,
   so every take looks the same.
 
 ## FAQ

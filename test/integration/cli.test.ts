@@ -33,6 +33,7 @@ describe('showtime CLI', () => {
     const r = await cli(['schema']);
     expect(r.code).toBe(0);
     expect(JSON.parse(r.stdout).properties.scenes).toBeDefined();
+    expect((await cli(['schema', '--json'])).code).toBe(0);
   });
 
   it('fails clearly on an invalid script', async () => {

@@ -60,6 +60,7 @@ program
 program
   .command('schema')
   .description('print the JSON Schema of demo scripts')
+  .option('--json', 'accepted for symmetry; the output is always JSON')
   .action(() => {
     emit(scriptJsonSchema());
   });

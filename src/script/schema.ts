@@ -100,12 +100,12 @@ export const AppSchema = z
       .array(z.string().min(1))
       .default([])
       .describe('CSS selectors (not Playwright selectors) of elements to blur in the recording'),
-    mock: z.array(MockSchema).default([]).describe('Answer matching network requests with canned responses'),
+    mock: z.array(MockSchema).default([]).describe('Answer matching network requests with canned responses; the first match wins'),
     clock: z
       .string()
       .refine((v) => !Number.isNaN(Date.parse(v)), { message: 'must be an ISO date-time, e.g. 2026-10-13T09:30:00Z' })
       .optional()
-      .describe('Freeze Date in the page at this ISO date-time (timers keep running)'),
+      .describe('Start the page clock at this ISO date-time; it then runs normally'),
     dialogs: z.enum(['accept', 'dismiss']).default('accept').describe('How to answer alert/confirm/prompt dialogs'),
   })
   .strict();

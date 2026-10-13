@@ -2,7 +2,7 @@ import { existsSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { z } from 'zod';
-import { formatIssues, ScriptError } from './schema';
+import { formatIssues, MetaSchema, ScriptError, StyleSchema } from './schema';
 
 export const CONFIG_FILE = 'showtime.config.json';
 
@@ -13,9 +13,9 @@ export interface BrandConfig {
   meta?: Json;
 }
 
-// Only the shape is checked here; the values are validated as part of the merged script.
+// Validated on its own so mistakes are blamed on this file; the raw values are what get merged.
 const ConfigSchema = z
-  .object({ $schema: z.string().optional(), style: z.record(z.string(), z.unknown()).optional(), meta: z.record(z.string(), z.unknown()).optional() })
+  .object({ $schema: z.string().optional(), style: StyleSchema.partial().optional(), meta: MetaSchema.partial().optional() })
   .strict();
 
 /** The nearest showtime.config.json from `dir` upward, or null. */
@@ -37,7 +37,7 @@ export async function readConfig(file: string): Promise<BrandConfig> {
   }
   const parsed = ConfigSchema.safeParse(raw);
   if (!parsed.success) throw new ScriptError(`Invalid ${file}:\n${formatIssues(parsed.error.issues)}`);
-  const { style, meta } = parsed.data;
+  const { style, meta } = raw as BrandConfig;
   return { style, meta: withLogoFrom(meta, path.dirname(file)) };
 }
 
