@@ -7,6 +7,7 @@
 import { copyFileSync, existsSync, mkdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { toWebp } from '../src/convert';
 import { run } from '../src/ffmpeg';
 import { qaShots, sourceMsAtFrame } from '../src/timeline/frames';
 import { BROWSER_BAR, windowLayout } from '../src/timeline/layout';
@@ -47,7 +48,7 @@ async function main() {
   copyFileSync(video, path.join(out, 'demo.mp4'));
 
   process.stdout.write('hero.webp (animated, slow)…\n');
-  await run('ffmpeg', ['-v', 'error', '-y', '-i', video, '-vf', 'fps=20,scale=1200:-1:flags=lanczos', '-c:v', 'libwebp_anim', '-quality', '76', '-loop', '0', path.join(out, 'hero.webp')]);
+  await toWebp(video, path.join(out, 'hero.webp'), 1200);
 
   const { width: W, height: H } = timeline.output;
   const win = windowLayout(timeline.output, timeline.stage, timeline.style.padding, timeline.chrome ? BROWSER_BAR : 0);

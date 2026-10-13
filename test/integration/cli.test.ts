@@ -1,6 +1,6 @@
 import { execFile } from 'node:child_process';
 import { existsSync } from 'node:fs';
-import { lstat, mkdtemp, writeFile } from 'node:fs/promises';
+import { lstat, mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -96,6 +96,24 @@ describe('showtime CLI', () => {
 
     const lint = await cli(['lint', loaded.scriptPath, '--json']);
     expect(JSON.parse(lint.stdout).timing).toBe(true);
+
+    const gif = await cli(['render', loaded.scriptPath, '--format', 'gif', '--aspect', '9:16', '--width', '240', '--json']);
+    expect(gif.code, gif.stderr).toBe(0);
+    const g = JSON.parse(gif.stdout);
+    expect(g).toMatchObject({ video: path.join(loaded.dir, 'demo-9x16.gif'), subtitles: null });
+    expect(g.durationMs).toBeGreaterThan(1000);
+    const head = await readFile(g.video);
+    expect(head.toString('ascii', 0, 6)).toBe('GIF89a');
+    expect(head.readUInt16LE(6)).toBe(240);
+
+    const webp = await cli(['render', loaded.scriptPath, '-o', path.join(loaded.dir, 'clip.webp'), '--json']);
+    expect(webp.code, webp.stderr).toBe(0);
+    const w = await readFile(JSON.parse(webp.stdout).video);
+    expect(w.toString('ascii', 8, 12)).toBe('WEBP');
+
+    const bad = await cli(['render', loaded.scriptPath, '--aspect', '4:3']);
+    expect(bad.code).toBe(1);
+    expect(bad.stderr).toMatch(/--aspect must be 16:9, 9:16 or 1:1/);
   });
 
   it('record --json describes the take', async () => {

@@ -4,6 +4,7 @@ import { workPaths } from '../paths';
 import { loadScript, type LoadedScript } from '../script/load';
 import { scriptJsonSchema } from '../script/schema';
 import type { TakeEvents } from '../timeline/types';
+import { aspectOf, formatOf } from '../convert';
 import { formatCheck, formatLint } from './format';
 
 const say = (line: string): void => {
@@ -26,12 +27,41 @@ const takeSummary = (loaded: LoadedScript, ev: TakeEvents) => ({
   steps: ev.steps.length,
 });
 
-async function render(loaded: LoadedScript, o: { out?: string; json?: boolean }) {
-  const { renderDemo } = await import('../pipeline');
-  const { probeVideo } = await import('../ffmpeg');
-  const { video, subtitles } = await renderDemo(loaded, { out: o.out, onProgress: progressFor(o.json) });
-  return { video, durationMs: (await probeVideo(video)).durationMs, subtitles };
+interface RenderFlags {
+  out?: string;
+  json?: boolean;
+  aspect: string;
+  format?: string;
+  width?: string;
+  audio: boolean;
 }
+
+/** Validate the output flags up front, before any recording or rendering starts. */
+function renderOptions(o: RenderFlags) {
+  const width = o.width === undefined ? undefined : Number(o.width);
+  if (width !== undefined && !(Number.isInteger(width) && width >= 16 && width <= 3840)) {
+    throw new Error(`--width must be a whole number of pixels between 16 and 3840 (got "${o.width}")`);
+  }
+  return { out: o.out, aspect: aspectOf(o.aspect), format: formatOf(o.out, o.format), width, audio: o.audio };
+}
+
+const withRenderFlags = (c: Command) =>
+  c
+    .option('-o, --out <file>', 'output file (default: <script-name>[-9x16|-1x1].<format> next to the script)')
+    .option('--aspect <ratio>', '16:9, 9:16 or 1:1', '16:9')
+    .option('--format <format>', 'mp4, gif or webp (default: from --out, else mp4)')
+    .option('--width <px>', 'GIF/WebP width (default: 960, 540 or 720 by aspect)')
+    .option('--no-audio', 'leave out narration, music and sounds');
+
+async function render(loaded: LoadedScript, o: RenderFlags) {
+  const { renderDemo } = await import('../pipeline');
+  return renderDemo(loaded, { ...renderOptions(o), onProgress: progressFor(o.json), log: o.json ? undefined : say });
+}
+
+const sayRendered = (r: { video: string; subtitles: string | null }) => {
+  say(`\n✓ ${r.video}`);
+  if (r.subtitles) say(`✓ subtitles: ${r.subtitles}`);
+};
 
 const program = new Command('showtime')
   .description('AI-directed product demo videos: JSON script in, polished MP4 out')
@@ -113,36 +143,36 @@ program
     else say(`✓ take: ${(take.durationMs / 1000).toFixed(1)} s, ${take.steps} steps → ${take.take}`);
   });
 
-program
-  .command('render <script>')
-  .description('render the polished video from the last take (no re-recording)')
-  .option('-o, --out <file>', 'output MP4 (default: <script-name>.mp4 next to the script)')
-  .option('--json', 'print { video, durationMs } as JSON')
-  .action(async (file: string, o: { out?: string; json?: boolean }) => {
+withRenderFlags(
+  program.command('render <script>').description('render the polished video from the last take (no re-recording)'),
+)
+  .option('--json', 'print { video, durationMs, subtitles } as JSON')
+  .action(async (file: string, o: RenderFlags) => {
+    renderOptions(o);
     const result = await render(await loadScript(file), o);
     if (o.json) emit(result);
-    else say(`\n✓ ${result.video}`);
+    else sayRendered(result);
   });
 
 program
   .command('frames <script>')
   .description('render QA stills (intro, one per step, outro) and a contact sheet of them')
+  .option('--aspect <ratio>', '16:9, 9:16 or 1:1', '16:9')
   .option('--json', 'print { sheet, frames } as JSON')
-  .action(async (file: string, o: { json?: boolean }) => {
+  .action(async (file: string, o: { aspect: string; json?: boolean }) => {
+    const aspect = aspectOf(o.aspect);
     const { renderQaFrames } = await import('../pipeline');
-    const { sheet, frames } = await renderQaFrames(await loadScript(file));
+    const { sheet, frames } = await renderQaFrames(await loadScript(file), { aspect, log: o.json ? undefined : say });
     if (o.json) return emit({ sheet, frames });
     say(`sheet: ${sheet}`);
     say(frames.join('\n'));
   });
 
-program
-  .command('make <script>')
-  .description('check → record → render')
-  .option('-o, --out <file>', 'output MP4 (default: <script-name>.mp4 next to the script)')
+withRenderFlags(program.command('make <script>').description('check → record → render'))
   .option('--headed', 'show the browser')
   .option('--json', 'print { check, take, video } as JSON')
-  .action(async (file: string, o: { out?: string; headed?: boolean; json?: boolean }) => {
+  .action(async (file: string, o: RenderFlags & { headed?: boolean }) => {
+    renderOptions(o);
     const loaded = await loadScript(file);
     const log = o.json ? undefined : say;
     const { check } = await import('../runner/check');
@@ -159,7 +189,7 @@ program
     log?.(`✓ take: ${(take.durationMs / 1000).toFixed(1)} s`);
     const video = await render(loaded, o);
     if (o.json) emit({ check: report, take, video });
-    else say(`\n✓ ${video.video}`);
+    else sayRendered(video);
   });
 
 program.parseAsync().catch((err: Error) => {

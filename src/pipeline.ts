@@ -2,6 +2,8 @@ import { mkdir, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { mixSoundtrack } from './audio/soundtrack';
 import { ensureVoices, type VoiceClip } from './audio/tts';
+import { ANIMATION_WIDTH, defaultOutput, formatOf, toGif, toWebp, type Format } from './convert';
+import { probeVideo } from './ffmpeg';
 import { logoDataUri } from './logo';
 import { workPaths } from './paths';
 import { renderStills, renderVideo } from './render/render';
@@ -42,7 +44,12 @@ async function writeTimeline(loaded: LoadedScript, timeline: Timeline) {
 }
 
 export interface RenderOptions extends TimelineOptions {
+  /** default: `<name>[-9x16|-1x1].<format>` next to the script */
   out?: string;
+  /** default: from `out`'s extension, else mp4 */
+  format?: Format;
+  /** GIF/WebP width in px */
+  width?: number;
   onProgress?: (progress: number) => void;
   /** false: no soundtrack, even with narration, music or sounds */
   audio?: boolean;
@@ -50,13 +57,28 @@ export interface RenderOptions extends TimelineOptions {
 
 export interface RenderResult {
   video: string;
-  /** the .srt written next to the video, if the video has narration subtitles */
+  durationMs: number;
+  /** the .srt written next to an MP4 with narration subtitles */
   subtitles: string | null;
 }
 
 export async function renderDemo(loaded: LoadedScript, opts: RenderOptions = {}): Promise<RenderResult> {
+  const aspect = opts.aspect ?? '16:9';
+  const format = opts.format ?? formatOf(opts.out);
+  const out = path.resolve(opts.out ?? defaultOutput(loaded, aspect, format));
   const { timeline, clips } = await timelineFor(loaded, opts);
   const paths = workPaths(loaded);
+  await mkdir(path.dirname(out), { recursive: true });
+
+  if (format !== 'mp4') {
+    // GIF and WebP are cut from a silent MP4 render.
+    const mp4 = path.join(paths.root, `render-${aspect.replace(':', 'x')}.mp4`);
+    await renderVideo(timeline, paths.root, mp4, opts.onProgress);
+    const width = opts.width ?? ANIMATION_WIDTH[aspect];
+    await (format === 'gif' ? toGif(mp4, out, width) : toWebp(mp4, out, width));
+    return { video: out, durationMs: (await probeVideo(mp4)).durationMs, subtitles: null };
+  }
+
   if (opts.audio !== false) {
     const src = await mixSoundtrack(loaded, timeline, clips);
     if (src) {
@@ -64,15 +86,13 @@ export async function renderDemo(loaded: LoadedScript, opts: RenderOptions = {})
       await writeTimeline(loaded, timeline);
     }
   }
-  const out = path.resolve(opts.out ?? paths.video);
-  await mkdir(path.dirname(out), { recursive: true });
   await renderVideo(timeline, paths.root, out, opts.onProgress);
   let subtitles: string | null = null;
   if (timeline.subtitles.length) {
     subtitles = out.replace(/\.[^./\\]+$/, '') + '.srt';
     await writeFile(subtitles, toSrt(timeline.subtitles, (introFrames(timeline) * 1000) / timeline.fps));
   }
-  return { video: out, subtitles };
+  return { video: out, durationMs: (await probeVideo(out)).durationMs, subtitles };
 }
 
 /** QA stills (intro, one per step, outro) and a contact sheet of all of them. */
