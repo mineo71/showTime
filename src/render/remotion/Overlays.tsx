@@ -55,7 +55,8 @@ export const Ripples: FC<LayerProps> = ({ timeline, srcMs }) => (
   </>
 );
 
-export const Captions: FC<LayerProps> = ({ timeline, srcMs }) => {
+/** `top` is where a top caption's box starts (output px); bottom captions sit at a fixed inset. */
+export const Captions: FC<LayerProps & { top: number }> = ({ timeline, srcMs, top }) => {
   const active = timeline.captions.filter((c) => srcMs >= c.startMs && srcMs <= c.endMs);
   const c = active[active.length - 1];
   if (!c) return null;
@@ -66,7 +67,7 @@ export const Captions: FC<LayerProps> = ({ timeline, srcMs }) => {
         position: 'absolute',
         left: 0,
         right: 0,
-        bottom: Math.round(timeline.output.height * 0.075),
+        ...(c.position === 'top' ? { top } : { bottom: Math.round(timeline.output.height * 0.075) }),
         display: 'flex',
         justifyContent: 'center',
       }}
@@ -85,7 +86,7 @@ export const Captions: FC<LayerProps> = ({ timeline, srcMs }) => {
           textAlign: 'center',
           boxShadow: '0 12px 40px rgba(0, 0, 0, 0.35)',
           opacity: o,
-          transform: `translateY(${(1 - o) * 12}px)`,
+          transform: `translateY(${(1 - o) * (c.position === 'top' ? -12 : 12)}px)`,
         }}
       >
         {c.text}

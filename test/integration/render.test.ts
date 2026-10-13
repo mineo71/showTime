@@ -59,6 +59,22 @@ describe('render', () => {
     expect(timeline.style.accent).toBe('#ef4444');
   });
 
+  it('ends on an outro card with the logo after the video', async () => {
+    await writeFile(
+      path.join(loaded.dir, 'logo.svg'),
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><circle cx="5" cy="5" r="5" fill="#16a34a"/></svg>',
+    );
+    const edited = await editScript((raw) => {
+      raw.meta = { ...raw.meta, logo: 'logo.svg', outro: { title: 'Try Acme', url: 'acme.example' } };
+    });
+    const { timeline } = await timelineFor(edited);
+    expect(timeline.logo).toMatch(/^data:image\/svg\+xml;base64,/);
+    expect(timeline.outro).toEqual({ title: 'Try Acme', url: 'acme.example', durationMs: 2600 });
+    const files = await renderQaFrames(edited);
+    expect(path.basename(files.at(-1)!)).toBe('99-outro.png');
+    expect(existsSync(files.at(-1)!)).toBe(true);
+  });
+
   it('refuses a stale take after an action change', async () => {
     const edited = await editScript((raw) => {
       raw.scenes[0].steps[1].text = 'Q4 revenue';

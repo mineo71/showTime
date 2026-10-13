@@ -1,12 +1,13 @@
 import type { FC } from 'react';
 import { AbsoluteFill, Easing, interpolate, OffthreadVideo, Sequence, staticFile, useCurrentFrame } from 'remotion';
 import { cameraAt, cameraTransform } from '../../timeline/camera';
-import { introFrames, segmentPlan, sourceMsAtFrame } from '../../timeline/frames';
+import { introFrames, segmentPlan, sourceMsAtFrame, videoEndFrame } from '../../timeline/frames';
 import { BROWSER_BAR, windowLayout } from '../../timeline/layout';
 import type { Timeline } from '../../timeline/types';
 import { BrowserBar } from './BrowserBar';
 import { Cursor } from './Cursor';
 import { Intro } from './Intro';
+import { Outro } from './Outro';
 import { Captions, Ripples, Spotlights } from './Overlays';
 
 export type ShowtimeVideoProps = { timeline: Timeline };
@@ -17,6 +18,8 @@ export const ShowtimeVideo: FC<ShowtimeVideoProps> = ({ timeline: t }) => {
   const frame = useCurrentFrame();
   const intro = introFrames(t);
   if (frame < intro) return <Intro timeline={t} frame={frame} />;
+  const end = videoEndFrame(t);
+  if (t.outro && frame >= end) return <Outro timeline={t} frame={frame - end} />;
 
   const src = sourceMsAtFrame(t, frame) ?? 0;
   const win = windowLayout(t.output, t.stage, t.style.padding, t.chrome ? BROWSER_BAR : 0);
@@ -26,6 +29,8 @@ export const ShowtimeVideo: FC<ShowtimeVideoProps> = ({ timeline: t }) => {
   const enter = intro
     ? interpolate(frame - intro, [0, 16], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp', easing: Easing.out(Easing.cubic) })
     : 1;
+  // Before an outro card the window and its captions fade out over the last 12 frames.
+  const leave = t.outro ? interpolate(frame, [end - 12, end], [1, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }) : 1;
 
   return (
     <AbsoluteFill style={{ background: t.style.background, fontFamily: t.style.font }}>
@@ -40,7 +45,7 @@ export const ShowtimeVideo: FC<ShowtimeVideoProps> = ({ timeline: t }) => {
           overflow: 'hidden',
           background: '#fff',
           boxShadow: t.style.shadow ? SHADOW : undefined,
-          opacity: enter,
+          opacity: enter * leave,
           transform: `translateY(${(1 - enter) * 40}px) scale(${0.96 + 0.04 * enter})`,
         }}
       >
@@ -86,7 +91,9 @@ export const ShowtimeVideo: FC<ShowtimeVideoProps> = ({ timeline: t }) => {
           </div>
         </div>
       </div>
-      <Captions timeline={t} srcMs={src} />
+      <div style={{ opacity: leave }}>
+        <Captions timeline={t} srcMs={src} top={win.y + Math.round(t.output.height * 0.03)} />
+      </div>
     </AbsoluteFill>
   );
 };

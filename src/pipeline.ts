@@ -1,5 +1,6 @@
 import { mkdir, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { logoDataUri } from './logo';
 import { workPaths } from './paths';
 import { renderStills, renderVideo } from './render/render';
 import type { LoadedScript } from './script/load';
@@ -10,7 +11,8 @@ import type { TakeEvents, Timeline } from './timeline/types';
 
 export async function timelineFor(loaded: LoadedScript): Promise<{ timeline: Timeline; events: TakeEvents }> {
   const events = await loadTake(loaded);
-  const timeline = buildTimeline(loaded.script, events);
+  const { logo } = loaded.script.meta;
+  const timeline = buildTimeline(loaded.script, events, { logo: logo ? await logoDataUri(logo) : undefined });
   const paths = workPaths(loaded);
   await mkdir(paths.root, { recursive: true });
   await writeFile(paths.timeline, JSON.stringify(timeline, null, 2));
