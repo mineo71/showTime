@@ -18,6 +18,25 @@ beforeAll(async () => {
 afterAll(() => server.close());
 
 describe('record', () => {
+  it('logs a keystroke time per typed character at human pace, none at fast pace', async () => {
+    const loaded = await fixtureScript(server.url, (raw) => {
+      raw.scenes = [
+        {
+          id: 'a',
+          steps: [
+            { do: 'type', target: '#note', text: 'Привіт' },
+            { do: 'type', target: '#search', text: 'fast one', pace: 'fast' },
+          ],
+        },
+      ];
+    });
+    const ev = await record(loaded);
+    expect(ev.keys).toHaveLength(6);
+    const typing = ev.steps[0];
+    for (const k of ev.keys!) expect(k).toBeGreaterThanOrEqual(typing.actionMs);
+    expect(ev.keys!.at(-1)!).toBeLessThanOrEqual(typing.endMs);
+  });
+
   it('keeps a good take when an after hook fails, and says so', async () => {
     const loaded = await fixtureScript(server.url, (raw) => {
       raw.scenes = [{ id: 'a', steps: [{ do: 'click', target: '#new-report' }] }];

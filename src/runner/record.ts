@@ -102,6 +102,7 @@ export async function record(loaded: LoadedScript, opts: RecordOptions = {}): Pr
         moves: shot.log.moves,
         clicks: shot.log.clicks,
         idle: shot.log.idle,
+        keys: shot.log.keys,
       };
       await writeFile(path.join(tmp, 'events.json'), JSON.stringify(events, null, 2));
       if (!opts.keepFrames) await rm(frames, { recursive: true, force: true });

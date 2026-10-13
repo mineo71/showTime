@@ -193,6 +193,7 @@ async function typeText(ctx: StepContext, text: string, pace: 'human' | 'fast' |
   const rand = rng(text);
   for (const ch of text) {
     await ctx.page.keyboard.type(ch);
+    ctx.log.keys.push(ctx.log.now());
     await sleep(typeof pace === 'number' ? pace : 45 + rand() * 65);
   }
 }

@@ -24,6 +24,12 @@ const timeline = (intro: boolean, outro = false): Timeline =>
     clicks: [],
     captions: [],
     spotlights: [],
+    narration: [],
+    subtitles: [],
+    subtitlesBurned: false,
+    sounds: [],
+    music: null,
+    audio: null,
     style: {} as Timeline['style'],
   }) as Timeline;
 

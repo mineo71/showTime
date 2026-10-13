@@ -2,8 +2,9 @@ import type { Script, Step } from '../script/schema';
 import { buildCamera, cameraAt, MIN_ZOOM, zoomDepth, type ZoomRegion } from './camera';
 import { BROWSER_BAR, projectRect, windowLayout, type Box } from './layout';
 import { clamp } from './math';
-import { buildSegments, type SpeedSpan } from './timemap';
-import type { CameraKey, Caption, Rect, Spotlight, StepEvent, TakeEvents, Timeline } from './types';
+import { soundEvents, stepKey, subtitleCues, withNarration, type Typing } from './narration';
+import { buildSegments, sourceToOutput, type SpeedSpan } from './timemap';
+import type { CameraKey, Caption, NarrationLine, Rect, Spotlight, StepEvent, TakeEvents, Timeline } from './types';
 
 export const AUTO_SPEED_MIN_IDLE_MS = 800;
 export const AUTO_SPEED_TARGET_MS = 600;
@@ -22,6 +23,8 @@ export interface BuildOptions {
   output?: { width: number; height: number };
   /** Logo as a data URI. */
   logo?: string;
+  /** Length of each synthesized `show.say` line, by step (`scene#n`); lines without one are left out. */
+  voices?: Record<string, number>;
 }
 
 function stepOf(script: Script, e: StepEvent): Step {
@@ -107,6 +110,24 @@ export function buildTimeline(script: Script, ev: TakeEvents, opts: BuildOptions
     }
   }
 
+  const lines = pairs.flatMap(({ e, step }) => {
+    const where = stepKey(e.sceneId, e.index);
+    const durationMs = opts.voices?.[where];
+    return step.show?.say && durationMs !== undefined ? [{ where, text: step.show.say, startMs: e.startMs, durationMs }] : [];
+  });
+  const segments = withNarration(buildSegments(ev.video.durationMs, spans), lines, ev.video.durationMs);
+  const narration: NarrationLine[] = lines.map((l) => ({
+    where: l.where,
+    text: l.text,
+    atMs: Math.round(sourceToOutput(segments, l.startMs)),
+    durationMs: l.durationMs,
+  }));
+  const subtitles = script.audio.subtitles === 'off' ? [] : narration.flatMap((n) => subtitleCues(n.text, n.atMs, n.durationMs));
+  const subtitlesBurned = script.audio.subtitles === 'burn' && subtitles.length > 0;
+  const typing: Typing[] = pairs.flatMap(({ e, step }) =>
+    step.do === 'type' && step.pace !== 'fast' ? [{ startMs: e.actionMs, endMs: e.endMs, chars: [...step.text].length }] : [],
+  );
+
   const camera = buildCamera(regions);
   const win = windowLayout(output, stage, style.padding, style.chrome === 'browser' ? BROWSER_BAR : 0);
   // A caption ends when the next one starts: no overlap, so captions dip instead of colliding.
@@ -117,7 +138,12 @@ export function buildTimeline(script: Script, ev: TakeEvents, opts: BuildOptions
   });
   const captions: Caption[] = drafts
     .filter((d) => d.endMs > d.startMs)
-    .map((d) => ({ startMs: d.startMs, endMs: d.endMs, text: d.text, position: captionPosition(d.target, d, camera, stage, win, output) }));
+    .map((d) => ({
+      startMs: d.startMs,
+      endMs: d.endMs,
+      text: d.text,
+      position: subtitlesBurned ? 'top' : captionPosition(d.target, d, camera, stage, win, output),
+    }));
 
   return {
     version: 1,
@@ -132,12 +158,18 @@ export function buildTimeline(script: Script, ev: TakeEvents, opts: BuildOptions
         : null,
     outro: script.meta.outro ? { ...script.meta.outro, durationMs: OUTRO_MS } : null,
     logo: opts.logo ?? null,
-    segments: buildSegments(ev.video.durationMs, spans),
+    segments,
     camera,
     moves: ev.moves,
     clicks: ev.clicks,
     captions,
     spotlights,
+    narration,
+    subtitles,
+    subtitlesBurned,
+    sounds: script.audio.sounds ? soundEvents(ev, typing, segments) : [],
+    music: script.audio.music ? { volume: script.audio.music.volume } : null,
+    audio: null,
     style,
   };
 }

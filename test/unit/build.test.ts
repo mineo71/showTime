@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { parseScript } from '../../src/script/schema';
 import { buildTimeline } from '../../src/timeline/build';
+import { NARRATION_GAP_MS } from '../../src/timeline/narration';
 import type { TakeEvents } from '../../src/timeline/types';
 
 const script = (style: Record<string, unknown> = {}, overrides: Record<string, unknown> = {}) =>
@@ -137,5 +138,58 @@ describe('buildTimeline', () => {
   it('refuses events that do not match the script', () => {
     const bad = { ...events, steps: [{ ...events.steps[0], sceneId: 'nope' }] };
     expect(() => buildTimeline(script(), bad)).toThrow(/does not match the script/);
+  });
+});
+
+describe('buildTimeline: sound', () => {
+  const voiced = (audio: Record<string, unknown> = {}) => {
+    const s = script({}, { audio });
+    s.scenes[0].steps[0] = { do: 'click', target: '#a', show: { caption: 'Open it', say: 'Open the reports page and look around.' } };
+    s.scenes[0].steps[2] = { do: 'type', target: '#q', text: 'hi', pace: 'human', clear: false, show: { say: 'Search.' } };
+    return s;
+  };
+  const voices = { 's#1': 7000, 's#3': 1000 };
+
+  it('holds the frame until a line ends, just before the next narrated step', () => {
+    const t = buildTimeline(voiced(), events, { voices });
+    expect(t.segments.find((s) => s.speed === 0)).toMatchObject({ srcStartMs: 6399 });
+    expect(t.narration.map((n) => n.where)).toEqual(['s#1', 's#3']);
+    expect(t.narration[0]).toMatchObject({ text: 'Open the reports page and look around.', atMs: 800, durationMs: 7000 });
+    expect(t.narration[1].atMs - t.narration[0].atMs).toBe(7000 + NARRATION_GAP_MS);
+  });
+
+  it('skips lines without a synthesized voice, and adds no holds then', () => {
+    const t = buildTimeline(voiced(), events);
+    expect(t.narration).toEqual([]);
+    expect(t.segments.some((s) => s.speed === 0)).toBe(false);
+    expect(t.subtitles).toEqual([]);
+  });
+
+  it('builds subtitle cues from the lines, and burns them in on request with captions on top', () => {
+    const file = buildTimeline(voiced(), events, { voices });
+    expect(file.subtitles.map((c) => c.text)).toEqual(['Open the reports page and look around.', 'Search.']);
+    expect(file.subtitles[0]).toMatchObject({ startMs: 800, endMs: 7800 });
+    expect(file.subtitlesBurned).toBe(false);
+    expect(file.captions[0].position).toBe('bottom');
+    const burn = buildTimeline(voiced({ subtitles: 'burn' }), events, { voices });
+    expect(burn.subtitlesBurned).toBe(true);
+    expect(burn.captions[0].position).toBe('top');
+    expect(buildTimeline(voiced({ subtitles: 'off' }), events, { voices }).subtitles).toEqual([]);
+  });
+
+  it('adds click and key sounds when asked, keys spread over the type step for older takes', () => {
+    expect(buildTimeline(voiced(), events).sounds).toEqual([]);
+    const s = buildTimeline(voiced({ sounds: true }), events).sounds;
+    expect(s.filter((e) => e.kind === 'click')).toHaveLength(2);
+    expect(s.filter((e) => e.kind === 'key')).toHaveLength(2);
+    const logged = buildTimeline(voiced({ sounds: true }), { ...events, keys: [7100, 7200, 7300] }).sounds;
+    expect(logged.filter((e) => e.kind === 'key')).toHaveLength(3);
+  });
+
+  it('carries the music volume; the mix file is set later by the pipeline', () => {
+    const t = buildTimeline(voiced({ music: { file: '/m.mp3', volume: 0.4 } }), events);
+    expect(t.music).toEqual({ volume: 0.4 });
+    expect(t.audio).toBeNull();
+    expect(buildTimeline(voiced(), events).music).toBeNull();
   });
 });

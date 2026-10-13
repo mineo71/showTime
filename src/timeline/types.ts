@@ -60,6 +60,8 @@ export interface TakeEvents {
   moves: Move[];
   clicks: Click[];
   idle: Interval[];
+  /** keystroke times (human-paced typing); missing in takes recorded before 0.4 */
+  keys?: number[];
 }
 
 export interface Segment {
@@ -93,9 +95,31 @@ export interface Spotlight {
   rect: Rect;
 }
 
+/** A subtitle cue, in output ms from the start of the video. */
+export interface Cue {
+  startMs: number;
+  endMs: number;
+  text: string;
+}
+
+export interface Sound {
+  kind: 'click' | 'key';
+  /** output ms from the start of the video */
+  atMs: number;
+}
+
+export interface NarrationLine {
+  /** `scene#n` */
+  where: string;
+  text: string;
+  /** output ms from the start of the video */
+  atMs: number;
+  durationMs: number;
+}
+
 export type ResolvedStyle = Style;
 
-/** The renderer contract. All overlay times are source ms. */
+/** The renderer contract. Overlay times are source ms; sound and subtitle times are output ms from the video start. */
 export interface Timeline {
   version: 1;
   fps: number;
@@ -115,5 +139,13 @@ export interface Timeline {
   clicks: Click[];
   captions: Caption[];
   spotlights: Spotlight[];
+  narration: NarrationLine[];
+  subtitles: Cue[];
+  /** Subtitles drawn on the video (captions then sit at the top). */
+  subtitlesBurned: boolean;
+  sounds: Sound[];
+  music: { volume: number } | null;
+  /** The mixed soundtrack, relative to the renderer's public folder; set by the pipeline. */
+  audio: { src: string } | null;
   style: ResolvedStyle;
 }
