@@ -114,3 +114,33 @@ describe('docs/script.schema.json', () => {
     expect(shipped).toEqual(scriptJsonSchema());
   });
 });
+
+describe('narration and audio', () => {
+  it('accepts show.say and defaults the audio section', () => {
+    const s = parseScript(withSteps([{ do: 'click', target: '#a', show: { say: 'Create an invoice in seconds.' } }]));
+    expect(s.scenes[0].steps[0].show?.say).toBe('Create an invoice in seconds.');
+    expect(s.audio).toEqual({ voice: { engine: 'system', speed: 1 }, sounds: false, subtitles: 'file' });
+  });
+
+  it('defaults the music volume and accepts every engine setting', () => {
+    const s = parseScript({
+      ...minimal,
+      audio: {
+        voice: { engine: 'openai', name: 'alloy', speed: 1.2, model: 'gpt-4o-mini-tts', instructions: 'warm' },
+        music: { file: 'bed.mp3' },
+        sounds: true,
+        subtitles: 'burn',
+      },
+    });
+    expect(s.audio.music).toEqual({ file: 'bed.mp3', volume: 0.25 });
+    expect(s.audio.voice).toMatchObject({ engine: 'openai', name: 'alloy', speed: 1.2 });
+    expect(s.audio.subtitles).toBe('burn');
+  });
+
+  it('needs a voice id for elevenlabs and a command for the command engine', () => {
+    expect(() => parseScript({ ...minimal, audio: { voice: { engine: 'elevenlabs' } } })).toThrow(/audio\.voice\.name/);
+    expect(() => parseScript({ ...minimal, audio: { voice: { engine: 'command' } } })).toThrow(/audio\.voice\.command/);
+    expect(() => parseScript({ ...minimal, audio: { voice: { speed: 3 } } })).toThrow(/audio\.voice\.speed/);
+    expect(() => parseScript({ ...minimal, audio: { subtitles: 'yes' } })).toThrow(/audio\.subtitles/);
+  });
+});

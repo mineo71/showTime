@@ -101,6 +101,55 @@ describe('brand file and logo', () => {
   });
 });
 
+describe('audio paths and brand audio', () => {
+  async function project() {
+    const root = await mkdtemp(join(tmpdir(), 'showtime-audio-'));
+    await mkdir(join(root, 'brand'));
+    await mkdir(join(root, 'demos'));
+    await writeFile(join(root, 'brand', 'bed.mp3'), 'x');
+    await writeFile(join(root, 'demos', 'own.mp3'), 'x');
+    return root;
+  }
+
+  it('resolves the script\'s music against the script folder', async () => {
+    const root = await project();
+    const file = join(root, 'demos', 'a.json');
+    await writeFile(file, JSON.stringify({ ...base, audio: { music: { file: 'own.mp3' } } }));
+    const loaded = await loadScript(file);
+    expect(loaded.script.audio.music?.file).toBe(join(root, 'demos', 'own.mp3'));
+  });
+
+  it('takes audio defaults from the brand file, music resolved against its folder, voice replaced as a whole', async () => {
+    const root = await project();
+    const config = { audio: { voice: { engine: 'openai', name: 'alloy' }, music: { file: 'brand/bed.mp3', volume: 0.1 }, sounds: true } };
+    await writeFile(join(root, 'showtime.config.json'), JSON.stringify(config));
+    const file = join(root, 'demos', 'a.json');
+    await writeFile(file, JSON.stringify({ ...base, audio: { voice: { engine: 'system' }, subtitles: 'burn' } }));
+    const { script } = await loadScript(file);
+    expect(script.audio).toEqual({
+      voice: { engine: 'system', speed: 1 },
+      music: { file: join(root, 'brand', 'bed.mp3'), volume: 0.1 },
+      sounds: true,
+      subtitles: 'burn',
+    });
+  });
+
+  it('reports a missing music file', async () => {
+    const root = await project();
+    const file = join(root, 'demos', 'a.json');
+    await writeFile(file, JSON.stringify({ ...base, audio: { music: { file: 'nope.mp3' } } }));
+    await expect(loadScript(file)).rejects.toThrow(/audio\.music\.file not found: .*nope\.mp3/);
+  });
+
+  it('blames the brand file for a bad audio value', async () => {
+    const root = await project();
+    await writeFile(join(root, 'showtime.config.json'), JSON.stringify({ audio: { voice: { engine: 'robot' } } }));
+    const file = join(root, 'demos', 'a.json');
+    await writeFile(file, JSON.stringify(base));
+    await expect(loadScript(file)).rejects.toThrow(/showtime\.config\.json[\s\S]*audio\.voice\.engine/);
+  });
+});
+
 describe('workPaths', () => {
   it('keeps everything under .showtime/<name> next to the script', async () => {
     const { dir, file } = await scriptIn(JSON.stringify(base));

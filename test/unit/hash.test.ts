@@ -16,6 +16,14 @@ describe('actionHash', () => {
     expect(actionHash(styled)).toBe(actionHash(base));
   });
 
+  it('ignores narration and the audio section', () => {
+    const voiced = make(
+      { do: 'click', target: 'text=Go', show: { say: 'Go!' } },
+      { audio: { voice: { engine: 'openai' }, music: { file: 'a.mp3' }, sounds: true, subtitles: 'burn' } },
+    );
+    expect(actionHash(voiced)).toBe(actionHash(base));
+  });
+
   it('changes when an action changes', () => {
     expect(actionHash(make({ do: 'click', target: 'text=Stop' }))).not.toBe(actionHash(base));
   });

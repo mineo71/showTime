@@ -360,6 +360,11 @@
                     "type": "number",
                     "minimum": 0.25,
                     "maximum": 16
+                  },
+                  "say": {
+                    "description": "Narration spoken from the start of this step; the video waits for it before the next narrated step",
+                    "type": "string",
+                    "minLength": 1
                   }
                 },
                 "additionalProperties": false
@@ -420,6 +425,11 @@
                     "type": "number",
                     "minimum": 0.25,
                     "maximum": 16
+                  },
+                  "say": {
+                    "description": "Narration spoken from the start of this step; the video waits for it before the next narrated step",
+                    "type": "string",
+                    "minLength": 1
                   }
                 },
                 "additionalProperties": false
@@ -504,6 +514,11 @@
                     "type": "number",
                     "minimum": 0.25,
                     "maximum": 16
+                  },
+                  "say": {
+                    "description": "Narration spoken from the start of this step; the video waits for it before the next narrated step",
+                    "type": "string",
+                    "minLength": 1
                   }
                 },
                 "additionalProperties": false
@@ -564,6 +579,11 @@
                     "type": "number",
                     "minimum": 0.25,
                     "maximum": 16
+                  },
+                  "say": {
+                    "description": "Narration spoken from the start of this step; the video waits for it before the next narrated step",
+                    "type": "string",
+                    "minLength": 1
                   }
                 },
                 "additionalProperties": false
@@ -624,6 +644,11 @@
                     "type": "number",
                     "minimum": 0.25,
                     "maximum": 16
+                  },
+                  "say": {
+                    "description": "Narration spoken from the start of this step; the video waits for it before the next narrated step",
+                    "type": "string",
+                    "minLength": 1
                   }
                 },
                 "additionalProperties": false
@@ -687,6 +712,11 @@
                     "type": "number",
                     "minimum": 0.25,
                     "maximum": 16
+                  },
+                  "say": {
+                    "description": "Narration spoken from the start of this step; the video waits for it before the next narrated step",
+                    "type": "string",
+                    "minLength": 1
                   }
                 },
                 "additionalProperties": false
@@ -753,6 +783,11 @@
                     "type": "number",
                     "minimum": 0.25,
                     "maximum": 16
+                  },
+                  "say": {
+                    "description": "Narration spoken from the start of this step; the video waits for it before the next narrated step",
+                    "type": "string",
+                    "minLength": 1
                   }
                 },
                 "additionalProperties": false
@@ -817,6 +852,11 @@
                     "type": "number",
                     "minimum": 0.25,
                     "maximum": 16
+                  },
+                  "say": {
+                    "description": "Narration spoken from the start of this step; the video waits for it before the next narrated step",
+                    "type": "string",
+                    "minLength": 1
                   }
                 },
                 "additionalProperties": false
@@ -876,6 +916,11 @@
                     "type": "number",
                     "minimum": 0.25,
                     "maximum": 16
+                  },
+                  "say": {
+                    "description": "Narration spoken from the start of this step; the video waits for it before the next narrated step",
+                    "type": "string",
+                    "minLength": 1
                   }
                 },
                 "additionalProperties": false
@@ -952,6 +997,94 @@
       },
       "additionalProperties": false
     },
+    "audio": {
+      "default": {},
+      "type": "object",
+      "properties": {
+        "voice": {
+          "description": "Text-to-speech for show.say",
+          "default": {},
+          "type": "object",
+          "properties": {
+            "engine": {
+              "default": "system",
+              "description": "system: macOS say / Linux espeak-ng; openai and elevenlabs read OPENAI_API_KEY / ELEVENLABS_API_KEY",
+              "type": "string",
+              "enum": [
+                "system",
+                "openai",
+                "elevenlabs",
+                "command"
+              ]
+            },
+            "name": {
+              "description": "Voice name (system, openai) or voice id (elevenlabs)",
+              "type": "string",
+              "minLength": 1
+            },
+            "speed": {
+              "default": 1,
+              "type": "number",
+              "minimum": 0.5,
+              "maximum": 2
+            },
+            "model": {
+              "description": "openai: gpt-4o-mini-tts by default; elevenlabs: eleven_multilingual_v2",
+              "type": "string",
+              "minLength": 1
+            },
+            "instructions": {
+              "description": "openai only: how to speak, e.g. \"warm and confident\"",
+              "type": "string",
+              "minLength": 1
+            },
+            "command": {
+              "description": "command engine: shell command that reads the text on stdin and writes audio to {out}",
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "additionalProperties": false
+        },
+        "music": {
+          "description": "Music bed under the whole video; ducks while the voice speaks",
+          "type": "object",
+          "properties": {
+            "file": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Audio file, relative to the file that names it"
+            },
+            "volume": {
+              "default": 0.25,
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            }
+          },
+          "required": [
+            "file"
+          ],
+          "additionalProperties": false
+        },
+        "sounds": {
+          "default": false,
+          "description": "Click and keystroke sounds",
+          "type": "boolean"
+        },
+        "subtitles": {
+          "default": "file",
+          "description": "Narration subtitles: an .srt next to the video (file), also drawn on the video (burn), or none",
+          "type": "string",
+          "enum": [
+            "off",
+            "file",
+            "burn"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
     "scenes": {
       "minItems": 1,
       "type": "array",
@@ -1015,6 +1148,11 @@
                           "type": "number",
                           "minimum": 0.25,
                           "maximum": 16
+                        },
+                        "say": {
+                          "description": "Narration spoken from the start of this step; the video waits for it before the next narrated step",
+                          "type": "string",
+                          "minLength": 1
                         }
                       },
                       "additionalProperties": false
@@ -1075,6 +1213,11 @@
                           "type": "number",
                           "minimum": 0.25,
                           "maximum": 16
+                        },
+                        "say": {
+                          "description": "Narration spoken from the start of this step; the video waits for it before the next narrated step",
+                          "type": "string",
+                          "minLength": 1
                         }
                       },
                       "additionalProperties": false
@@ -1159,6 +1302,11 @@
                           "type": "number",
                           "minimum": 0.25,
                           "maximum": 16
+                        },
+                        "say": {
+                          "description": "Narration spoken from the start of this step; the video waits for it before the next narrated step",
+                          "type": "string",
+                          "minLength": 1
                         }
                       },
                       "additionalProperties": false
@@ -1219,6 +1367,11 @@
                           "type": "number",
                           "minimum": 0.25,
                           "maximum": 16
+                        },
+                        "say": {
+                          "description": "Narration spoken from the start of this step; the video waits for it before the next narrated step",
+                          "type": "string",
+                          "minLength": 1
                         }
                       },
                       "additionalProperties": false
@@ -1279,6 +1432,11 @@
                           "type": "number",
                           "minimum": 0.25,
                           "maximum": 16
+                        },
+                        "say": {
+                          "description": "Narration spoken from the start of this step; the video waits for it before the next narrated step",
+                          "type": "string",
+                          "minLength": 1
                         }
                       },
                       "additionalProperties": false
@@ -1342,6 +1500,11 @@
                           "type": "number",
                           "minimum": 0.25,
                           "maximum": 16
+                        },
+                        "say": {
+                          "description": "Narration spoken from the start of this step; the video waits for it before the next narrated step",
+                          "type": "string",
+                          "minLength": 1
                         }
                       },
                       "additionalProperties": false
@@ -1408,6 +1571,11 @@
                           "type": "number",
                           "minimum": 0.25,
                           "maximum": 16
+                        },
+                        "say": {
+                          "description": "Narration spoken from the start of this step; the video waits for it before the next narrated step",
+                          "type": "string",
+                          "minLength": 1
                         }
                       },
                       "additionalProperties": false
@@ -1472,6 +1640,11 @@
                           "type": "number",
                           "minimum": 0.25,
                           "maximum": 16
+                        },
+                        "say": {
+                          "description": "Narration spoken from the start of this step; the video waits for it before the next narrated step",
+                          "type": "string",
+                          "minLength": 1
                         }
                       },
                       "additionalProperties": false
@@ -1531,6 +1704,11 @@
                           "type": "number",
                           "minimum": 0.25,
                           "maximum": 16
+                        },
+                        "say": {
+                          "description": "Narration spoken from the start of this step; the video waits for it before the next narrated step",
+                          "type": "string",
+                          "minLength": 1
                         }
                       },
                       "additionalProperties": false

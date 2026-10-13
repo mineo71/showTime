@@ -15,6 +15,11 @@ export const ShowSchema = z
     spotlight: z.boolean().optional().describe('Dim everything except the target'),
     hold: z.number().int().min(0).max(30_000).optional().describe('Extra real-time ms after the step'),
     speed: z.number().min(0.25).max(16).optional().describe('Playback speed for this step'),
+    say: z
+      .string()
+      .min(1)
+      .optional()
+      .describe('Narration spoken from the start of this step; the video waits for it before the next narrated step'),
   })
   .strict();
 
@@ -146,6 +151,51 @@ export const MetaSchema = z
   })
   .strict();
 
+export const VoiceSchema = z
+  .object({
+    engine: z
+      .enum(['system', 'openai', 'elevenlabs', 'command'])
+      .default('system')
+      .describe('system: macOS say / Linux espeak-ng; openai and elevenlabs read OPENAI_API_KEY / ELEVENLABS_API_KEY'),
+    name: z.string().min(1).optional().describe('Voice name (system, openai) or voice id (elevenlabs)'),
+    speed: z.number().min(0.5).max(2).default(1),
+    model: z.string().min(1).optional().describe('openai: gpt-4o-mini-tts by default; elevenlabs: eleven_multilingual_v2'),
+    instructions: z.string().min(1).optional().describe('openai only: how to speak, e.g. "warm and confident"'),
+    command: z
+      .string()
+      .min(1)
+      .optional()
+      .describe('command engine: shell command that reads the text on stdin and writes audio to {out}'),
+  })
+  .strict()
+  .superRefine((v, ctx) => {
+    if (v.engine === 'elevenlabs' && !v.name) {
+      ctx.addIssue({ code: 'custom', path: ['name'], message: 'elevenlabs needs a voice id in "name"' });
+    }
+    if (v.engine === 'command' && !v.command) {
+      ctx.addIssue({ code: 'custom', path: ['command'], message: 'the command engine needs "command"' });
+    }
+  });
+
+export const AudioSchema = z
+  .object({
+    voice: VoiceSchema.prefault({}).describe('Text-to-speech for show.say'),
+    music: z
+      .object({
+        file: z.string().min(1).describe('Audio file, relative to the file that names it'),
+        volume: z.number().min(0).max(1).default(0.25),
+      })
+      .strict()
+      .optional()
+      .describe('Music bed under the whole video; ducks while the voice speaks'),
+    sounds: z.boolean().default(false).describe('Click and keystroke sounds'),
+    subtitles: z
+      .enum(['off', 'file', 'burn'])
+      .default('file')
+      .describe('Narration subtitles: an .srt next to the video (file), also drawn on the video (burn), or none'),
+  })
+  .strict();
+
 export const SceneSchema = z
   .object({
     id: z.string().regex(/^[A-Za-z0-9_-]+$/, 'scene id may contain letters, digits, "-" and "_"'),
@@ -162,6 +212,7 @@ export const ScriptSchema = z
     hooks: HooksSchema.prefault({}),
     setup: z.array(StepSchema).default([]),
     style: StyleSchema.prefault({}),
+    audio: AudioSchema.prefault({}),
     scenes: z.array(SceneSchema).min(1),
   })
   .strict()
@@ -182,6 +233,8 @@ export type Show = z.output<typeof ShowSchema>;
 export type Style = z.output<typeof StyleSchema>;
 export type Hook = z.output<typeof HookSchema>;
 export type Mock = z.output<typeof MockSchema>;
+export type Audio = z.output<typeof AudioSchema>;
+export type Voice = z.output<typeof VoiceSchema>;
 
 export class ScriptError extends Error {
   constructor(message: string) {
