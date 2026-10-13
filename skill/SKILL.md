@@ -9,6 +9,15 @@ description: Use when the user wants a product demo video, walkthrough, screenca
 script; the CLI clicks through the app, records it and edits it (zoom, cursor, ripples,
 spotlights, captions, speed-ups, intro card).
 
+## Setup
+
+Run `showtime --help`. If the command is missing, install it (Node ≥ 20 and ffmpeg required):
+
+```bash
+git clone https://github.com/mineo71/showTime.git ~/showTime && cd ~/showTime
+npm install && npx playwright install chromium && npm link
+```
+
 ## Workflow
 
 1. **Story first.** Settle the audience, target length (30–120 s), the 2–4 moments that sell the

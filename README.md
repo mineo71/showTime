@@ -17,6 +17,8 @@ No timeline editor. No re-take when a caption changes.
 ![built with](https://img.shields.io/badge/Playwright%20%2B%20Remotion-0f172a?style=flat-square)
 ![Claude Code](https://img.shields.io/badge/Claude%20Code-skill-d97757?style=flat-square)
 
+**[Install](#install)** · [Try it](#try-it) · [Use with Claude Code](#use-it-with-claude-code) · [Script reference](#script-reference) · [CLI](#cli)
+
 </div>
 
 <div align="center">
@@ -26,6 +28,28 @@ No timeline editor. No re-take when a caption changes.
 </div>
 
 ---
+
+## Install
+
+Needs **Node ≥ 20** and **ffmpeg** (`brew install ffmpeg` / `sudo apt install ffmpeg`).
+
+```bash
+git clone https://github.com/mineo71/showTime.git && cd showTime
+npm install && npx playwright install chromium
+npm link                 # puts `showtime` on your PATH
+npm run install-skill    # optional: the Claude Code skill (~/.claude/skills/showtime)
+showtime --help          # check that it works
+```
+
+Then ask Claude Code for a demo, or [film the bundled example](#try-it).
+
+**Or let Claude Code install it.** Paste this:
+
+> Install showTime from https://github.com/mineo71/showTime: clone it, run `npm install`,
+> `npx playwright install chromium`, `npm link` and `npm run install-skill`, then check that
+> `showtime --help` works.
+
+<sub>**Update:** `git pull && npm install` in the clone. The CLI and the skill are linked to that folder, so there is nothing to re-link. **Switched Node versions with nvm?** Run `npm link` again. showTime is not on npm yet, so it installs from git.</sub>
 
 ## Why
 
@@ -115,19 +139,9 @@ And under the hood:
   for autocomplete and validation in your editor.
 - 🖥️ **Crisp at 1080p.** The app is captured at 2× device scale, so zoomed shots stay sharp.
 
-## Quick start
+## Try it
 
-You need Node ≥ 20 and ffmpeg (`brew install ffmpeg` or `apt install ffmpeg`).
-
-```bash
-git clone https://github.com/mineo71/showTime.git
-cd showTime
-npm install
-npx playwright install chromium
-npm link                 # puts `showtime` on your PATH
-```
-
-Film the example app from the video above:
+After [installing](#install), film the example app from the video above:
 
 ```bash
 npm run example                              # serves examples/ on http://127.0.0.1:4800
@@ -139,11 +153,8 @@ Expect a minute or two end to end.
 
 ## Use it with Claude Code
 
-```bash
-npm run install-skill    # links skill/ into ~/.claude/skills/showtime
-```
-
-Then ask for a demo the way you would ask a person:
+With the skill installed (`npm run install-skill`, see [Install](#install)), ask for a demo the
+way you would ask a person:
 
 > Make a 30-second demo of the checkout flow on localhost:3000 for our investor deck.
 > Blur customer emails.
