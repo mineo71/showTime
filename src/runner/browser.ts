@@ -43,7 +43,23 @@ export function trackNetwork(page: Page): NetworkTracker {
   };
 }
 
-const maskCss = (selectors: string[]) => `${selectors.join(',\n')} { filter: blur(10px) !important; }`;
+/**
+ * Init script that blurs `selectors`. Built as a string on purpose: a function would be serialized
+ * with whatever helpers the transpiler injected (tsx adds `__name(...)`), which are undefined in the page.
+ */
+export function maskScript(selectors: string[]): string {
+  const css = JSON.stringify(`${selectors.join(',\n')} { filter: blur(10px) !important; }`);
+  return `(() => {
+  const css = ${css};
+  const add = () => {
+    const el = document.createElement('style');
+    el.textContent = css;
+    document.documentElement.appendChild(el);
+  };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', add);
+  else add();
+})();`;
+}
 
 export async function openSession(script: Script, opts: { headed?: boolean } = {}): Promise<Session> {
   const { app } = script;
@@ -61,17 +77,7 @@ export async function openSession(script: Script, opts: { headed?: boolean } = {
       locale: app.locale,
       timezoneId: app.timezoneId,
     });
-    if (app.mask.length) {
-      await context.addInitScript((css: string) => {
-        const add = () => {
-          const el = document.createElement('style');
-          el.textContent = css;
-          document.documentElement.appendChild(el);
-        };
-        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', add);
-        else add();
-      }, maskCss(app.mask));
-    }
+    if (app.mask.length) await context.addInitScript({ content: maskScript(app.mask) });
     const page = await context.newPage();
     page.setDefaultTimeout(STEP_TIMEOUT_MS);
     return { browser, context, page, net: trackNetwork(page), close: () => browser.close() };
