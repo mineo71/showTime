@@ -44,6 +44,24 @@ describe('frame math', () => {
     ]);
   });
 
+  it('plans a hold as a frozen sequence at the hold point', () => {
+    const held = {
+      ...t,
+      segments: [
+        { srcStartMs: 0, srcEndMs: 2000, speed: 1 },
+        { srcStartMs: 2000, srcEndMs: 2000, speed: 0, holdMs: 1000 },
+        { srcStartMs: 2000, srcEndMs: 4000, speed: 1 },
+      ],
+    } as Timeline;
+    expect(segmentPlan(held)).toEqual([
+      { fromFrame: 66, durationInFrames: 60, trimBefore: 0, speed: 1 },
+      { fromFrame: 126, durationInFrames: 30, trimBefore: 60, speed: 0 },
+      { fromFrame: 156, durationInFrames: 60, trimBefore: 60, speed: 1 },
+    ]);
+    expect(totalFrames(held)).toBe(66 + 150);
+    expect(sourceMsAtFrame(held, 140)).toBe(2000);
+  });
+
   it('maps frames to source time', () => {
     expect(sourceMsAtFrame(t, 65)).toBeNull();
     expect(sourceMsAtFrame(t, 66)).toBe(0);

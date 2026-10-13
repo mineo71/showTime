@@ -1,5 +1,5 @@
 import type { FC } from 'react';
-import { AbsoluteFill, Easing, interpolate, OffthreadVideo, Sequence, staticFile, useCurrentFrame } from 'remotion';
+import { AbsoluteFill, Easing, Freeze, interpolate, OffthreadVideo, Sequence, staticFile, useCurrentFrame } from 'remotion';
 import { cameraAt, cameraTransform } from '../../timeline/camera';
 import { introFrames, segmentPlan, sourceMsAtFrame, videoEndFrame } from '../../timeline/frames';
 import { BROWSER_BAR, windowLayout } from '../../timeline/layout';
@@ -62,17 +62,22 @@ export const ShowtimeVideo: FC<ShowtimeVideoProps> = ({ timeline: t }) => {
               transform: cameraTransform(cam, win.width, win.height),
             }}
           >
-            {segmentPlan(t).map((p) => (
-              <Sequence key={p.fromFrame} from={p.fromFrame} durationInFrames={p.durationInFrames} layout="none">
+            {segmentPlan(t).map((p) => {
+              const video = (
                 <OffthreadVideo
                   src={staticFile(t.video.src)}
                   trimBefore={p.trimBefore}
-                  playbackRate={p.speed}
+                  playbackRate={p.speed || 1}
                   muted
                   style={{ position: 'absolute', left: 0, top: 0, width: win.width, height: win.height }}
                 />
-              </Sequence>
-            ))}
+              );
+              return (
+                <Sequence key={p.fromFrame} from={p.fromFrame} durationInFrames={p.durationInFrames} layout="none">
+                  {p.speed === 0 ? <Freeze frame={0}>{video}</Freeze> : video}
+                </Sequence>
+              );
+            })}
             <div
               style={{
                 position: 'absolute',

@@ -28,15 +28,50 @@ export function buildSegments(durationMs: number, spans: SpeedSpan[]): Segment[]
   return out;
 }
 
+export interface Hold {
+  /** source ms whose frame stays on screen */
+  atMs: number;
+  holdMs: number;
+}
+
+/** Output length of one segment. */
+export const segLength = (s: Segment): number => (s.speed === 0 ? (s.holdMs ?? 0) : (s.srcEndMs - s.srcStartMs) / s.speed);
+
+/** Insert still-frame holds, splitting the segment each one falls in; holds at one point merge. */
+export function insertHolds(segments: Segment[], holds: Hold[]): Segment[] {
+  const at = new Map<number, number>();
+  for (const h of holds) if (h.holdMs > 0) at.set(h.atMs, (at.get(h.atMs) ?? 0) + h.holdMs);
+  const points = [...at.keys()].sort((a, b) => a - b);
+  const hold = (t: number): Segment => ({ srcStartMs: t, srcEndMs: t, speed: 0, holdMs: at.get(t) });
+  const out: Segment[] = [];
+  let p = 0;
+  for (const s of segments) {
+    if (s.speed === 0) {
+      out.push(s);
+      continue;
+    }
+    let start = s.srcStartMs;
+    for (; p < points.length && points[p] < s.srcEndMs; p++) {
+      const t = Math.max(points[p], start);
+      if (t > start) out.push({ ...s, srcStartMs: start, srcEndMs: t });
+      out.push(hold(points[p]));
+      start = t;
+    }
+    out.push({ ...s, srcStartMs: start });
+  }
+  for (; p < points.length; p++) out.push(hold(points[p]));
+  return out;
+}
+
 export function outputDurationMs(segments: Segment[]): number {
-  return segments.reduce((acc, s) => acc + (s.srcEndMs - s.srcStartMs) / s.speed, 0);
+  return segments.reduce((acc, s) => acc + segLength(s), 0);
 }
 
 export function outputToSource(segments: Segment[], tOutMs: number): number {
   let acc = 0;
   for (const s of segments) {
-    const len = (s.srcEndMs - s.srcStartMs) / s.speed;
-    if (tOutMs < acc + len) return s.srcStartMs + Math.max(0, tOutMs - acc) * s.speed;
+    const len = segLength(s);
+    if (tOutMs < acc + len) return s.speed === 0 ? s.srcStartMs : s.srcStartMs + Math.max(0, tOutMs - acc) * s.speed;
     acc += len;
   }
   return segments.length ? segments[segments.length - 1].srcEndMs : 0;
@@ -45,8 +80,8 @@ export function outputToSource(segments: Segment[], tOutMs: number): number {
 export function sourceToOutput(segments: Segment[], tSrcMs: number): number {
   let acc = 0;
   for (const s of segments) {
-    if (tSrcMs < s.srcEndMs) return acc + Math.max(0, tSrcMs - s.srcStartMs) / s.speed;
-    acc += (s.srcEndMs - s.srcStartMs) / s.speed;
+    if (s.speed !== 0 && tSrcMs < s.srcEndMs) return acc + Math.max(0, tSrcMs - s.srcStartMs) / s.speed;
+    acc += segLength(s);
   }
   return acc;
 }

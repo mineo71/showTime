@@ -1,4 +1,4 @@
-import { outputDurationMs, outputToSource, sourceToOutput } from './timemap';
+import { outputDurationMs, outputToSource, segLength, sourceToOutput } from './timemap';
 import type { StepEvent, Timeline } from './types';
 
 export interface SegmentPlan {
@@ -6,6 +6,7 @@ export interface SegmentPlan {
   durationInFrames: number;
   /** source frame where this segment starts */
   trimBefore: number;
+  /** 0: a hold, showing the `trimBefore` frame throughout */
   speed: number;
 }
 
@@ -39,7 +40,7 @@ export function segmentPlan(t: Timeline): SegmentPlan[] {
   let outMs = 0;
   for (const s of t.segments) {
     const startF = toFrames(outMs, t.fps);
-    outMs += (s.srcEndMs - s.srcStartMs) / s.speed;
+    outMs += segLength(s);
     const endF = toFrames(outMs, t.fps);
     if (endF > startF) {
       plan.push({ fromFrame: intro + startF, durationInFrames: endF - startF, trimBefore: toFrames(s.srcStartMs, t.fps), speed: s.speed });

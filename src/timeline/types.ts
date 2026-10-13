@@ -65,7 +65,9 @@ export interface TakeEvents {
 export interface Segment {
   srcStartMs: number;
   srcEndMs: number;
+  /** 0 for a hold: the frame at srcStartMs (= srcEndMs) stays on screen for `holdMs` */
   speed: number;
+  holdMs?: number;
 }
 
 export interface CameraKey {
