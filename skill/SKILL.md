@@ -81,8 +81,8 @@ the change in `setup`; after a green `check`, reset the data before `record`.
   `wait {for} | {ms}` · `pause {ms}`
 - **`show` (per step):** `zoom` (number, or `false`), `caption`, `spotlight`, `hold` (ms, real time),
   `speed`.
-- **`style`:** `background` (any CSS background), `padding`, `radius`, `shadow`, `font`, `accent`,
-  `autoZoom`, `autoSpeed`, `maxZoom`.
+- **`style`:** `background` (any CSS background), `chrome` (`browser` window frame | `none`), `address`
+  (address-bar text), `padding`, `radius`, `shadow`, `font`, `accent`, `autoZoom`, `autoSpeed`, `maxZoom`.
 - **`app`:** `url`, `viewport`, `deviceScaleFactor`, `storageState` (Playwright storage-state JSON,
   path relative to the script), `colorScheme`, `locale`, `timezoneId`, `mask` (CSS selectors to blur —
   plain CSS only, not `text=` / `role=`).
