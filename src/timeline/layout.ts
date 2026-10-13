@@ -1,3 +1,5 @@
+import type { CameraKey, Rect } from './types';
+
 export interface Box {
   x: number;
   y: number;
@@ -26,4 +28,23 @@ export function windowLayout(
   const barPx = Math.round(bar * k);
   const top = Math.round((output.height - height - barPx) / 2);
   return { x: Math.round((output.width - width) / 2), y: top + barPx, width, height, bar: barPx };
+}
+
+const r2 = (v: number) => Math.round(v * 100) / 100;
+
+/** Where a stage rect (CSS px) lands in the output: through the camera, inside the window viewport. */
+export function projectRect(
+  r: Rect,
+  cam: Pick<CameraKey, 'scale' | 'cx' | 'cy'>,
+  stage: { width: number; height: number },
+  win: Box,
+): Rect {
+  const w = win.width * cam.scale;
+  const h = win.height * cam.scale;
+  return {
+    x: r2(win.x + win.width / 2 + (r.x / stage.width - cam.cx) * w),
+    y: r2(win.y + win.height / 2 + (r.y / stage.height - cam.cy) * h),
+    width: r2((r.width / stage.width) * w),
+    height: r2((r.height / stage.height) * h),
+  };
 }

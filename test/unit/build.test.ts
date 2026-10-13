@@ -68,7 +68,34 @@ describe('buildTimeline', () => {
   });
 
   it('builds captions with a minimum duration', () => {
-    expect(t.captions).toEqual([{ startMs: 800, endMs: 2300, text: 'Open it' }]);
+    expect(t.captions).toEqual([{ startMs: 800, endMs: 2300, text: 'Open it', position: 'bottom' }]);
+  });
+
+  it('ends a caption when the next one starts, so they never overlap', () => {
+    const s = script();
+    s.scenes[0].steps[1] = { do: 'wait', for: 'text=Ready', show: { caption: 'Loading' } };
+    const c = buildTimeline(s, events).captions;
+    expect(c.map((x) => [x.startMs, x.endMs, x.text])).toEqual([
+      [800, 1900, 'Open it'],
+      [1900, 6400, 'Loading'],
+    ]);
+  });
+
+  it('moves a caption to the top when its target sits where bottom captions go', () => {
+    const low = { ...events, steps: events.steps.map((e, i) => (i === 0 ? { ...e, target: { x: 600, y: 830, width: 200, height: 40 } } : e)) };
+    expect(buildTimeline(script(), low).captions[0].position).toBe('top');
+    const none = script();
+    none.scenes[0].steps[3] = { do: 'press', key: 'Enter', show: { caption: 'Go' } };
+    expect(buildTimeline(none, events).captions.find((c) => c.text === 'Go')?.position).toBe('bottom');
+  });
+
+  it('carries the outro card and the logo', () => {
+    expect(t.outro).toBeNull();
+    expect(t.logo).toBeNull();
+    const s = script({}, { meta: { title: 'Demo', outro: { title: 'Try it', url: 'acme.com' } } });
+    const o = buildTimeline(s, events, { logo: 'data:image/svg+xml;base64,PHN2Zy8+' });
+    expect(o.outro).toEqual({ title: 'Try it', url: 'acme.com', durationMs: 2600 });
+    expect(o.logo).toBe('data:image/svg+xml;base64,PHN2Zy8+');
   });
 
   it('builds padded spotlights from the action to settle', () => {

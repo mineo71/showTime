@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { introFrames, qaShots, segmentPlan, sourceMsAtFrame, totalFrames } from '../../src/timeline/frames';
+import { introFrames, outroFrames, qaShots, segmentPlan, sourceMsAtFrame, totalFrames, videoEndFrame } from '../../src/timeline/frames';
 import { windowLayout } from '../../src/timeline/layout';
 import type { StepEvent, Timeline } from '../../src/timeline/types';
 
-const timeline = (intro: boolean): Timeline =>
+const timeline = (intro: boolean, outro = false): Timeline =>
   ({
     version: 1,
     fps: 30,
@@ -12,6 +12,8 @@ const timeline = (intro: boolean): Timeline =>
     video: { src: 'raw.mp4', durationMs: 10_000 },
     intro: intro ? { title: 'T', durationMs: 2200 } : null,
     chrome: null,
+    outro: outro ? { title: 'Try it', durationMs: 2600 } : null,
+    logo: null,
     segments: [
       { srcStartMs: 0, srcEndMs: 2000, speed: 1 },
       { srcStartMs: 2000, srcEndMs: 6000, speed: 4 },
@@ -46,6 +48,15 @@ describe('frame math', () => {
     expect(sourceMsAtFrame(t, 65)).toBeNull();
     expect(sourceMsAtFrame(t, 66)).toBe(0);
     expect(sourceMsAtFrame(t, 66 + 75)).toBeCloseTo(4000);
+  });
+
+  it('adds the outro after the video', () => {
+    const o = timeline(true, true);
+    expect(outroFrames(o)).toBe(78);
+    expect(videoEndFrame(o)).toBe(66 + 210);
+    expect(totalFrames(o)).toBe(66 + 210 + 78);
+    expect(qaShots(o, []).at(-1)).toEqual({ frame: 66 + 210 + 47, name: '99-outro' });
+    expect(outroFrames(t)).toBe(0);
   });
 
   it('lists QA shots: intro, then one per step at mid-action', () => {

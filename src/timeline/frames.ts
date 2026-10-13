@@ -20,8 +20,17 @@ export function introFrames(t: Timeline): number {
   return t.intro ? toFrames(t.intro.durationMs, t.fps) : 0;
 }
 
+export function outroFrames(t: Timeline): number {
+  return t.outro ? toFrames(t.outro.durationMs, t.fps) : 0;
+}
+
+/** First frame after the video (where the outro starts). */
+export function videoEndFrame(t: Timeline): number {
+  return introFrames(t) + toFrames(outputDurationMs(t.segments), t.fps);
+}
+
 export function totalFrames(t: Timeline): number {
-  return Math.max(1, introFrames(t) + toFrames(outputDurationMs(t.segments), t.fps));
+  return Math.max(1, videoEndFrame(t) + outroFrames(t));
 }
 
 export function segmentPlan(t: Timeline): SegmentPlan[] {
@@ -48,7 +57,7 @@ export function sourceMsAtFrame(t: Timeline, frame: number): number | null {
 
 export function qaShots(t: Timeline, steps: StepEvent[]): Shot[] {
   const intro = introFrames(t);
-  const last = totalFrames(t) - 1;
+  const last = Math.max(0, videoEndFrame(t) - 1);
   const shots: Shot[] = [];
   if (t.intro) shots.push({ frame: Math.floor(intro / 2), name: '00-intro' });
   steps.forEach((s, i) => {
@@ -56,5 +65,6 @@ export function qaShots(t: Timeline, steps: StepEvent[]): Shot[] {
     const frame = Math.min(last, intro + toFrames(sourceToOutput(t.segments, mid), t.fps));
     shots.push({ frame, name: `${String(i + 1).padStart(2, '0')}-${s.sceneId}-${s.index + 1}-${s.do}` });
   });
+  if (t.outro) shots.push({ frame: videoEndFrame(t) + Math.round(outroFrames(t) * 0.6), name: '99-outro' });
   return shots;
 }

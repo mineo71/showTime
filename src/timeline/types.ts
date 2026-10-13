@@ -81,6 +81,8 @@ export interface Caption {
   startMs: number;
   endMs: number;
   text: string;
+  /** Bottom unless the step's target would sit under a bottom caption. */
+  position: 'bottom' | 'top';
 }
 
 export interface Spotlight {
@@ -101,6 +103,10 @@ export interface Timeline {
   intro: { title: string; subtitle?: string; durationMs: number } | null;
   /** Browser window around the take, or null for the bare viewport. */
   chrome: { address: string; dark: boolean } | null;
+  /** Closing card after the video. */
+  outro: { title: string; subtitle?: string; url?: string; durationMs: number } | null;
+  /** Logo for the intro and outro cards, as a data URI. */
+  logo: string | null;
   segments: Segment[];
   camera: CameraKey[];
   moves: Move[];
