@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.5.0 — 2026-10-13
 
 - `showtime studio <script>`: a local page with a live preview (the same components the renderer
   uses), a timeline of the steps and an inspector for caption, narration, zoom, spotlight, speed
