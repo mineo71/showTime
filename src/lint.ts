@@ -1,9 +1,17 @@
 import type { Script, Step } from './script/schema';
+import { stepKey } from './timeline/narration';
 import { outputDurationMs, sourceToOutput } from './timeline/timemap';
 import type { StepEvent, Timeline } from './timeline/types';
 
 export interface Issue {
-  rule: 'caption-length' | 'pause-for-loading' | 'show-ignored' | 'no-intro' | 'caption-too-short' | 'video-length';
+  rule:
+    | 'caption-length'
+    | 'pause-for-loading'
+    | 'show-ignored'
+    | 'no-intro'
+    | 'caption-too-short'
+    | 'video-length'
+    | 'narration-stretch';
   level: 'warn' | 'info';
   /** `scene#step` (1-based), `setup#n`, or `script` */
   where: string;
@@ -12,6 +20,9 @@ export interface Issue {
 
 const MAX_CAPTION_WORDS = 6;
 const LOADING_PAUSE_MS = 1500;
+/** Holding the frame this long for a voice is worth a note; twice as long, a warning. */
+const STRETCH_INFO_MS = 1500;
+const STRETCH_WARN_MS = 3000;
 const ACTIONS = new Set<Step['do']>(['click', 'press', 'type', 'select']);
 const TARGETED = new Set<Step['do']>(['click', 'type', 'hover', 'select']);
 
@@ -88,6 +99,22 @@ export function lintTiming(timeline: Timeline, steps: StepEvent[]): Issue[] {
       });
     }
   }
+  // Each line's holds sit between its step's start and the next narrated step's start.
+  const starts = timeline.narration.map((n) => steps.find((s) => stepKey(s.sceneId, s.index) === n.where)?.startMs ?? Infinity);
+  timeline.narration.forEach((n, i) => {
+    const until = starts[i + 1] ?? Infinity;
+    const held = timeline.segments
+      .filter((s) => s.speed === 0 && s.srcStartMs >= starts[i] && s.srcStartMs < until)
+      .reduce((ms, s) => ms + (s.holdMs ?? 0), 0);
+    if (held > STRETCH_INFO_MS) {
+      issues.push({
+        rule: 'narration-stretch',
+        level: held > STRETCH_WARN_MS ? 'warn' : 'info',
+        where: n.where,
+        message: `"${n.text}" holds the frame for ${(held / 1000).toFixed(1)} s while the voice finishes. Shorten the line or slow the steps.`,
+      });
+    }
+  });
   const totalMs = (timeline.intro?.durationMs ?? 0) + outputDurationMs(timeline.segments) + (timeline.outro?.durationMs ?? 0);
   if (totalMs > 60_000) {
     issues.push({

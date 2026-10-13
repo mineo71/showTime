@@ -120,8 +120,10 @@ program
     const { loadTake } = await import('../take');
     const events = await loadTake(loaded).catch(() => null);
     if (events) {
-      const { buildTimeline } = await import('../timeline/build');
-      issues.push(...lintTiming(buildTimeline(loaded.script, events), events.steps));
+      // The timeline as rendered: narration is synthesized (cached) so its holds count.
+      const { timelineFor } = await import('../pipeline');
+      const { timeline } = await timelineFor(loaded, { log: o.json ? undefined : say });
+      issues.push(...lintTiming(timeline, events.steps));
     }
     if (o.json) emit({ issues, timing: events !== null });
     else say(formatLint(issues, events !== null));
