@@ -18,6 +18,8 @@ import type { Aspect, TakeEvents, Timeline } from './timeline/types';
 export interface TimelineOptions {
   log?: (line: string) => void;
   aspect?: Aspect;
+  /** false: leave narration out (no synthesis, no holds), for outputs nobody hears */
+  voices?: boolean;
 }
 
 /** The timeline for the last take, with narration synthesized (cached) and its holds in place. */
@@ -26,7 +28,7 @@ export async function timelineFor(
   opts: TimelineOptions = {},
 ): Promise<{ timeline: Timeline; events: TakeEvents; clips: Record<string, VoiceClip> }> {
   const events = await loadTake(loaded);
-  const clips = await ensureVoices(loaded, { log: opts.log });
+  const clips = opts.voices === false ? {} : await ensureVoices(loaded, { log: opts.log });
   const { logo } = loaded.script.meta;
   const timeline = buildTimeline(loaded.script, events, {
     aspect: opts.aspect,
@@ -66,7 +68,10 @@ export async function renderDemo(loaded: LoadedScript, opts: RenderOptions = {})
   const aspect = opts.aspect ?? '16:9';
   const format = opts.format ?? formatOf(opts.out);
   const out = path.resolve(opts.out ?? defaultOutput(loaded, aspect, format));
-  const { timeline, clips } = await timelineFor(loaded, opts);
+  // A silent output (GIF, WebP, --no-audio) only needs the voices to time burned-in subtitles.
+  const silent = format !== 'mp4' || opts.audio === false;
+  const voices = !silent || loaded.script.audio.subtitles === 'burn';
+  const { timeline, clips } = await timelineFor(loaded, { ...opts, voices });
   const paths = workPaths(loaded);
   await mkdir(path.dirname(out), { recursive: true });
 

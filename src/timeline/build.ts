@@ -2,7 +2,9 @@ import type { Script, Step } from '../script/schema';
 import { buildCamera, cameraAt, MIN_ZOOM, zoomDepth, type ZoomRegion } from './camera';
 import { BROWSER_BAR, OUTPUT_SIZES, projectRect, viewLayout, visibleFraction, type View } from './layout';
 import { clamp } from './math';
-import { soundEvents, stepKey, subtitleCues, withNarration, type Typing } from './narration';
+import { RIPPLE_MS } from './cursor';
+import { CAPTION_FADE_MS, SPOTLIGHT_FADE_MS } from './fades';
+import { soundEvents, stepKey, subtitleCues, withNarration, type Span, type Typing } from './narration';
 import { buildSegments, sourceToOutput, type SpeedSpan } from './timemap';
 import type { Aspect, CameraKey, Caption, NarrationLine, Rect, Spotlight, StepEvent, TakeEvents, Timeline } from './types';
 
@@ -122,18 +124,7 @@ export function buildTimeline(script: Script, ev: TakeEvents, opts: BuildOptions
     const durationMs = opts.voices?.[where];
     return step.show?.say && durationMs !== undefined ? [{ where, text: step.show.say, startMs: e.startMs, durationMs }] : [];
   });
-  const segments = withNarration(buildSegments(ev.video.durationMs, spans), lines, ev.video.durationMs);
-  const narration: NarrationLine[] = lines.map((l) => ({
-    where: l.where,
-    text: l.text,
-    atMs: Math.round(sourceToOutput(segments, l.startMs)),
-    durationMs: l.durationMs,
-  }));
-  const subtitles = script.audio.subtitles === 'off' ? [] : narration.flatMap((n) => subtitleCues(n.text, n.atMs, n.durationMs));
-  const subtitlesBurned = script.audio.subtitles === 'burn' && subtitles.length > 0;
-  const typing: Typing[] = pairs.flatMap(({ e, step }) =>
-    step.do === 'type' && step.pace !== 'fast' ? [{ startMs: e.actionMs, endMs: e.endMs, chars: [...step.text].length }] : [],
-  );
+  const subtitlesBurned = script.audio.subtitles === 'burn' && lines.length > 0;
 
   const camera = buildCamera(regions, { visible, hold: crop });
   // A caption ends when the next one starts: no overlap, so captions dip instead of colliding.
@@ -151,6 +142,35 @@ export function buildTimeline(script: Script, ev: TakeEvents, opts: BuildOptions
       // 9:16 captions sit in the band under the window, clear of the action.
       position: subtitlesBurned ? 'top' : aspect === '9:16' ? 'bottom' : captionPosition(d.target, d, camera, stage, win, output),
     }));
+
+  // Narration holds freeze the frame, so they go where nothing is moving: not during an action,
+  // a cursor move, a ripple, a camera move or a fade.
+  const fades = (x: { startMs: number; endMs: number }, ms: number) => [
+    { startMs: x.startMs, endMs: x.startMs + ms },
+    { startMs: x.endMs - ms, endMs: x.endMs },
+  ];
+  const busy: Span[] = [
+    ...pairs.filter(({ step }) => step.do !== 'pause').map(({ e }) => ({ startMs: e.startMs, endMs: e.endMs })),
+    ...ev.moves,
+    ...ev.clicks.map((c) => ({ startMs: c.tMs, endMs: c.tMs + RIPPLE_MS })),
+    ...camera.slice(1).flatMap((b, i) => {
+      const a = camera[i];
+      return a.scale !== b.scale || a.cx !== b.cx || a.cy !== b.cy ? [{ startMs: a.tMs, endMs: b.tMs }] : [];
+    }),
+    ...captions.flatMap((c) => fades(c, CAPTION_FADE_MS)),
+    ...spotlights.flatMap((s) => fades(s, SPOTLIGHT_FADE_MS)),
+  ];
+  const segments = withNarration(buildSegments(ev.video.durationMs, spans), lines, ev.video.durationMs, busy);
+  const narration: NarrationLine[] = lines.map((l) => ({
+    where: l.where,
+    text: l.text,
+    atMs: Math.round(sourceToOutput(segments, l.startMs)),
+    durationMs: l.durationMs,
+  }));
+  const subtitles = script.audio.subtitles === 'off' ? [] : narration.flatMap((n) => subtitleCues(n.text, n.atMs, n.durationMs));
+  const typing: Typing[] = pairs.flatMap(({ e, step }) =>
+    step.do === 'type' && step.pace !== 'fast' ? [{ startMs: e.actionMs, endMs: e.endMs, chars: [...step.text].length }] : [],
+  );
 
   return {
     version: 1,

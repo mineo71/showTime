@@ -73,12 +73,13 @@ steps. Write one short sentence per moment about the benefit, not the clicks. `s
   Use `openai` or `elevenlabs` only when the user asks for a better voice and the key is in the
   environment (`OPENAI_API_KEY` / `ELEVENLABS_API_KEY`); never write keys into the script. Those
   engines send the narration text to the provider. `command` runs any TTS that reads stdin and
-  writes `{out}`.
+  writes `{out}` (inserted already quoted: write it bare, e.g. `piper -m en_US.onnx -f {out}`).
 - `music: { file, volume? }` adds a looped bed that ducks under the voice; only use files the user
   provides.
 - `subtitles`: `file` (default) writes `<video>.srt`; `burn` also draws them (good for 9:16, which
   is often watched muted); `off`.
-- `--no-audio` renders without the soundtrack.
+- `--no-audio` renders without the soundtrack. GIF, WebP and `--no-audio` leave narration out
+  (no voice needed, no pauses for it) unless subtitles are burned in.
 
 ## Side effects
 

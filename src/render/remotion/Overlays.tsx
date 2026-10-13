@@ -1,5 +1,6 @@
 import type { CSSProperties, FC } from 'react';
 import { ripplesAt } from '../../timeline/cursor';
+import { CAPTION_FADE_MS, SPOTLIGHT_FADE_MS } from '../../timeline/fades';
 import { clamp, easeOutCubic } from '../../timeline/math';
 import type { Timeline } from '../../timeline/types';
 
@@ -25,7 +26,7 @@ export const Spotlights: FC<LayerProps> = ({ timeline, srcMs }) => (
             boxShadow: '0 0 0 9999px rgba(2, 6, 23, 0.55)',
             outline: `3px solid ${timeline.style.accent}`,
             outlineOffset: 2,
-            opacity: envelope(srcMs, s.startMs, s.endMs, 250),
+            opacity: envelope(srcMs, s.startMs, s.endMs, SPOTLIGHT_FADE_MS),
           }}
         />
       ))}
@@ -65,7 +66,7 @@ export const Captions: FC<LayerProps & { top: Place; bottom: Place; fontSize: nu
   const active = timeline.captions.filter((c) => srcMs >= c.startMs && srcMs <= c.endMs);
   const c = active[active.length - 1];
   if (!c) return null;
-  const o = envelope(srcMs, c.startMs, c.endMs, 220);
+  const o = envelope(srcMs, c.startMs, c.endMs, CAPTION_FADE_MS);
   return (
     <div style={row(c.position === 'top' ? top : bottom)}>
       <div

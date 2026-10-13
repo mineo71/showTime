@@ -20,25 +20,47 @@ export interface Line {
   durationMs: number;
 }
 
+/** Something moving on screen over (startMs, endMs), source ms. */
+export interface Span {
+  startMs: number;
+  endMs: number;
+}
+
+/** The latest time in [lo, hi] that no span is moving through, or `hi` when there is none. */
+export function stillPoint(lo: number, hi: number, busy: Span[]): number {
+  let t = hi;
+  for (;;) {
+    const moving = busy.find((b) => b.startMs < t && t < b.endMs);
+    if (!moving) return t;
+    t = moving.startMs;
+    if (t < lo) return hi;
+  }
+}
+
 /**
  * Holds that let every line finish (plus a gap) before the next narrated step starts, or before
- * the video ends. `lines` are in source order; the hold sits just before the window closes.
+ * the video ends. `lines` are in source order; each hold sits at the last moment of its window
+ * when nothing in `busy` is moving, so the freeze never stops a camera move or a fade halfway.
  */
-export function narrationHolds(lines: Line[], segments: Segment[], endMs: number): Hold[] {
+export function narrationHolds(lines: Line[], segments: Segment[], endMs: number, busy: Span[] = []): Hold[] {
   const holds: Hold[] = [];
   lines.forEach((line, i) => {
     const next = lines[i + 1];
     const until = next ? next.startMs : endMs;
     const available = sourceToOutput(segments, until) - sourceToOutput(segments, line.startMs);
     const short = line.durationMs + NARRATION_GAP_MS - available;
-    if (short > 0) holds.push({ atMs: next ? Math.max(line.startMs, next.startMs - 1) : endMs, holdMs: Math.round(short) });
+    if (short <= 0) return;
+    // After the line's own start (a hold at its start would delay the line itself).
+    const lo = line.startMs + 1;
+    const hi = Math.max(lo, next ? next.startMs - 1 : endMs);
+    holds.push({ atMs: stillPoint(lo, hi, busy), holdMs: Math.round(short) });
   });
   return holds;
 }
 
 /** Segments with the narration holds in place. */
-export const withNarration = (segments: Segment[], lines: Line[], endMs: number) =>
-  insertHolds(segments, narrationHolds(lines, segments, endMs));
+export const withNarration = (segments: Segment[], lines: Line[], endMs: number, busy: Span[] = []) =>
+  insertHolds(segments, narrationHolds(lines, segments, endMs, busy));
 
 /** Greedily join pieces with spaces into chunks of at most CUE_MAX_CHARS. */
 function pack(pieces: string[]): string[] {
@@ -74,11 +96,15 @@ function sentenceChunks(sentence: string): string[] {
 
 /** Subtitle cues for one line, timed in proportion to their length and back to back. */
 export function subtitleCues(text: string, atMs: number, durationMs: number): Cue[] {
-  const chunks = text
-    .trim()
-    .replace(/\s+/g, ' ')
-    .split(/(?<=[.!?…])\s+/)
-    .flatMap(sentenceChunks);
+  // Sentences first, long ones split at commas or words; then short neighbours share a cue, so
+  // a two-word sentence doesn't flash by on its own.
+  const chunks = pack(
+    text
+      .trim()
+      .replace(/\s+/g, ' ')
+      .split(/(?<=[.!?…])\s+/)
+      .flatMap(sentenceChunks),
+  );
   const total = chunks.reduce((n, c) => n + c.length, 0);
   let done = 0;
   return chunks.map((chunk) => {

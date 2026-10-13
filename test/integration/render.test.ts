@@ -127,6 +127,26 @@ describe('render', () => {
     expect([png.readUInt32BE(16), png.readUInt32BE(20)]).toEqual([1080, 1080]);
   });
 
+  it('needs no voice for silent outputs unless subtitles are burned in', async () => {
+    const failing = (subtitles: string) =>
+      editScript((raw) => {
+        raw.scenes[1].steps[1].show = { say: 'That is all. Thanks for watching!' };
+        raw.audio = { voice: { engine: 'command', command: 'echo "no voice here" >&2; exit 3' }, subtitles };
+      });
+    const edited = await failing('file');
+    const gif = await renderDemo(edited, { format: 'gif', width: 160 });
+    expect(gif.subtitles).toBeNull();
+    const tl = JSON.parse(await readFile(workPaths(loaded).timeline, 'utf8')) as Timeline;
+    expect(tl.narration).toEqual([]);
+    expect(tl.segments.some((s) => s.speed === 0)).toBe(false);
+    const mute = await renderDemo(edited, { audio: false, out: path.join(loaded.dir, 'mute.mp4') });
+    expect(await hasAudio(mute.video)).toBe(false);
+    expect(mute.subtitles).toBeNull();
+    await expect(renderDemo(await failing('burn'), { format: 'gif', width: 160 })).rejects.toThrow(
+      /audio\.voice \(command\) failed for export#2/,
+    );
+  });
+
   it('refuses a stale take after an action change', async () => {
     const edited = await editScript((raw) => {
       raw.scenes[0].steps[1].text = 'Q4 revenue';

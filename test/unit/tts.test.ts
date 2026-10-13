@@ -30,7 +30,14 @@ describe('command engine', () => {
     const dir = join(await mkdtemp(join(tmpdir(), 'showtime-tts-')), 'with space');
     await mkdir(dir);
     const file = await synthesize(voice({ engine: 'command', command: echo }), TRICKY, join(dir, 'v'));
+    expect(file).toBe(join(dir, 'v.wav')); // tools that pick the format from the extension get WAV
     expect(await readFile(file, 'utf8')).toBe(TRICKY);
+  });
+
+  it('also passes the output path as $SHOWTIME_OUT', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'showtime-tts-'));
+    const viaEnv = `node -e "require('fs').writeFileSync(process.env.SHOWTIME_OUT, 'ok')"`;
+    expect(await readFile(await synthesize(voice({ engine: 'command', command: viaEnv }), 'x', join(dir, 'v')), 'utf8')).toBe('ok');
   });
 
   it('fails with the exit code and the command output', async () => {

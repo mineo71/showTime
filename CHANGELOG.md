@@ -10,7 +10,8 @@
 - Subtitles from the narration: an `.srt` next to the video, or burned in (`audio.subtitles`).
 - `--aspect 9:16 | 1:1` on `render`, `make` and `frames`: cropped cuts with a camera that follows
   the action, from the same take. Stills of a crop go to `frames-9x16/` or `frames-1x1/`.
-- `--format gif | webp` (or an `-o` with that extension) and `--width`; `--no-audio`.
+- `--format gif | webp` (or an `-o` with that extension) and `--width`; `--no-audio`. Silent
+  outputs skip narration (no voice needed) unless subtitles are burned in.
 - `render --json` adds `subtitles`; the brand file accepts `audio`.
 - `lint`: `narration-stretch` flags lines that hold the frame for long.
 

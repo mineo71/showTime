@@ -150,12 +150,28 @@ describe('buildTimeline: sound', () => {
   };
   const voices = { 's#1': 7000, 's#3': 1000 };
 
-  it('holds the frame until a line ends, just before the next narrated step', () => {
+  it('holds the frame until a line ends, at the last still moment before the next narrated step', () => {
     const t = buildTimeline(voiced(), events, { voices });
-    expect(t.segments.find((s) => s.speed === 0)).toMatchObject({ srcStartMs: 6399 });
+    // 6399 would freeze the zoom toward the type target mid-move (it eases in from 6300).
+    expect(t.segments.find((s) => s.speed === 0)).toMatchObject({ srcStartMs: 6300 });
     expect(t.narration.map((n) => n.where)).toEqual(['s#1', 's#3']);
     expect(t.narration[0]).toMatchObject({ text: 'Open the reports page and look around.', atMs: 800, durationMs: 7000 });
     expect(t.narration[1].atMs - t.narration[0].atMs).toBe(7000 + NARRATION_GAP_MS);
+  });
+
+  it('never freezes the camera, the cursor or a caption fade mid-move', () => {
+    for (const aspect of ['16:9', '9:16', '1:1'] as const) {
+      const t = buildTimeline(voiced(), events, { voices, aspect });
+      for (const hold of t.segments.filter((s) => s.speed === 0)) {
+        const at = hold.srcStartMs;
+        t.camera.slice(1).forEach((b, i) => {
+          const a = t.camera[i];
+          if (a.tMs < at && at < b.tMs) expect([a.scale, a.cx, a.cy]).toEqual([b.scale, b.cx, b.cy]);
+        });
+        for (const m of t.moves) expect(m.startMs < at && at < m.endMs).toBe(false);
+        for (const c of t.captions) expect(at > c.startMs && at < c.startMs + 220).toBe(false);
+      }
+    }
   });
 
   it('skips lines without a synthesized voice, and adds no holds then', () => {

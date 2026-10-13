@@ -51,7 +51,7 @@ const withRenderFlags = (c: Command) =>
     .option('--aspect <ratio>', '16:9, 9:16 or 1:1', '16:9')
     .option('--format <format>', 'mp4, gif or webp (default: from --out, else mp4)')
     .option('--width <px>', 'GIF/WebP width (default: 960, 540 or 720 by aspect)')
-    .option('--no-audio', 'leave out narration, music and sounds');
+    .option('--no-audio', 'leave out narration, music and sounds (narration still paces burned-in subtitles)');
 
 async function render(loaded: LoadedScript, o: RenderFlags) {
   const { renderDemo } = await import('../pipeline');

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { NARRATION_GAP_MS, narrationHolds, soundEvents, stepKey, subtitleCues, toSrt } from '../../src/timeline/narration';
+import { NARRATION_GAP_MS, narrationHolds, soundEvents, stepKey, stillPoint, subtitleCues, toSrt } from '../../src/timeline/narration';
 import { buildSegments } from '../../src/timeline/timemap';
 
 describe('narrationHolds', () => {
@@ -24,6 +24,25 @@ describe('narrationHolds', () => {
 
   it('runs the last window to the end of the video', () => {
     expect(narrationHolds([{ startMs: 9000, durationMs: 1500 }], segs, 10_000)).toEqual([{ atMs: 10_000, holdMs: 1500 + NARRATION_GAP_MS - 1000 }]);
+  });
+
+  it('moves the hold back to the last moment nothing is moving', () => {
+    const lines = [
+      { startMs: 1000, durationMs: 3000 },
+      { startMs: 5000, durationMs: 500 },
+    ];
+    const holds = narrationHolds(lines, segs, 10_000, [
+      { startMs: 4300, endMs: 5600 },
+      { startMs: 3900, endMs: 4400 },
+    ]);
+    expect(holds).toEqual([{ atMs: 3900, holdMs: 3000 + NARRATION_GAP_MS - 2500 }]);
+  });
+
+  it('finds the latest still point in a window, or the window end when everything moves', () => {
+    expect(stillPoint(1000, 4999, [])).toBe(4999);
+    expect(stillPoint(1000, 4999, [{ startMs: 4000, endMs: 6000 }])).toBe(4000);
+    expect(stillPoint(1000, 4999, [{ startMs: 4000, endMs: 4999 }])).toBe(4999); // a move that just ended
+    expect(stillPoint(1000, 4999, [{ startMs: 500, endMs: 6000 }])).toBe(4999);
   });
 
   it('names steps scene#n, 1-based', () => {
@@ -53,6 +72,14 @@ describe('subtitleCues', () => {
     cues.slice(1).forEach((c, i) => expect(c.startMs).toBe(cues[i].endMs));
     const share = (cues[0].endMs - cues[0].startMs) / 10_000;
     expect(share).toBeCloseTo(cues[0].text.length / cues.reduce((n, c) => n + c.text.length, 0), 2);
+  });
+});
+
+describe('subtitleCues: short sentences', () => {
+  it('packs short sentences together instead of flashing them', () => {
+    expect(subtitleCues('OK. Now we send the invoice to the client.', 0, 3000).map((c) => c.text)).toEqual([
+      'OK. Now we send the invoice to the client.',
+    ]);
   });
 });
 

@@ -364,14 +364,15 @@ Targets are Playwright selectors: `role=button[name='Save']`, `text=Save`, `#id`
 | `voice.speed`        | `1`        | 0.5–2 |
 | `voice.model`        | engine default | `gpt-4o-mini-tts` (OpenAI), `eleven_multilingual_v2` (ElevenLabs) |
 | `voice.instructions` | none       | OpenAI only: how to speak ("warm, confident") |
-| `voice.command`      | none       | `command` only: reads the text on stdin, writes audio to `{out}` (e.g. Piper) |
+| `voice.command`      | none       | `command` only: a shell command that reads the text on stdin and writes audio to `{out}` (inserted already quoted, so write it bare; also in `$SHOWTIME_OUT`), e.g. `piper -m en_US.onnx -f {out}` |
 | `music`              | none       | `{ file, volume? }`: a bed under the whole video, looped and ducked under the voice |
 | `sounds`             | `false`    | click and keystroke sounds |
 | `subtitles`          | `file`     | `file`: an `.srt` next to the video; `burn`: also on the video (captions move up); `off` |
 
 `openai` and `elevenlabs` read `OPENAI_API_KEY` / `ELEVENLABS_API_KEY` from the environment
 (`OPENAI_BASE_URL` points at any OpenAI-compatible server). Each line is synthesized once and
-cached; edits to `say` or `audio` only need `render`.
+cached; edits to `say` or `audio` only need `render`. Silent outputs (GIF, WebP, `--no-audio`) skip
+the narration and its pauses, unless subtitles are burned in.
 
 </details>
 

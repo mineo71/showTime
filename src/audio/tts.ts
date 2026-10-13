@@ -137,7 +137,8 @@ export async function synthesize(voice: Voice, text: string, base: string, opts:
       return out;
     }
     case 'command': {
-      const out = `${base}.audio`;
+      // .wav so tools that pick the format from the extension (say -o, sox) write something ffmpeg reads.
+      const out = `${base}.wav`;
       const command = (voice.command ?? '').replaceAll('{out}', quote(out));
       await exec(command, [], { shell: true, input: text, env: { ...env, SHOWTIME_OUT: out }, timeoutMs });
       return out;
@@ -174,7 +175,7 @@ export async function ensureVoices(
         } catch (err) {
           throw new Error(`audio.voice (${voice.engine}) failed for ${where}: ${(err as Error).message}`);
         } finally {
-          for (const ext of ['.txt', '.aiff', '.wav', '.mp3', '.audio']) await rm(`${base}${ext}`, { force: true });
+          for (const ext of ['.txt', '.aiff', '.wav', '.mp3']) await rm(`${base}${ext}`, { force: true });
           await rm(`${file}.part`, { force: true });
         }
       }
