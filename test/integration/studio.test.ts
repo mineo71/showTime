@@ -1,6 +1,7 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import { request } from 'node:http';
 import path from 'node:path';
+import { chromium } from 'playwright';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { record } from '../../src/runner/record';
 import type { LoadedScript } from '../../src/script/load';
@@ -120,6 +121,32 @@ describe('studio server', () => {
       expect(state.steps).toHaveLength(8);
     } finally {
       await other.close();
+    }
+  });
+});
+
+describe('studio page', () => {
+  it('previews the video, lists the steps, and saves an inspector edit to the file', async () => {
+    const browser = await chromium.launch();
+    try {
+      const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+      const errors: string[] = [];
+      page.on('pageerror', (e) => errors.push(e.message));
+      await page.goto(studio.url);
+      await page.locator('[data-testid=player]').waitFor();
+      await expect.poll(() => page.locator('[data-where]').count()).toBe(8);
+      await page.locator('[data-where="report#2"]').click();
+      await expect.poll(() => page.locator('video').first().getAttribute('src')).toMatch(/^\/files\/take\/raw\.mp4/);
+      const caption = page.locator('[data-field=caption]');
+      await caption.fill('Typed in the studio');
+      await caption.press('Enter');
+      await expect
+        .poll(async () => (await readFile(loaded.scriptPath, 'utf8')).includes('"caption": "Typed in the studio"'), { timeout: 20_000 })
+        .toBe(true);
+      await expect.poll(() => page.locator('[data-where="report#2"] [data-icon=caption]').count()).toBe(1);
+      expect(errors).toEqual([]);
+    } finally {
+      await browser.close();
     }
   });
 });
