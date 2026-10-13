@@ -50,7 +50,10 @@
     "example": "node scripts/serve.mjs examples 4800",
     "media": "tsx scripts/media.ts",
     "schema:write": "node bin/showtime.mjs schema > docs/script.schema.json",
-    "install-skill": "node bin/showtime.mjs setup --no-browsers"
+    "install-skill": "node bin/showtime.mjs setup --no-browsers",
+    "preversion": "tsx scripts/changelog.ts check && npm run typecheck && npm test",
+    "version": "tsx scripts/changelog.ts release && git add CHANGELOG.md",
+    "postversion": "git push --follow-tags"
   },
   "dependencies": {
     "@remotion/bundler": "4.0.535",

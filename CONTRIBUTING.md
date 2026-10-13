@@ -61,9 +61,13 @@ npm run media                                # → docs/media
 
 ## Releasing
 
-Bump `version` in `package.json`, move the `CHANGELOG.md` entries under the new version, then
-`npm publish` (the package is `@mineo71/showtime`; `files` in `package.json` decides what ships)
-and tag the commit `vX.Y.Z`.
+1. List the changes under `## Unreleased` in `CHANGELOG.md` and commit them.
+2. Run `npm version patch` (or `minor` / `major`). It checks the changelog, runs typecheck and
+   unit tests, bumps `package.json`, turns `## Unreleased` into `## X.Y.Z — date`, commits
+   `release: vX.Y.Z`, tags it and pushes.
+3. The tag starts the [`release`](.github/workflows/release.yml) workflow. It publishes
+   `@mineo71/showtime` to npm through trusted publishing (OIDC, with provenance, no token or 2FA
+   prompt) and creates the GitHub Release from that changelog section.
 
 ## Pull requests
 

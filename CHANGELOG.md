@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Releases are automated: `npm version patch|minor|major` dates the changelog, tags and pushes;
+  the `release` workflow publishes to npm through trusted publishing (with provenance) and
+  creates the GitHub Release.
+
 ## 0.2.0 — 2026-10-13
 
 - Published to npm as `@mineo71/showtime`.
