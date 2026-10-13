@@ -23,6 +23,16 @@ function stepOf(script: Script, e: StepEvent): Step {
   return step;
 }
 
+/** "https://app.acme.com/reports/" → "app.acme.com/reports". */
+function displayAddress(url: string): string {
+  try {
+    const u = new URL(url);
+    return (u.host + u.pathname).replace(/\/$/, '');
+  } catch {
+    return url;
+  }
+}
+
 const pad = (r: Rect, p: number): Rect => ({ x: r.x - p, y: r.y - p, width: r.width + 2 * p, height: r.height + 2 * p });
 
 export function buildTimeline(script: Script, ev: TakeEvents, opts: BuildOptions = {}): Timeline {
@@ -78,6 +88,10 @@ export function buildTimeline(script: Script, ev: TakeEvents, opts: BuildOptions
     stage,
     video: { src: ev.video.file, durationMs: ev.video.durationMs },
     intro: script.meta.title ? { title: script.meta.title, subtitle: script.meta.subtitle, durationMs: INTRO_MS } : null,
+    chrome:
+      style.chrome === 'browser'
+        ? { address: style.address ?? displayAddress(script.app.url), dark: script.app.colorScheme === 'dark' }
+        : null,
     segments: buildSegments(ev.video.durationMs, spans),
     camera: buildCamera(regions),
     moves: ev.moves,

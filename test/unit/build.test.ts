@@ -95,6 +95,14 @@ describe('buildTimeline', () => {
     expect(z.camera.map((k) => k.scale)).toEqual([1, 1.3, 1.3, 1]);
   });
 
+  it('frames the take in a browser window showing the app address', () => {
+    expect(t.chrome).toEqual({ address: 'x', dark: false });
+    const app = (extra: Record<string, unknown>) => ({ app: { url: 'http://127.0.0.1:4800/fennel/', ...extra } });
+    expect(buildTimeline(script({}, app({})), events).chrome).toEqual({ address: '127.0.0.1:4800/fennel', dark: false });
+    expect(buildTimeline(script({ address: 'fennel.app' }, app({ colorScheme: 'dark' })), events).chrome).toEqual({ address: 'fennel.app', dark: true });
+    expect(buildTimeline(script({ chrome: 'none' }), events).chrome).toBeNull();
+  });
+
   it('has no intro without a title', () => {
     expect(buildTimeline(script({}, { meta: {} }), events).intro).toBeNull();
   });

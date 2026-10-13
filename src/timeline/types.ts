@@ -99,6 +99,8 @@ export interface Timeline {
   stage: { width: number; height: number };
   video: { src: string; durationMs: number };
   intro: { title: string; subtitle?: string; durationMs: number } | null;
+  /** Browser window around the take, or null for the bare viewport. */
+  chrome: { address: string; dark: boolean } | null;
   segments: Segment[];
   camera: CameraKey[];
   moves: Move[];

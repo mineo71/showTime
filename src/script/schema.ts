@@ -61,6 +61,11 @@ export const StyleSchema = z
     autoZoom: z.boolean().default(true),
     autoSpeed: z.boolean().default(true),
     maxZoom: z.number().min(1).max(4).default(1.8),
+    chrome: z
+      .enum(['browser', 'none'])
+      .default('browser')
+      .describe('Frame the recording in a browser window with an address bar, or show the bare viewport'),
+    address: z.string().optional().describe('Address-bar text; defaults to the app URL without its scheme'),
   })
   .strict();
 

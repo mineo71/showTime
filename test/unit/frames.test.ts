@@ -11,6 +11,7 @@ const timeline = (intro: boolean): Timeline =>
     stage: { width: 1440, height: 900 },
     video: { src: 'raw.mp4', durationMs: 10_000 },
     intro: intro ? { title: 'T', durationMs: 2200 } : null,
+    chrome: null,
     segments: [
       { srcStartMs: 0, srcEndMs: 2000, speed: 1 },
       { srcStartMs: 2000, srcEndMs: 6000, speed: 4 },
@@ -67,6 +68,7 @@ describe('windowLayout', () => {
       y: 65,
       width: 1521,
       height: 950,
+      bar: 0,
     });
   });
   it('fills the output without padding when aspect ratios match', () => {
@@ -75,6 +77,17 @@ describe('windowLayout', () => {
       y: 0,
       width: 1920,
       height: 1080,
+      bar: 0,
+    });
+  });
+  it('fits a browser bar above the viewport and returns the viewport box', () => {
+    // k = min(1689.6 / 1440, 950.4 / 944) = 1.00678 → viewport 1450×906, bar 44, block 950 tall at y 65
+    expect(windowLayout({ width: 1920, height: 1080 }, { width: 1440, height: 900 }, 0.06, 44)).toEqual({
+      x: 235,
+      y: 109,
+      width: 1450,
+      height: 906,
+      bar: 44,
     });
   });
 });
