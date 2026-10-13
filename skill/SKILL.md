@@ -58,6 +58,17 @@ with `run_in_background: true` and wait for the completion notification. In Code
 agents, give the command a timeout of at least 10 minutes.
 A `record` that fails or is stopped halfway leaves the previous take in place.
 
+## When the person wants to take over
+
+- **Fine-tuning by hand:** suggest `showtime studio <script>`. It opens a local page with the video,
+  a step timeline and an inspector; their edits are written to the script. It runs until Ctrl+C, so
+  start it in the background if you start it at all, and **re-read the script before you edit it
+  again**: the person may have changed it. Your own edits to the file show up in their page live.
+- **Showing instead of telling:** if the person would rather click through the flow than describe
+  it, ask them to run `showtime record-human <url> -o demo/flow.json` (it opens a browser window;
+  they close it when done). Then add captions, `say` lines and waits to the result and continue
+  with `check`.
+
 ## Narration and sound
 
 Give a step `"say": "…"` and a voice reads it from the start of that step. The video holds the

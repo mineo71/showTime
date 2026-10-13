@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+- `showtime studio <script>`: a local page with a live preview (the same components the renderer
+  uses), a timeline of the steps and an inspector for caption, narration, zoom, spotlight, speed
+  and hold, plus the title, colours and window. Edits are validated and saved to the script; the
+  page reloads when the file changes on disk; render (MP4, GIF, WebP) and record from the page;
+  preview 16:9, 9:16 or 1:1. Listens on 127.0.0.1 only, with a per-session token.
+- `showtime record-human <url>`: click through the app in a browser; closing the window writes a
+  script of the steps with readable selectors.
+
 ## 0.4.0 — 2026-10-13
 
 - Narration: `show.say` on any step is spoken by a TTS engine (`audio.voice`: the macOS/Linux

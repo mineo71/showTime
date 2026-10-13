@@ -9,8 +9,10 @@
 import { copyFileSync, existsSync, mkdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { chromium } from 'playwright';
 import { toWebp } from '../src/convert';
 import { run } from '../src/ffmpeg';
+import { startStudio } from '../src/studio/server';
 import { qaShots, sourceMsAtFrame } from '../src/timeline/frames';
 import { BROWSER_BAR, windowLayout } from '../src/timeline/layout';
 import type { TakeEvents, Timeline } from '../src/timeline/types';
@@ -86,6 +88,23 @@ async function main() {
   const raw = path.join(work, 'take/raw.mp4');
   await run('ffmpeg', ['-v', 'error', '-y', '-ss', (srcMs / 1000).toFixed(3), '-i', need(raw), '-frames:v', '1', '-vf', 'scale=1280:-1:flags=lanczos', '-q:v', '3', path.join(out, 'before.jpg')]);
   await jpeg(path.join(frames, `${COMPARE}.png`), 'after.jpg');
+
+  process.stdout.write('studio.jpg…\n');
+  const studio = await startStudio(path.join(example, 'demo.json'), { port: 0 });
+  const browser = await chromium.launch();
+  try {
+    const page = await browser.newPage({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 2 });
+    await page.goto(studio.url);
+    await page.locator('[data-where="invoice#2"]').click();
+    await page.locator('video').first().waitFor();
+    await page.waitForTimeout(2000);
+    const png = path.join(work, 'studio.png');
+    await page.screenshot({ path: png });
+    await run('ffmpeg', ['-v', 'error', '-y', '-i', png, '-vf', 'scale=1280:-1:flags=lanczos', '-q:v', '3', path.join(out, 'studio.jpg')]);
+  } finally {
+    await browser.close();
+    await studio.close();
+  }
 
   process.stdout.write(`✓ media in ${path.relative(process.cwd(), out)}\n`);
 }

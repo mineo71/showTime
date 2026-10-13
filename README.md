@@ -10,7 +10,7 @@ Your AI agent (Claude Code or Codex) writes a short JSON script. showTime clicks
 the way a motion designer would (auto-zoom, a smooth cursor, click ripples, spotlights, captions,
 sped-up loading, narration) and hands you a polished video: a 1080p MP4, a 9:16 cut for social or
 a GIF for your README.<br />
-No timeline editor. No re-take when a caption changes.
+No re-take when a caption changes, and a studio for when you want to fine-tune by hand.
 
 [![tests](https://img.shields.io/github/actions/workflow/status/mineo71/showTime/ci.yml?branch=main&style=flat-square&label=tests)](https://github.com/mineo71/showTime/actions/workflows/ci.yml)
 [![npm](https://img.shields.io/npm/v/@mineo71/showtime?style=flat-square&color=6366f1)](https://www.npmjs.com/package/@mineo71/showtime)
@@ -20,7 +20,7 @@ No timeline editor. No re-take when a caption changes.
 ![Claude Code](https://img.shields.io/badge/Claude%20Code-skill-d97757?style=flat-square)
 ![Codex](https://img.shields.io/badge/Codex-skill-10a37f?style=flat-square)
 
-**[Install](#install)** · [Try it](#try-it) · [Use with Claude Code or Codex](#use-it-with-claude-code-or-codex) · [Script reference](#script-reference) · [CLI](#cli)
+**[Install](#install)** · [Try it](#try-it) · [Use with Claude Code or Codex](#use-it-with-claude-code-or-codex) · [Studio](#studio) · [Script reference](#script-reference) · [CLI](#cli)
 
 </div>
 
@@ -217,6 +217,24 @@ The agent takes it from there:
 The skill ([`skill/SKILL.md`](skill/SKILL.md)) is a plain-Markdown
 [Agent Skill](https://agentskills.io). Any agent that can run shell commands can follow it, and so
 can a human with a text editor.
+
+## Studio
+
+The agent writes the script; you polish it. `showtime studio demo/pitch.json` opens a local page
+with the edited video playing, a timeline of the steps and an inspector:
+
+<img src="docs/media/studio.jpg" alt="showTime studio: the video preview, an inspector with caption, narration, zoom and speed for the selected step, the look panel, and a timeline of every step" />
+
+- Pick a step and change its caption, narration line, zoom, spotlight or speed; the preview updates
+  in about a second and the change is saved to the JSON (one step per line, so the diff stays small).
+- Switch the preview between 16:9, 9:16 and 1:1, and render MP4, GIF or WebP from the page.
+- The page reloads on its own when the file changes on disk, so you can keep it open while your
+  agent edits the script.
+- It only listens on `127.0.0.1` and only accepts requests from its own page.
+
+**Rather show the flow than describe it?** `showtime record-human http://localhost:3000 -o demo/flow.json`
+opens a browser. Click through the flow and close the window: you get a script of those steps with
+readable selectors, ready for captions and `showtime make`.
 
 ## How it works
 
@@ -429,6 +447,8 @@ Put it next to your scripts or in any folder above them; the nearest one applies
 | `showtime record <script> [--headed] [--keep-frames]` | record a take into `.showtime/<name>/take` |
 | `showtime render <script> [-o out] [--aspect 16:9\|9:16\|1:1] [--format mp4\|gif\|webp] [--width px] [--no-audio]` | render from the last take, without re-recording |
 | `showtime frames <script> [--aspect …]` | QA stills (intro, one per step, outro) and a contact sheet of them |
+| `showtime studio <script> [--port 4848] [--aspect …] [--no-open]` | live preview, step timeline and inspector that save to the script |
+| `showtime record-human <url> [-o demo.json] [--viewport 1440x900] [--force]` | click through the app yourself; closing the window writes a script |
 | `showtime lint <script>` | warnings about captions, pauses and length; timing checks need a take |
 | `showtime schema` | print the script's JSON Schema |
 
@@ -471,11 +491,10 @@ needs Playwright and ffmpeg. Windows is untested.
 
 ## Roadmap
 
-- 🧑‍🎨 `showtime studio`: a local page with a live player and a timeline to drag captions, zooms and
-  speed, saving back to the JSON.
-- 🎥 `showtime record-human <url>`: click through the app yourself and get a script back.
+- 🧑‍🎨 Studio: drag captions and holds on the timeline instead of editing them per step.
+- 🌍 One script, many languages: `--locales en,uk,de` with translated captions and narration.
 - 🎞️ Deterministic frame-by-frame capture in virtual time, for a perfect 60 fps.
-- 🧩 An MCP server for Claude Desktop, and a desktop studio for timeline tweaks.
+- 🧩 An MCP server for Claude Desktop.
 - 📲 Mobile (iOS Simulator) and desktop-app drivers that produce the same `events.json`.
 
 ## Development
