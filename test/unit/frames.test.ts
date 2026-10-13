@@ -1,0 +1,80 @@
+import { describe, expect, it } from 'vitest';
+import { introFrames, qaShots, segmentPlan, sourceMsAtFrame, totalFrames } from '../../src/timeline/frames';
+import { windowLayout } from '../../src/timeline/layout';
+import type { StepEvent, Timeline } from '../../src/timeline/types';
+
+const timeline = (intro: boolean): Timeline =>
+  ({
+    version: 1,
+    fps: 30,
+    output: { width: 1920, height: 1080 },
+    stage: { width: 1440, height: 900 },
+    video: { src: 'raw.mp4', durationMs: 10_000 },
+    intro: intro ? { title: 'T', durationMs: 2200 } : null,
+    segments: [
+      { srcStartMs: 0, srcEndMs: 2000, speed: 1 },
+      { srcStartMs: 2000, srcEndMs: 6000, speed: 4 },
+      { srcStartMs: 6000, srcEndMs: 10_000, speed: 1 },
+    ],
+    camera: [],
+    moves: [],
+    clicks: [],
+    captions: [],
+    spotlights: [],
+    style: {} as Timeline['style'],
+  }) as Timeline;
+
+describe('frame math', () => {
+  const t = timeline(true);
+
+  it('counts intro and output frames', () => {
+    expect(introFrames(t)).toBe(66);
+    expect(introFrames(timeline(false))).toBe(0);
+    expect(totalFrames(t)).toBe(66 + 210);
+  });
+
+  it('plans one sequence per segment, back to back', () => {
+    expect(segmentPlan(t)).toEqual([
+      { fromFrame: 66, durationInFrames: 60, trimBefore: 0, speed: 1 },
+      { fromFrame: 126, durationInFrames: 30, trimBefore: 60, speed: 4 },
+      { fromFrame: 156, durationInFrames: 120, trimBefore: 180, speed: 1 },
+    ]);
+  });
+
+  it('maps frames to source time', () => {
+    expect(sourceMsAtFrame(t, 65)).toBeNull();
+    expect(sourceMsAtFrame(t, 66)).toBe(0);
+    expect(sourceMsAtFrame(t, 66 + 75)).toBeCloseTo(4000);
+  });
+
+  it('lists QA shots: intro, then one per step at mid-action', () => {
+    const steps: StepEvent[] = [
+      { sceneId: 'a', index: 0, do: 'click', startMs: 0, actionMs: 1000, endMs: 1100, settledMs: 1600 },
+      { sceneId: 'a', index: 1, do: 'wait', startMs: 1600, actionMs: 1600, endMs: 5600, settledMs: 6400 },
+    ];
+    expect(qaShots(t, steps)).toEqual([
+      { frame: 33, name: '00-intro' },
+      { frame: 66 + 39, name: '01-a-1-click' },
+      { frame: 66 + Math.round(((2000 + (4000 - 2000) / 4) * 30) / 1000), name: '02-a-2-wait' },
+    ]);
+  });
+});
+
+describe('windowLayout', () => {
+  it('fits the stage inside the padded output, centred', () => {
+    expect(windowLayout({ width: 1920, height: 1080 }, { width: 1440, height: 900 }, 0.06)).toEqual({
+      x: 200,
+      y: 65,
+      width: 1521,
+      height: 950,
+    });
+  });
+  it('fills the output without padding when aspect ratios match', () => {
+    expect(windowLayout({ width: 1920, height: 1080 }, { width: 1280, height: 720 }, 0)).toEqual({
+      x: 0,
+      y: 0,
+      width: 1920,
+      height: 1080,
+    });
+  });
+});
