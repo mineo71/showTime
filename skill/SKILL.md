@@ -11,11 +11,11 @@ spotlights, captions, speed-ups, intro card).
 
 ## Setup
 
-Run `showtime --help`. If the command is missing, install it (Node ≥ 20 and ffmpeg required):
+Run `showtime --help`. If the command is missing, install it (needs Node ≥ 20 and ffmpeg):
 
 ```bash
-git clone https://github.com/mineo71/showTime.git ~/showTime && cd ~/showTime
-npm install && npx playwright install chromium && npm link
+npm install -g @mineo71/showtime
+showtime setup    # downloads the browsers it records with
 ```
 
 ## Workflow
@@ -23,8 +23,10 @@ npm install && npx playwright install chromium && npm link
 1. **Story first.** Settle the audience, target length (30–120 s), the 2–4 moments that sell the
    product, and the URL of a running app (a local dev server is best). Read the pitch, PRD or
    routes if they exist. Plan one scene per moment.
-2. **Explore the app** with the Playwright MCP (`browser_navigate`, `browser_snapshot`) to learn
-   the flow and pick selectors from the accessibility snapshot. Prefer
+2. **Explore the app** with a browser tool if you have one (e.g. the Playwright MCP:
+   `browser_navigate`, `browser_snapshot`) to learn the flow and pick selectors from the
+   accessibility snapshot. Without one, read the routes and templates and let `showtime check`
+   show you the page (it prints an ARIA snapshot when a step fails). Prefer
    `role=button[name='Save']`, `text=…`, `#id`, `[data-testid=…]` over long CSS chains.
 3. **Write the script** in the project, e.g. `demo/pitch.json`. Run `showtime schema` for the
    complete format.
@@ -43,8 +45,9 @@ npm install && npx playwright install chromium && npm link
 ## Long-running commands
 
 `record` runs in real time and then encodes; `render`, `frames` and `make` bundle and render with
-Remotion. They routinely take longer than the default 2-minute Bash timeout. Run them with
-`timeout: 600000`, or with `run_in_background: true` and wait for the completion notification.
+Remotion. They routinely take several minutes. In Claude Code run them with `timeout: 600000`, or
+with `run_in_background: true` and wait for the completion notification. In Codex and other
+agents, give the command a timeout of at least 10 minutes.
 Never let a `record` be killed halfway: it replaces the previous take.
 
 ## Side effects

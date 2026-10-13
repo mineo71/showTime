@@ -6,18 +6,20 @@
 
 **Product demos, directed by AI.**
 
-Claude writes a short JSON script. showTime clicks through your web app, films it and edits it
+Your AI agent (Claude Code or Codex) writes a short JSON script. showTime clicks through your web app, films it and edits it
 the way a motion designer would (auto-zoom, a smooth cursor, click ripples, spotlights, captions,
 sped-up loading) and hands you a polished 1080p MP4.<br />
 No timeline editor. No re-take when a caption changes.
 
 [![tests](https://img.shields.io/github/actions/workflow/status/mineo71/showTime/ci.yml?branch=main&style=flat-square&label=tests)](https://github.com/mineo71/showTime/actions/workflows/ci.yml)
+[![npm](https://img.shields.io/npm/v/@mineo71/showtime?style=flat-square&color=6366f1)](https://www.npmjs.com/package/@mineo71/showtime)
 [![license](https://img.shields.io/badge/license-MIT-c026d3?style=flat-square)](LICENSE)
 ![node](https://img.shields.io/badge/node-%E2%89%A5%2020-6366f1?style=flat-square)
 ![built with](https://img.shields.io/badge/Playwright%20%2B%20Remotion-0f172a?style=flat-square)
 ![Claude Code](https://img.shields.io/badge/Claude%20Code-skill-d97757?style=flat-square)
+![Codex](https://img.shields.io/badge/Codex-skill-10a37f?style=flat-square)
 
-**[Install](#install)** · [Try it](#try-it) · [Use with Claude Code](#use-it-with-claude-code) · [Script reference](#script-reference) · [CLI](#cli)
+**[Install](#install)** · [Try it](#try-it) · [Use with Claude Code or Codex](#use-it-with-claude-code-or-codex) · [Script reference](#script-reference) · [CLI](#cli)
 
 </div>
 
@@ -34,22 +36,19 @@ No timeline editor. No re-take when a caption changes.
 Needs **Node ≥ 20** and **ffmpeg** (`brew install ffmpeg` / `sudo apt install ffmpeg`).
 
 ```bash
-git clone https://github.com/mineo71/showTime.git && cd showTime
-npm install && npx playwright install chromium
-npm link                 # puts `showtime` on your PATH
-npm run install-skill    # optional: the Claude Code skill (~/.claude/skills/showtime)
-showtime --help          # check that it works
+npm install -g @mineo71/showtime
+showtime setup      # downloads Chromium + the renderer, links the skill into Claude Code and Codex
+showtime --help     # check that it works
 ```
 
-Then ask Claude Code for a demo, or [film the bundled example](#try-it).
+Then ask your agent for a demo, or [film the bundled example](#try-it).
 
-**Or let Claude Code install it.** Paste this:
+**Or let your agent install it.** Paste this into Claude Code or Codex:
 
-> Install showTime from https://github.com/mineo71/showTime: clone it, run `npm install`,
-> `npx playwright install chromium`, `npm link` and `npm run install-skill`, then check that
-> `showtime --help` works.
+> Install showTime: run `npm install -g @mineo71/showtime`, then `showtime setup`, and check
+> that `showtime --help` works.
 
-<sub>**Update:** `git pull && npm install` in the clone. The CLI and the skill are linked to that folder, so there is nothing to re-link. **Switched Node versions with nvm?** Run `npm link` again. showTime is not on npm yet, so it installs from git.</sub>
+<sub>**Update:** `npm install -g @mineo71/showtime@latest`. **Switched Node versions with nvm?** Install it again under the new version. **From source:** clone the repo, then `npm install && npm link && showtime setup` (see [CONTRIBUTING](CONTRIBUTING.md)).</sub>
 
 ## Why
 
@@ -141,35 +140,40 @@ And under the hood:
 
 ## Try it
 
-After [installing](#install), film the example app from the video above:
+After [installing](#install), film the example app from the video above. The example lives in
+the repo:
 
 ```bash
-npm run example                              # serves examples/ on http://127.0.0.1:4800
-showtime make examples/fennel/demo.json      # → examples/fennel/demo.mp4
+git clone https://github.com/mineo71/showTime.git && cd showTime
+npm run example                              # terminal 1: serves examples/ on http://127.0.0.1:4800
+showtime make examples/fennel/demo.json      # terminal 2: → examples/fennel/demo.mp4
 ```
 
 `make` rehearses the script, records it in real time (about 25 s for this one) and renders it.
 Expect a minute or two end to end.
 
-## Use it with Claude Code
+## Use it with Claude Code or Codex
 
-With the skill installed (`npm run install-skill`, see [Install](#install)), ask for a demo the
-way you would ask a person:
+`showtime setup` links the skill into `~/.claude/skills` for Claude Code and `~/.agents/skills`
+for Codex (`--agent claude` or `--agent codex` picks one). Then ask for a demo the way you would
+ask a person:
 
 > Make a 30-second demo of the checkout flow on localhost:3000 for our investor deck.
 > Blur customer emails.
 
-Claude takes it from there:
+The agent takes it from there:
 
-1. **Explores** the app with the Playwright MCP and picks the 2–4 moments that sell it.
+1. **Explores** the app (with the Playwright MCP if it has one) and picks the 2–4 moments that
+   sell it.
 2. **Writes** `demo/checkout.json`.
 3. **Rehearses** with `showtime check` until every step passes, fixing selectors from the ARIA
    snapshot.
 4. **Records and renders** with `showtime record` and `showtime render`.
 5. **Reviews** the stills from `showtime frames`, tightens captions and pacing, and re-renders.
 
-The skill ([`skill/SKILL.md`](skill/SKILL.md)) is plain Markdown. Any agent that can run shell
-commands can use it, and so can a human with a text editor.
+The skill ([`skill/SKILL.md`](skill/SKILL.md)) is a plain-Markdown
+[Agent Skill](https://agentskills.io). Any agent that can run shell commands can follow it, and so
+can a human with a text editor.
 
 ## How it works
 
@@ -294,6 +298,7 @@ Targets are Playwright selectors: `role=button[name='Save']`, `text=Save`, `#id`
 
 | command | what it does |
 |---|---|
+| `showtime setup [--agent claude\|codex\|all] [--no-browsers]` | download the browsers, link the skill |
 | `showtime make <script> [-o out.mp4]` | check → record → render |
 | `showtime check <script> [--json] [--headed]` | rehearse; a screenshot per step; the first failure with an ARIA snapshot |
 | `showtime record <script> [--headed] [--keep-frames]` | record a take into `.showtime/<name>/take` |

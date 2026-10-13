@@ -1,6 +1,6 @@
 {
-  "name": "showtime",
-  "version": "0.1.0",
+  "name": "@mineo71/showtime",
+  "version": "0.2.0",
   "description": "Product demos, directed by AI: Claude writes a JSON script, showTime records your web app and renders a polished MP4",
   "keywords": [
     "demo",
@@ -24,13 +24,22 @@
   "bugs": {
     "url": "https://github.com/mineo71/showTime/issues"
   },
-  "private": true,
   "type": "module",
   "bin": {
     "showtime": "bin/showtime.mjs"
   },
+  "files": [
+    "bin/",
+    "src/",
+    "skill/",
+    "docs/script.schema.json",
+    "CHANGELOG.md"
+  ],
   "engines": {
     "node": ">=20"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "scripts": {
     "showtime": "node bin/showtime.mjs",
@@ -41,7 +50,7 @@
     "example": "node scripts/serve.mjs examples 4800",
     "media": "tsx scripts/media.ts",
     "schema:write": "node bin/showtime.mjs schema > docs/script.schema.json",
-    "install-skill": "node scripts/install-skill.mjs"
+    "install-skill": "node bin/showtime.mjs setup --no-browsers"
   },
   "dependencies": {
     "@remotion/bundler": "4.0.535",

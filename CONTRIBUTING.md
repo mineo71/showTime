@@ -11,7 +11,8 @@ git clone https://github.com/mineo71/showTime.git
 cd showTime
 npm install
 npx playwright install chromium
-npm link                 # optional: `showtime` on your PATH
+npm link                 # optional: `showtime` on your PATH, pointing at this clone
+npm run install-skill    # optional: link the skill (Claude Code + Codex) to this clone
 ```
 
 **Requirements:** Node 20+, ffmpeg on `PATH` (`brew install ffmpeg` / `apt install ffmpeg`).
@@ -57,6 +58,12 @@ showtime make examples/fennel/demo.json      # terminal 2
 showtime frames examples/fennel/demo.json
 npm run media                                # → docs/media
 ```
+
+## Releasing
+
+Bump `version` in `package.json`, move the `CHANGELOG.md` entries under the new version, then
+`npm publish` (the package is `@mineo71/showtime`; `files` in `package.json` decides what ships)
+and tag the commit `vX.Y.Z`.
 
 ## Pull requests
 

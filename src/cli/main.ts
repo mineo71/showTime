@@ -1,3 +1,4 @@
+import { createRequire } from 'node:module';
 import { Command } from 'commander';
 import { workPaths } from '../paths';
 import { loadScript } from '../script/load';
@@ -9,9 +10,28 @@ const progress = (p: number) => {
   if (process.stdout.isTTY) process.stdout.write(`\rRendering ${Math.round(p * 100)}%`);
 };
 
+const { version } = createRequire(import.meta.url)('../../package.json') as { version: string };
+
 const program = new Command('showtime')
   .description('AI-directed product demo videos: JSON script in, polished MP4 out')
-  .version('0.1.0');
+  .version(version);
+
+program
+  .command('setup')
+  .description('download the browsers showTime records with and link the skill into Claude Code and Codex')
+  .option('--agent <agent>', 'claude, codex or all', 'all')
+  .option('--no-browsers', 'only link the skill')
+  .action(async (o: { agent: string; browsers: boolean }) => {
+    const { AGENTS, installBrowsers, linkSkill } = await import('../setup');
+    const agents = o.agent === 'all' ? AGENTS : AGENTS.filter((a) => a === o.agent);
+    if (!agents.length) throw new Error(`--agent must be ${AGENTS.join(', ')} or all`);
+    if (o.browsers) {
+      say('Downloading Chromium and the Remotion renderer browser…');
+      await installBrowsers();
+    }
+    for (const dest of linkSkill(agents)) say(`✓ skill linked: ${dest}`);
+    say('Ready. Ask your agent for a demo, or run `showtime make <script>`.');
+  });
 
 program
   .command('schema')

@@ -1,7 +1,11 @@
 # Changelog
 
-## Unreleased
+## 0.2.0 — 2026-10-13
 
+- Published to npm as `@mineo71/showtime`.
+- `showtime setup`: downloads the Chromium build Playwright drives and Remotion's headless
+  shell, and links the skill into Claude Code (`~/.claude/skills`) and Codex (`~/.agents/skills`).
+- The skill works with Codex: agent-neutral instructions, a setup step.
 - Browser window chrome around the take (`style.chrome`, `style.address`); the window eases in
   after the intro card.
 - `examples/fennel`: a showcase app and script; `npm run example`, `npm run media`.
