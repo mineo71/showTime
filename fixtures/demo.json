@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "meta": { "title": "Acme Analytics", "subtitle": "Reports in two clicks" },
+  "app": {
+    "url": "http://127.0.0.1:4777/",
+    "viewport": { "width": 1280, "height": 800 },
+    "mask": [".customer-email"]
+  },
+  "scenes": [
+    {
+      "id": "report",
+      "steps": [
+        { "do": "click", "target": "role=button[name='New report']", "show": { "caption": "Create a report in one click" } },
+        { "do": "type", "target": "#report-name", "text": "Q3 revenue" },
+        { "do": "select", "target": "#period", "value": "30d" },
+        { "do": "click", "target": "#create" },
+        { "do": "wait", "for": "text=Report ready" },
+        { "do": "hover", "target": ".cashback", "show": { "spotlight": true, "caption": "Кешбек видно одразу", "hold": 1200 } }
+      ]
+    },
+    {
+      "id": "export",
+      "steps": [
+        { "do": "click", "target": "#export", "show": { "caption": "Export anywhere" } },
+        { "do": "pause", "ms": 600 }
+      ]
+    }
+  ]
+}
