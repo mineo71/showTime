@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { introFrames, outroFrames, qaShots, segmentPlan, sourceMsAtFrame, totalFrames, videoEndFrame } from '../../src/timeline/frames';
+import { introFrames, outroFrames, qaShots, segmentPlan, sourceMsAtFrame, stepFrames, totalFrames, videoEndFrame } from '../../src/timeline/frames';
 import { windowLayout } from '../../src/timeline/layout';
 import type { StepEvent, Timeline } from '../../src/timeline/types';
 
@@ -125,5 +125,19 @@ describe('windowLayout', () => {
       height: 906,
       bar: 44,
     });
+  });
+});
+
+describe('stepFrames', () => {
+  it('places each step on the composition through the time map', () => {
+    const t = timeline(true);
+    const steps: StepEvent[] = [
+      { sceneId: 'a', index: 0, do: 'click', startMs: 0, actionMs: 1000, endMs: 1100, settledMs: 1600 },
+      { sceneId: 'a', index: 1, do: 'wait', startMs: 1600, actionMs: 1600, endMs: 5600, settledMs: 6400 },
+    ];
+    expect(stepFrames(t, steps)).toEqual([
+      { where: 'a#1', startFrame: 66, endFrame: 66 + 48 },
+      { where: 'a#2', startFrame: 66 + 48, endFrame: 66 + 102 },
+    ]);
   });
 });

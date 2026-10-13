@@ -10,19 +10,25 @@ import { Intro } from './Intro';
 import { Outro } from './Outro';
 import { Captions, Ripples, Spotlights, Subtitles } from './Overlays';
 
-export type ShowtimeVideoProps = { timeline: Timeline };
+export type ShowtimeVideoProps = {
+  timeline: Timeline;
+  /** Load media from `<assetBase>/<path>` instead of the bundle's public folder (the studio). */
+  assetBase?: string;
+};
+
+const media = (path: string, base?: string) => (base ? `${base}/${path}` : staticFile(path));
 
 const SHADOW = '0 30px 80px rgba(0, 0, 0, 0.45), 0 8px 24px rgba(0, 0, 0, 0.25)';
 
 /** The soundtrack plays across every frame; the picture switches between cards and the take. */
-export const ShowtimeVideo: FC<ShowtimeVideoProps> = ({ timeline: t }) => (
+export const ShowtimeVideo: FC<ShowtimeVideoProps> = ({ timeline: t, assetBase }) => (
   <>
-    {t.audio ? <Html5Audio src={staticFile(t.audio.src)} /> : null}
-    <Picture timeline={t} />
+    {t.audio ? <Html5Audio src={media(t.audio.src, assetBase)} /> : null}
+    <Picture timeline={t} assetBase={assetBase} />
   </>
 );
 
-const Picture: FC<ShowtimeVideoProps> = ({ timeline: t }) => {
+const Picture: FC<ShowtimeVideoProps> = ({ timeline: t, assetBase }) => {
   const frame = useCurrentFrame();
   const intro = introFrames(t);
   if (frame < intro) return <Intro timeline={t} frame={frame} />;
@@ -79,7 +85,7 @@ const Picture: FC<ShowtimeVideoProps> = ({ timeline: t }) => {
             {segmentPlan(t).map((p) => {
               const video = (
                 <OffthreadVideo
-                  src={staticFile(t.video.src)}
+                  src={media(t.video.src, assetBase)}
                   trimBefore={p.trimBefore}
                   playbackRate={p.speed || 1}
                   muted

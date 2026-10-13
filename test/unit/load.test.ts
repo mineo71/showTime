@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { stillsFor, workPaths } from '../../src/paths';
-import { loadScript } from '../../src/script/load';
+import { loadScript, parseLoaded } from '../../src/script/load';
 
 const base = { version: 1, app: { url: 'http://x' }, scenes: [{ id: 'a', steps: [{ do: 'click', target: 'text=Go' }] }] };
 
@@ -33,6 +33,12 @@ describe('loadScript', () => {
   it('reports invalid JSON with the file path', async () => {
     const { file } = await scriptIn('{ nope');
     await expect(loadScript(file)).rejects.toThrow(/Invalid JSON in .*demo\.json/);
+  });
+
+  it('validates raw JSON for a script path the same way loadScript reads it', async () => {
+    const { file } = await scriptIn(JSON.stringify(base));
+    expect(await parseLoaded(base, file)).toEqual(await loadScript(file));
+    await expect(parseLoaded({ ...base, scenes: [] }, file)).rejects.toThrow(/Invalid .*demo\.json/);
   });
 
   it('reports a missing file', async () => {

@@ -1,4 +1,5 @@
 import { outputDurationMs, outputToSource, segLength, sourceToOutput } from './timemap';
+import { stepKey } from './narration';
 import type { StepEvent, Timeline } from './types';
 
 export interface SegmentPlan {
@@ -68,4 +69,12 @@ export function qaShots(t: Timeline, steps: StepEvent[]): Shot[] {
   });
   if (t.outro) shots.push({ frame: videoEndFrame(t) + Math.round(outroFrames(t) * 0.6), name: '99-outro' });
   return shots;
+}
+
+/** Where each step starts and ends on the composition (frames, intro included). */
+export function stepFrames(t: Timeline, steps: StepEvent[]): { where: string; startFrame: number; endFrame: number }[] {
+  const intro = introFrames(t);
+  const last = Math.max(intro, videoEndFrame(t) - 1);
+  const at = (ms: number) => Math.min(last, intro + toFrames(sourceToOutput(t.segments, ms), t.fps));
+  return steps.map((s) => ({ where: stepKey(s.sceneId, s.index), startFrame: at(s.startMs), endFrame: at(s.settledMs) }));
 }

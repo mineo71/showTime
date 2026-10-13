@@ -1,0 +1,60 @@
+import { describe, expect, it } from 'vitest';
+import { applyEdit, formatScript, parseEdit } from '../../src/studio/edit';
+
+const raw = () => ({
+  version: 1,
+  app: { url: 'http://x', mask: ['.email', '.name'] },
+  scenes: [
+    {
+      id: 'a',
+      steps: [
+        { do: 'click', target: '#a', show: { caption: 'Hi' } },
+        { do: 'pause', ms: 500 },
+      ],
+    },
+  ],
+});
+
+describe('applyEdit', () => {
+  it('sets and removes show fields on a step, without touching the input', () => {
+    const before = raw();
+    const set = applyEdit(before, { where: 'a#1', show: { caption: 'New', say: 'Hello there.' } });
+    expect(set.scenes[0].steps[0].show).toEqual({ caption: 'New', say: 'Hello there.' });
+    expect(before.scenes[0].steps[0].show).toEqual({ caption: 'Hi' });
+    const cleared = applyEdit(before, { where: 'a#1', show: { caption: null } });
+    expect(cleared.scenes[0].steps[0]).toEqual({ do: 'click', target: '#a' });
+    expect(applyEdit(before, { where: 'a#2', show: { spotlight: true } }).scenes[0].steps[1].show).toEqual({ spotlight: true });
+  });
+
+  it('edits the look and the cards, removing emptied sections', () => {
+    const styled = applyEdit(raw(), { style: { accent: '#ef4444', chrome: 'none' } });
+    expect(styled.style).toEqual({ accent: '#ef4444', chrome: 'none' });
+    expect(applyEdit(styled, { style: { accent: null, chrome: null } }).style).toBeUndefined();
+    expect(applyEdit(raw(), { meta: { title: 'Acme', subtitle: 'Reports' } }).meta).toEqual({ title: 'Acme', subtitle: 'Reports' });
+  });
+
+  it('refuses steps that do not exist', () => {
+    expect(() => applyEdit(raw(), { where: 'zz#1', show: { caption: 'x' } })).toThrow(/No step zz#1/);
+    expect(() => applyEdit(raw(), { where: 'a#9', show: { caption: 'x' } })).toThrow(/No step a#9/);
+  });
+});
+
+describe('parseEdit', () => {
+  it('accepts only the editable fields', () => {
+    expect(parseEdit({ where: 'a#1', show: { zoom: false, speed: 2, hold: null } })).toEqual({ where: 'a#1', show: { zoom: false, speed: 2, hold: null } });
+    expect(() => parseEdit({ where: 'a#1', show: { target: '#b' } })).toThrow(/Invalid edit/);
+    expect(() => parseEdit({ style: { maxZoom: 'big' } })).toThrow(/Invalid edit/);
+    expect(() => parseEdit({ meta: { logo: '/etc/passwd' } })).toThrow(/Invalid edit/);
+    expect(() => parseEdit({ app: { url: 'http://evil' } })).toThrow(/Invalid edit/);
+  });
+});
+
+describe('formatScript', () => {
+  it('writes one step per line, short lists inline, and round-trips', () => {
+    const text = formatScript(raw());
+    expect(text).toContain('\n        { "do": "click", "target": "#a", "show": { "caption": "Hi" } },\n');
+    expect(text).toContain('"mask": [".email", ".name"]');
+    expect(text.endsWith('}\n')).toBe(true);
+    expect(JSON.parse(text)).toEqual(raw());
+  });
+});

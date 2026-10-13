@@ -27,6 +27,13 @@ export async function loadScript(file: string): Promise<LoadedScript> {
   } catch (err) {
     throw new ScriptError(`Invalid JSON in ${scriptPath}: ${(err as Error).message}`);
   }
+  return parseLoaded(raw, scriptPath);
+}
+
+/** Validate a script's JSON as if it were read from `file`: brand file, relative paths, checks. */
+export async function parseLoaded(json: unknown, file: string): Promise<LoadedScript> {
+  const scriptPath = path.resolve(file);
+  let raw = structuredClone(json);
   const dir = path.dirname(scriptPath);
   const config = findConfig(dir);
   if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
