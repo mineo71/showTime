@@ -1,0 +1,44 @@
+{
+  "$schema": "../../docs/script.schema.json",
+  "version": 1,
+  "meta": { "title": "Fennel", "subtitle": "An invoice, sent in twenty seconds" },
+  "app": {
+    "url": "http://127.0.0.1:4800/fennel/",
+    "viewport": { "width": 1440, "height": 900 },
+    "mask": [".email"]
+  },
+  "style": {
+    "background": "radial-gradient(1300px 820px at 100% 100%, rgba(74, 222, 128, 0.42) 0%, rgba(74, 222, 128, 0) 58%), radial-gradient(1100px 760px at 0% 0%, rgba(34, 197, 94, 0.32) 0%, rgba(34, 197, 94, 0) 60%), linear-gradient(135deg, #06180e 0%, #0d2f1c 55%, #134028 100%)",
+    "accent": "#22c55e",
+    "address": "app.fennel.example/overview"
+  },
+  "scenes": [
+    {
+      "id": "overview",
+      "steps": [
+        { "do": "hover", "target": ".bar[data-m='Oct']", "show": { "caption": "Your studio at a glance", "hold": 900 } }
+      ]
+    },
+    {
+      "id": "invoice",
+      "steps": [
+        { "do": "click", "target": "#new-invoice", "show": { "caption": "A new invoice in one click" } },
+        { "do": "type", "target": "#client", "text": "Harb", "show": { "caption": "Clients autocomplete" } },
+        { "do": "click", "target": "#menu >> text=Harbor Coffee Roasters" },
+        { "do": "select", "target": "#terms", "value": "net14" },
+        { "do": "type", "target": "#item-0-desc", "text": "Brand identity refresh" },
+        { "do": "type", "target": "#item-0-rate", "text": "4800" },
+        { "do": "click", "target": ".pill[data-desc='Packaging design']", "show": { "caption": "Reuse past work in one click" } },
+        { "do": "hover", "target": ".summary", "show": { "spotlight": true, "caption": "Tax and totals, always right", "hold": 1400 } },
+        { "do": "click", "target": "#send", "show": { "caption": "Send it. Get paid faster." } },
+        { "do": "wait", "for": "text=Invoice sent" }
+      ]
+    },
+    {
+      "id": "tracked",
+      "steps": [
+        { "do": "scroll", "target": "#row-INV-2048", "show": { "spotlight": true, "caption": "Tracked until it’s paid", "hold": 2200 } }
+      ]
+    }
+  ]
+}

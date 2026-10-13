@@ -1,0 +1,1346 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "version": {
+      "type": "number",
+      "const": 1
+    },
+    "meta": {
+      "default": {},
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "subtitle": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "app": {
+      "type": "object",
+      "properties": {
+        "url": {
+          "type": "string",
+          "minLength": 1
+        },
+        "viewport": {
+          "default": {
+            "width": 1440,
+            "height": 900
+          },
+          "type": "object",
+          "properties": {
+            "width": {
+              "type": "integer",
+              "minimum": 320,
+              "maximum": 3840
+            },
+            "height": {
+              "type": "integer",
+              "minimum": 240,
+              "maximum": 2160
+            }
+          },
+          "required": [
+            "width",
+            "height"
+          ],
+          "additionalProperties": false
+        },
+        "deviceScaleFactor": {
+          "default": 2,
+          "type": "number",
+          "minimum": 1,
+          "maximum": 3
+        },
+        "storageState": {
+          "type": "string"
+        },
+        "colorScheme": {
+          "type": "string",
+          "enum": [
+            "light",
+            "dark"
+          ]
+        },
+        "locale": {
+          "type": "string"
+        },
+        "timezoneId": {
+          "type": "string"
+        },
+        "mask": {
+          "default": [],
+          "description": "CSS selectors (not Playwright selectors) of elements to blur in the recording",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "required": [
+        "url"
+      ],
+      "additionalProperties": false
+    },
+    "setup": {
+      "default": [],
+      "type": "array",
+      "items": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "do": {
+                "type": "string",
+                "const": "goto"
+              },
+              "url": {
+                "type": "string",
+                "minLength": 1
+              },
+              "show": {
+                "type": "object",
+                "properties": {
+                  "zoom": {
+                    "description": "Zoom depth for this step, or false to disable auto-zoom",
+                    "anyOf": [
+                      {
+                        "type": "number",
+                        "minimum": 1,
+                        "maximum": 4
+                      },
+                      {
+                        "type": "boolean",
+                        "const": false
+                      }
+                    ]
+                  },
+                  "caption": {
+                    "description": "Caption shown while this step plays",
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "spotlight": {
+                    "description": "Dim everything except the target",
+                    "type": "boolean"
+                  },
+                  "hold": {
+                    "description": "Extra real-time ms after the step",
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 30000
+                  },
+                  "speed": {
+                    "description": "Playback speed for this step",
+                    "type": "number",
+                    "minimum": 0.25,
+                    "maximum": 16
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "do",
+              "url"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "do": {
+                "type": "string",
+                "const": "click"
+              },
+              "target": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Playwright selector, e.g. role=button[name='Save'], text=Save, #id, [data-testid=x], CSS"
+              },
+              "show": {
+                "type": "object",
+                "properties": {
+                  "zoom": {
+                    "description": "Zoom depth for this step, or false to disable auto-zoom",
+                    "anyOf": [
+                      {
+                        "type": "number",
+                        "minimum": 1,
+                        "maximum": 4
+                      },
+                      {
+                        "type": "boolean",
+                        "const": false
+                      }
+                    ]
+                  },
+                  "caption": {
+                    "description": "Caption shown while this step plays",
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "spotlight": {
+                    "description": "Dim everything except the target",
+                    "type": "boolean"
+                  },
+                  "hold": {
+                    "description": "Extra real-time ms after the step",
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 30000
+                  },
+                  "speed": {
+                    "description": "Playback speed for this step",
+                    "type": "number",
+                    "minimum": 0.25,
+                    "maximum": 16
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "do",
+              "target"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "do": {
+                "type": "string",
+                "const": "type"
+              },
+              "target": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Playwright selector, e.g. role=button[name='Save'], text=Save, #id, [data-testid=x], CSS"
+              },
+              "text": {
+                "type": "string"
+              },
+              "pace": {
+                "default": "human",
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "enum": [
+                      "human",
+                      "fast"
+                    ]
+                  },
+                  {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 1000
+                  }
+                ]
+              },
+              "clear": {
+                "default": false,
+                "type": "boolean"
+              },
+              "show": {
+                "type": "object",
+                "properties": {
+                  "zoom": {
+                    "description": "Zoom depth for this step, or false to disable auto-zoom",
+                    "anyOf": [
+                      {
+                        "type": "number",
+                        "minimum": 1,
+                        "maximum": 4
+                      },
+                      {
+                        "type": "boolean",
+                        "const": false
+                      }
+                    ]
+                  },
+                  "caption": {
+                    "description": "Caption shown while this step plays",
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "spotlight": {
+                    "description": "Dim everything except the target",
+                    "type": "boolean"
+                  },
+                  "hold": {
+                    "description": "Extra real-time ms after the step",
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 30000
+                  },
+                  "speed": {
+                    "description": "Playback speed for this step",
+                    "type": "number",
+                    "minimum": 0.25,
+                    "maximum": 16
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "do",
+              "target",
+              "text"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "do": {
+                "type": "string",
+                "const": "press"
+              },
+              "key": {
+                "type": "string",
+                "minLength": 1
+              },
+              "show": {
+                "type": "object",
+                "properties": {
+                  "zoom": {
+                    "description": "Zoom depth for this step, or false to disable auto-zoom",
+                    "anyOf": [
+                      {
+                        "type": "number",
+                        "minimum": 1,
+                        "maximum": 4
+                      },
+                      {
+                        "type": "boolean",
+                        "const": false
+                      }
+                    ]
+                  },
+                  "caption": {
+                    "description": "Caption shown while this step plays",
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "spotlight": {
+                    "description": "Dim everything except the target",
+                    "type": "boolean"
+                  },
+                  "hold": {
+                    "description": "Extra real-time ms after the step",
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 30000
+                  },
+                  "speed": {
+                    "description": "Playback speed for this step",
+                    "type": "number",
+                    "minimum": 0.25,
+                    "maximum": 16
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "do",
+              "key"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "do": {
+                "type": "string",
+                "const": "hover"
+              },
+              "target": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Playwright selector, e.g. role=button[name='Save'], text=Save, #id, [data-testid=x], CSS"
+              },
+              "show": {
+                "type": "object",
+                "properties": {
+                  "zoom": {
+                    "description": "Zoom depth for this step, or false to disable auto-zoom",
+                    "anyOf": [
+                      {
+                        "type": "number",
+                        "minimum": 1,
+                        "maximum": 4
+                      },
+                      {
+                        "type": "boolean",
+                        "const": false
+                      }
+                    ]
+                  },
+                  "caption": {
+                    "description": "Caption shown while this step plays",
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "spotlight": {
+                    "description": "Dim everything except the target",
+                    "type": "boolean"
+                  },
+                  "hold": {
+                    "description": "Extra real-time ms after the step",
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 30000
+                  },
+                  "speed": {
+                    "description": "Playback speed for this step",
+                    "type": "number",
+                    "minimum": 0.25,
+                    "maximum": 16
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "do",
+              "target"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "do": {
+                "type": "string",
+                "const": "select"
+              },
+              "target": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Playwright selector, e.g. role=button[name='Save'], text=Save, #id, [data-testid=x], CSS"
+              },
+              "value": {
+                "type": "string"
+              },
+              "show": {
+                "type": "object",
+                "properties": {
+                  "zoom": {
+                    "description": "Zoom depth for this step, or false to disable auto-zoom",
+                    "anyOf": [
+                      {
+                        "type": "number",
+                        "minimum": 1,
+                        "maximum": 4
+                      },
+                      {
+                        "type": "boolean",
+                        "const": false
+                      }
+                    ]
+                  },
+                  "caption": {
+                    "description": "Caption shown while this step plays",
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "spotlight": {
+                    "description": "Dim everything except the target",
+                    "type": "boolean"
+                  },
+                  "hold": {
+                    "description": "Extra real-time ms after the step",
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 30000
+                  },
+                  "speed": {
+                    "description": "Playback speed for this step",
+                    "type": "number",
+                    "minimum": 0.25,
+                    "maximum": 16
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "do",
+              "target",
+              "value"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "do": {
+                "type": "string",
+                "const": "scroll"
+              },
+              "target": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Playwright selector, e.g. role=button[name='Save'], text=Save, #id, [data-testid=x], CSS"
+              },
+              "by": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "show": {
+                "type": "object",
+                "properties": {
+                  "zoom": {
+                    "description": "Zoom depth for this step, or false to disable auto-zoom",
+                    "anyOf": [
+                      {
+                        "type": "number",
+                        "minimum": 1,
+                        "maximum": 4
+                      },
+                      {
+                        "type": "boolean",
+                        "const": false
+                      }
+                    ]
+                  },
+                  "caption": {
+                    "description": "Caption shown while this step plays",
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "spotlight": {
+                    "description": "Dim everything except the target",
+                    "type": "boolean"
+                  },
+                  "hold": {
+                    "description": "Extra real-time ms after the step",
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 30000
+                  },
+                  "speed": {
+                    "description": "Playback speed for this step",
+                    "type": "number",
+                    "minimum": 0.25,
+                    "maximum": 16
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "do"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "do": {
+                "type": "string",
+                "const": "wait"
+              },
+              "for": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Playwright selector, e.g. role=button[name='Save'], text=Save, #id, [data-testid=x], CSS"
+              },
+              "ms": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 60000
+              },
+              "show": {
+                "type": "object",
+                "properties": {
+                  "zoom": {
+                    "description": "Zoom depth for this step, or false to disable auto-zoom",
+                    "anyOf": [
+                      {
+                        "type": "number",
+                        "minimum": 1,
+                        "maximum": 4
+                      },
+                      {
+                        "type": "boolean",
+                        "const": false
+                      }
+                    ]
+                  },
+                  "caption": {
+                    "description": "Caption shown while this step plays",
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "spotlight": {
+                    "description": "Dim everything except the target",
+                    "type": "boolean"
+                  },
+                  "hold": {
+                    "description": "Extra real-time ms after the step",
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 30000
+                  },
+                  "speed": {
+                    "description": "Playback speed for this step",
+                    "type": "number",
+                    "minimum": 0.25,
+                    "maximum": 16
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "do"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "do": {
+                "type": "string",
+                "const": "pause"
+              },
+              "ms": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 60000
+              },
+              "show": {
+                "type": "object",
+                "properties": {
+                  "zoom": {
+                    "description": "Zoom depth for this step, or false to disable auto-zoom",
+                    "anyOf": [
+                      {
+                        "type": "number",
+                        "minimum": 1,
+                        "maximum": 4
+                      },
+                      {
+                        "type": "boolean",
+                        "const": false
+                      }
+                    ]
+                  },
+                  "caption": {
+                    "description": "Caption shown while this step plays",
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "spotlight": {
+                    "description": "Dim everything except the target",
+                    "type": "boolean"
+                  },
+                  "hold": {
+                    "description": "Extra real-time ms after the step",
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 30000
+                  },
+                  "speed": {
+                    "description": "Playback speed for this step",
+                    "type": "number",
+                    "minimum": 0.25,
+                    "maximum": 16
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "do",
+              "ms"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      }
+    },
+    "style": {
+      "default": {},
+      "type": "object",
+      "properties": {
+        "background": {
+          "default": "linear-gradient(135deg, #0f172a 0%, #312e81 100%)",
+          "type": "string"
+        },
+        "padding": {
+          "default": 0.06,
+          "type": "number",
+          "minimum": 0,
+          "maximum": 0.3
+        },
+        "radius": {
+          "default": 14,
+          "type": "number",
+          "minimum": 0,
+          "maximum": 64
+        },
+        "shadow": {
+          "default": true,
+          "type": "boolean"
+        },
+        "font": {
+          "default": "Inter, -apple-system, \"Segoe UI\", system-ui, sans-serif",
+          "type": "string"
+        },
+        "accent": {
+          "default": "#6366f1",
+          "type": "string"
+        },
+        "autoZoom": {
+          "default": true,
+          "type": "boolean"
+        },
+        "autoSpeed": {
+          "default": true,
+          "type": "boolean"
+        },
+        "maxZoom": {
+          "default": 1.8,
+          "type": "number",
+          "minimum": 1,
+          "maximum": 4
+        },
+        "chrome": {
+          "default": "browser",
+          "description": "Frame the recording in a browser window with an address bar, or show the bare viewport",
+          "type": "string",
+          "enum": [
+            "browser",
+            "none"
+          ]
+        },
+        "address": {
+          "description": "Address-bar text; defaults to the app URL without its scheme",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "scenes": {
+      "minItems": 1,
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]+$"
+          },
+          "steps": {
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "oneOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "do": {
+                      "type": "string",
+                      "const": "goto"
+                    },
+                    "url": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "show": {
+                      "type": "object",
+                      "properties": {
+                        "zoom": {
+                          "description": "Zoom depth for this step, or false to disable auto-zoom",
+                          "anyOf": [
+                            {
+                              "type": "number",
+                              "minimum": 1,
+                              "maximum": 4
+                            },
+                            {
+                              "type": "boolean",
+                              "const": false
+                            }
+                          ]
+                        },
+                        "caption": {
+                          "description": "Caption shown while this step plays",
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "spotlight": {
+                          "description": "Dim everything except the target",
+                          "type": "boolean"
+                        },
+                        "hold": {
+                          "description": "Extra real-time ms after the step",
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 30000
+                        },
+                        "speed": {
+                          "description": "Playback speed for this step",
+                          "type": "number",
+                          "minimum": 0.25,
+                          "maximum": 16
+                        }
+                      },
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "do",
+                    "url"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "do": {
+                      "type": "string",
+                      "const": "click"
+                    },
+                    "target": {
+                      "type": "string",
+                      "minLength": 1,
+                      "description": "Playwright selector, e.g. role=button[name='Save'], text=Save, #id, [data-testid=x], CSS"
+                    },
+                    "show": {
+                      "type": "object",
+                      "properties": {
+                        "zoom": {
+                          "description": "Zoom depth for this step, or false to disable auto-zoom",
+                          "anyOf": [
+                            {
+                              "type": "number",
+                              "minimum": 1,
+                              "maximum": 4
+                            },
+                            {
+                              "type": "boolean",
+                              "const": false
+                            }
+                          ]
+                        },
+                        "caption": {
+                          "description": "Caption shown while this step plays",
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "spotlight": {
+                          "description": "Dim everything except the target",
+                          "type": "boolean"
+                        },
+                        "hold": {
+                          "description": "Extra real-time ms after the step",
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 30000
+                        },
+                        "speed": {
+                          "description": "Playback speed for this step",
+                          "type": "number",
+                          "minimum": 0.25,
+                          "maximum": 16
+                        }
+                      },
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "do",
+                    "target"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "do": {
+                      "type": "string",
+                      "const": "type"
+                    },
+                    "target": {
+                      "type": "string",
+                      "minLength": 1,
+                      "description": "Playwright selector, e.g. role=button[name='Save'], text=Save, #id, [data-testid=x], CSS"
+                    },
+                    "text": {
+                      "type": "string"
+                    },
+                    "pace": {
+                      "default": "human",
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "enum": [
+                            "human",
+                            "fast"
+                          ]
+                        },
+                        {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 1000
+                        }
+                      ]
+                    },
+                    "clear": {
+                      "default": false,
+                      "type": "boolean"
+                    },
+                    "show": {
+                      "type": "object",
+                      "properties": {
+                        "zoom": {
+                          "description": "Zoom depth for this step, or false to disable auto-zoom",
+                          "anyOf": [
+                            {
+                              "type": "number",
+                              "minimum": 1,
+                              "maximum": 4
+                            },
+                            {
+                              "type": "boolean",
+                              "const": false
+                            }
+                          ]
+                        },
+                        "caption": {
+                          "description": "Caption shown while this step plays",
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "spotlight": {
+                          "description": "Dim everything except the target",
+                          "type": "boolean"
+                        },
+                        "hold": {
+                          "description": "Extra real-time ms after the step",
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 30000
+                        },
+                        "speed": {
+                          "description": "Playback speed for this step",
+                          "type": "number",
+                          "minimum": 0.25,
+                          "maximum": 16
+                        }
+                      },
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "do",
+                    "target",
+                    "text"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "do": {
+                      "type": "string",
+                      "const": "press"
+                    },
+                    "key": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "show": {
+                      "type": "object",
+                      "properties": {
+                        "zoom": {
+                          "description": "Zoom depth for this step, or false to disable auto-zoom",
+                          "anyOf": [
+                            {
+                              "type": "number",
+                              "minimum": 1,
+                              "maximum": 4
+                            },
+                            {
+                              "type": "boolean",
+                              "const": false
+                            }
+                          ]
+                        },
+                        "caption": {
+                          "description": "Caption shown while this step plays",
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "spotlight": {
+                          "description": "Dim everything except the target",
+                          "type": "boolean"
+                        },
+                        "hold": {
+                          "description": "Extra real-time ms after the step",
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 30000
+                        },
+                        "speed": {
+                          "description": "Playback speed for this step",
+                          "type": "number",
+                          "minimum": 0.25,
+                          "maximum": 16
+                        }
+                      },
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "do",
+                    "key"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "do": {
+                      "type": "string",
+                      "const": "hover"
+                    },
+                    "target": {
+                      "type": "string",
+                      "minLength": 1,
+                      "description": "Playwright selector, e.g. role=button[name='Save'], text=Save, #id, [data-testid=x], CSS"
+                    },
+                    "show": {
+                      "type": "object",
+                      "properties": {
+                        "zoom": {
+                          "description": "Zoom depth for this step, or false to disable auto-zoom",
+                          "anyOf": [
+                            {
+                              "type": "number",
+                              "minimum": 1,
+                              "maximum": 4
+                            },
+                            {
+                              "type": "boolean",
+                              "const": false
+                            }
+                          ]
+                        },
+                        "caption": {
+                          "description": "Caption shown while this step plays",
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "spotlight": {
+                          "description": "Dim everything except the target",
+                          "type": "boolean"
+                        },
+                        "hold": {
+                          "description": "Extra real-time ms after the step",
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 30000
+                        },
+                        "speed": {
+                          "description": "Playback speed for this step",
+                          "type": "number",
+                          "minimum": 0.25,
+                          "maximum": 16
+                        }
+                      },
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "do",
+                    "target"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "do": {
+                      "type": "string",
+                      "const": "select"
+                    },
+                    "target": {
+                      "type": "string",
+                      "minLength": 1,
+                      "description": "Playwright selector, e.g. role=button[name='Save'], text=Save, #id, [data-testid=x], CSS"
+                    },
+                    "value": {
+                      "type": "string"
+                    },
+                    "show": {
+                      "type": "object",
+                      "properties": {
+                        "zoom": {
+                          "description": "Zoom depth for this step, or false to disable auto-zoom",
+                          "anyOf": [
+                            {
+                              "type": "number",
+                              "minimum": 1,
+                              "maximum": 4
+                            },
+                            {
+                              "type": "boolean",
+                              "const": false
+                            }
+                          ]
+                        },
+                        "caption": {
+                          "description": "Caption shown while this step plays",
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "spotlight": {
+                          "description": "Dim everything except the target",
+                          "type": "boolean"
+                        },
+                        "hold": {
+                          "description": "Extra real-time ms after the step",
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 30000
+                        },
+                        "speed": {
+                          "description": "Playback speed for this step",
+                          "type": "number",
+                          "minimum": 0.25,
+                          "maximum": 16
+                        }
+                      },
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "do",
+                    "target",
+                    "value"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "do": {
+                      "type": "string",
+                      "const": "scroll"
+                    },
+                    "target": {
+                      "type": "string",
+                      "minLength": 1,
+                      "description": "Playwright selector, e.g. role=button[name='Save'], text=Save, #id, [data-testid=x], CSS"
+                    },
+                    "by": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "show": {
+                      "type": "object",
+                      "properties": {
+                        "zoom": {
+                          "description": "Zoom depth for this step, or false to disable auto-zoom",
+                          "anyOf": [
+                            {
+                              "type": "number",
+                              "minimum": 1,
+                              "maximum": 4
+                            },
+                            {
+                              "type": "boolean",
+                              "const": false
+                            }
+                          ]
+                        },
+                        "caption": {
+                          "description": "Caption shown while this step plays",
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "spotlight": {
+                          "description": "Dim everything except the target",
+                          "type": "boolean"
+                        },
+                        "hold": {
+                          "description": "Extra real-time ms after the step",
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 30000
+                        },
+                        "speed": {
+                          "description": "Playback speed for this step",
+                          "type": "number",
+                          "minimum": 0.25,
+                          "maximum": 16
+                        }
+                      },
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "do"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "do": {
+                      "type": "string",
+                      "const": "wait"
+                    },
+                    "for": {
+                      "type": "string",
+                      "minLength": 1,
+                      "description": "Playwright selector, e.g. role=button[name='Save'], text=Save, #id, [data-testid=x], CSS"
+                    },
+                    "ms": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 60000
+                    },
+                    "show": {
+                      "type": "object",
+                      "properties": {
+                        "zoom": {
+                          "description": "Zoom depth for this step, or false to disable auto-zoom",
+                          "anyOf": [
+                            {
+                              "type": "number",
+                              "minimum": 1,
+                              "maximum": 4
+                            },
+                            {
+                              "type": "boolean",
+                              "const": false
+                            }
+                          ]
+                        },
+                        "caption": {
+                          "description": "Caption shown while this step plays",
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "spotlight": {
+                          "description": "Dim everything except the target",
+                          "type": "boolean"
+                        },
+                        "hold": {
+                          "description": "Extra real-time ms after the step",
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 30000
+                        },
+                        "speed": {
+                          "description": "Playback speed for this step",
+                          "type": "number",
+                          "minimum": 0.25,
+                          "maximum": 16
+                        }
+                      },
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "do"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "do": {
+                      "type": "string",
+                      "const": "pause"
+                    },
+                    "ms": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 60000
+                    },
+                    "show": {
+                      "type": "object",
+                      "properties": {
+                        "zoom": {
+                          "description": "Zoom depth for this step, or false to disable auto-zoom",
+                          "anyOf": [
+                            {
+                              "type": "number",
+                              "minimum": 1,
+                              "maximum": 4
+                            },
+                            {
+                              "type": "boolean",
+                              "const": false
+                            }
+                          ]
+                        },
+                        "caption": {
+                          "description": "Caption shown while this step plays",
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "spotlight": {
+                          "description": "Dim everything except the target",
+                          "type": "boolean"
+                        },
+                        "hold": {
+                          "description": "Extra real-time ms after the step",
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 30000
+                        },
+                        "speed": {
+                          "description": "Playback speed for this step",
+                          "type": "number",
+                          "minimum": 0.25,
+                          "maximum": 16
+                        }
+                      },
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "do",
+                    "ms"
+                  ],
+                  "additionalProperties": false
+                }
+              ]
+            }
+          }
+        },
+        "required": [
+          "id",
+          "steps"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "version",
+    "app",
+    "scenes"
+  ],
+  "additionalProperties": false
+}

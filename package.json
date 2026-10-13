@@ -1,7 +1,29 @@
 {
   "name": "showtime",
   "version": "0.1.0",
-  "description": "AI-directed product demo videos: JSON script in, polished MP4 out",
+  "description": "Product demos, directed by AI: Claude writes a JSON script, showTime records your web app and renders a polished MP4",
+  "keywords": [
+    "demo",
+    "product-demo",
+    "screencast",
+    "screen-recording",
+    "video",
+    "playwright",
+    "remotion",
+    "claude-code",
+    "ai",
+    "agent"
+  ],
+  "license": "MIT",
+  "author": "Oleh Rylskyj",
+  "homepage": "https://github.com/mineo71/showTime#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mineo71/showTime.git"
+  },
+  "bugs": {
+    "url": "https://github.com/mineo71/showTime/issues"
+  },
   "private": true,
   "type": "module",
   "bin": {
@@ -16,6 +38,9 @@
     "test:int": "vitest run test/integration",
     "typecheck": "tsc --noEmit",
     "fixture": "tsx test/helpers/serve.ts",
+    "example": "node scripts/serve.mjs examples 4800",
+    "media": "tsx scripts/media.ts",
+    "schema:write": "node bin/showtime.mjs schema > docs/script.schema.json",
     "install-skill": "node scripts/install-skill.mjs"
   },
   "dependencies": {

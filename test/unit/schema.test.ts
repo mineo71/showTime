@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { parseScript, ScriptError, scriptJsonSchema } from '../../src/script/schema';
 
@@ -18,6 +19,14 @@ describe('parseScript', () => {
     expect(s.meta).toEqual({});
     expect(s.style).toMatchObject({ autoZoom: true, autoSpeed: true, maxZoom: 1.8, padding: 0.06, radius: 14, shadow: true });
     expect(s.style.background).toContain('gradient');
+    expect(s.style.chrome).toBe('browser');
+    expect(s.style.address).toBeUndefined();
+  });
+
+  it('accepts a window chrome choice and an address-bar override', () => {
+    const s = parseScript({ ...minimal, style: { chrome: 'none', address: 'acme.app/reports' } });
+    expect(s.style).toMatchObject({ chrome: 'none', address: 'acme.app/reports' });
+    expect(() => parseScript({ ...minimal, style: { chrome: 'safari' } })).toThrow(/style\.chrome/);
   });
 
   it('defaults type pace to human and keeps Unicode text', () => {
@@ -58,5 +67,12 @@ describe('scriptJsonSchema', () => {
     expect(js.type).toBe('object');
     expect(js.properties.scenes).toBeDefined();
     expect(js.properties.style).toBeDefined();
+  });
+});
+
+describe('docs/script.schema.json', () => {
+  it('matches the schema the CLI prints (run `npm run schema:write` after changing the format)', () => {
+    const shipped = JSON.parse(readFileSync(new URL('../../docs/script.schema.json', import.meta.url), 'utf8'));
+    expect(shipped).toEqual(scriptJsonSchema());
   });
 });
