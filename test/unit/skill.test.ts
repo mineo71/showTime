@@ -18,4 +18,15 @@ describe('skill/SKILL.md', () => {
     expect(json).toBeDefined();
     expect(() => parseScript(JSON.parse(json!))).not.toThrow();
   });
+
+  it('tells Claude to run long commands with a long timeout or in the background', async () => {
+    const text = await readFile(SKILL, 'utf8');
+    expect(text).toMatch(/timeout: 600000/);
+    expect(text).toMatch(/run_in_background/);
+  });
+
+  it('warns that check performs every action for real', async () => {
+    const text = await readFile(SKILL, 'utf8');
+    expect(text).toMatch(/performs every action for real/);
+  });
 });

@@ -31,6 +31,20 @@ spotlights, captions, speed-ups, intro card).
 
 `showtime make <script>` runs check → record → render in one go.
 
+## Long-running commands
+
+`record` runs in real time and then encodes; `render`, `frames` and `make` bundle and render with
+Remotion. They routinely take longer than the default 2-minute Bash timeout. Run them with
+`timeout: 600000`, or with `run_in_background: true` and wait for the completion notification.
+Never let a `record` be killed halfway: it replaces the previous take.
+
+## Side effects
+
+`check` performs every action for real (it is a full run, just fast), and `record` repeats them.
+Flows that create data ("New project", sign-up, checkout) can collide on the second run
+("name already exists"). Use a resettable demo account or seed data, make names unique, or undo
+the change in `setup`; after a green `check`, reset the data before `record`.
+
 ## Example
 
 ```json
@@ -70,7 +84,8 @@ spotlights, captions, speed-ups, intro card).
 - **`style`:** `background` (any CSS background), `padding`, `radius`, `shadow`, `font`, `accent`,
   `autoZoom`, `autoSpeed`, `maxZoom`.
 - **`app`:** `url`, `viewport`, `deviceScaleFactor`, `storageState` (Playwright storage-state JSON,
-  path relative to the script), `colorScheme`, `locale`, `timezoneId`, `mask` (CSS selectors to blur).
+  path relative to the script), `colorScheme`, `locale`, `timezoneId`, `mask` (CSS selectors to blur —
+  plain CSS only, not `text=` / `role=`).
 - Output lands next to the script; working files in `.showtime/<script-name>/`.
 
 ## Direction tips

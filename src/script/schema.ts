@@ -76,7 +76,10 @@ export const AppSchema = z
     colorScheme: z.enum(['light', 'dark']).optional(),
     locale: z.string().optional(),
     timezoneId: z.string().optional(),
-    mask: z.array(z.string().min(1)).default([]),
+    mask: z
+      .array(z.string().min(1))
+      .default([])
+      .describe('CSS selectors (not Playwright selectors) of elements to blur in the recording'),
   })
   .strict();
 

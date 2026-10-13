@@ -47,6 +47,10 @@
         <div>Preview: <span id="echo"></span></div>
         <div><button class="secondary dup">Share</button> <button class="secondary dup">Share</button></div>
       </div>
+      <div class="card" style="margin-top: 24px">
+        <div>Recent reports</div>
+        <div id="side" style="height: 120px; overflow: auto; display: grid; gap: 6px; margin-top: 8px"></div>
+      </div>
       <div id="status" style="margin-top: 24px"></div>
       <div class="far card"><button id="export">Export CSV</button></div>
     </main>
@@ -84,6 +88,10 @@
           $('#status').replaceChildren(card);
         }, 2000);
       };
+      for (let i = 1; i <= 30; i++) {
+        const item = Object.assign(document.createElement('button'), { className: 'secondary', id: `item-${i}`, textContent: `Report #${i}` });
+        $('#side').append(item);
+      }
       $('#export').onclick = () => { $('#export').textContent = 'Exported ✓'; };
     </script>
   </body>

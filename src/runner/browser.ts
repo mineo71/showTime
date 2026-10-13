@@ -1,5 +1,5 @@
 import { chromium, type Browser, type BrowserContext, type Page } from 'playwright';
-import type { Script } from '../script/schema';
+import { ScriptError, type Script } from '../script/schema';
 import type { Pt } from '../timeline/types';
 import { EventLog } from './events';
 import { runStep, STEP_TIMEOUT_MS, type StepContext } from './steps';
@@ -48,7 +48,8 @@ export function trackNetwork(page: Page): NetworkTracker {
  * with whatever helpers the transpiler injected (tsx adds `__name(...)`), which are undefined in the page.
  */
 export function maskScript(selectors: string[]): string {
-  const css = JSON.stringify(`${selectors.join(',\n')} { filter: blur(10px) !important; }`);
+  // One rule per selector: an invalid selector only drops its own rule.
+  const css = JSON.stringify(selectors.map((s) => `${s} { filter: blur(10px) !important; }`).join('\n'));
   return `(() => {
   const css = ${css};
   const add = () => {
@@ -80,6 +81,24 @@ export async function openSession(script: Script, opts: { headed?: boolean } = {
     if (app.mask.length) await context.addInitScript({ content: maskScript(app.mask) });
     const page = await context.newPage();
     page.setDefaultTimeout(STEP_TIMEOUT_MS);
+    const invalid = await page.evaluate(
+      (selectors) =>
+        selectors.map((s) => {
+          try {
+            document.querySelector(s);
+            return false;
+          } catch {
+            return true;
+          }
+        }),
+      app.mask,
+    );
+    const bad = invalid.indexOf(true);
+    if (bad >= 0) {
+      throw new ScriptError(
+        `app.mask[${bad}] "${app.mask[bad]}" is not a valid CSS selector — masks take CSS selectors (.email, #card), not Playwright ones like text= or role=`,
+      );
+    }
     return { browser, context, page, net: trackNetwork(page), close: () => browser.close() };
   } catch (err) {
     await browser.close();

@@ -77,8 +77,15 @@ async function perform(ctx: StepContext, step: Step, where: StepWhere): Promise<
     case 'type': {
       const r = await resolve(ctx, step.target, false);
       target = r.box;
-      const point = centre(r.box);
+      let point = centre(r.box);
       await travel(ctx, point, r.cursor);
+      // The page may have shifted during travel (late layout, animation): follow the element.
+      const now = await r.loc.boundingBox();
+      if (now && (Math.abs(now.x - target.x) > 2 || Math.abs(now.y - target.y) > 2)) {
+        target = now;
+        point = centre(now);
+        await travel(ctx, point, r.cursor);
+      }
       actionMs = log.now();
       if (step.do !== 'hover') log.clicks.push({ tMs: actionMs, ...point });
       if (step.do === 'click') await r.loc.click({ timeout: STEP_TIMEOUT_MS });
@@ -115,11 +122,18 @@ async function perform(ctx: StepContext, step: Step, where: StepWhere): Promise<
 async function resolve(ctx: StepContext, selector: string, forceScroll: boolean) {
   const loc = ctx.page.locator(selector);
   await loc.waitFor({ state: 'visible', timeout: STEP_TIMEOUT_MS });
-  const inView = await loc.evaluate((el) => {
-    const r = el.getBoundingClientRect();
-    return r.top >= 0 && r.left >= 0 && r.bottom <= window.innerHeight && r.right <= window.innerWidth;
-  });
-  if (forceScroll || !inView) {
+  // Visible fraction within the viewport, clipped by scrollable ancestors (a list or modal body too).
+  const visible = await loc.evaluate(
+    (el) =>
+      new Promise<number>((done) => {
+        const io = new IntersectionObserver((entries) => {
+          io.disconnect();
+          done(entries[0].intersectionRatio);
+        });
+        io.observe(el);
+      }),
+  );
+  if (forceScroll || visible < 0.99) {
     const smooth = ctx.mode === 'record';
     await loc.evaluate(
       (el, s) => el.scrollIntoView({ behavior: (s ? 'smooth' : 'instant') as ScrollBehavior, block: 'center', inline: 'nearest' }),
