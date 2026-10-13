@@ -26,16 +26,25 @@ export function linkSkill(agents: Agent[], home = homedir(), source = SKILL_DIR)
   });
 }
 
-/** Download the Chromium build this copy of Playwright drives, and Remotion's headless shell. */
-export async function installBrowsers(): Promise<void> {
+/**
+ * Download the Chromium build this copy of Playwright drives, and Remotion's headless shell.
+ * `quiet` sends their progress output to stderr, keeping stdout clean for --json.
+ */
+export async function installBrowsers(opts: { quiet?: boolean } = {}): Promise<void> {
   // Our own Playwright CLI: a bare `npx playwright` may resolve another version with another Chromium.
   const require = createRequire(import.meta.url);
   const cli = path.join(path.dirname(require.resolve('playwright/package.json')), 'cli.js');
   await new Promise<void>((resolve, reject) => {
-    const child = spawn(process.execPath, [cli, 'install', 'chromium'], { stdio: 'inherit' });
+    const child = spawn(process.execPath, [cli, 'install', 'chromium'], { stdio: ['ignore', opts.quiet ? 2 : 'inherit', 'inherit'] });
     child.on('error', reject);
     child.on('exit', (code) => (code === 0 ? resolve() : reject(new Error(`playwright install chromium exited with code ${code}`))));
   });
   const { ensureBrowser } = await import('@remotion/renderer');
-  await ensureBrowser();
+  const log = console.log;
+  if (opts.quiet) console.log = console.error;
+  try {
+    await ensureBrowser();
+  } finally {
+    console.log = log;
+  }
 }

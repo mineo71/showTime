@@ -19,9 +19,15 @@ function canonical(value: unknown): string {
   return JSON.stringify(value);
 }
 
+/** `app` without fields that sit at their defaults, so adding a field never invalidates older takes. */
+function appOf(app: Script['app']): Record<string, unknown> {
+  const { mock, dialogs, ...rest } = app;
+  return { ...rest, ...(mock.length ? { mock } : {}), ...(dialogs !== 'accept' ? { dialogs } : {}) };
+}
+
 export function actionHash(script: Script): string {
   const payload = {
-    app: script.app,
+    app: appOf(script.app),
     setup: script.setup.map(actionsOf),
     scenes: script.scenes.map((s) => ({ id: s.id, steps: s.steps.map(actionsOf) })),
   };

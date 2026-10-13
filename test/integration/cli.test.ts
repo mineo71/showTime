@@ -1,6 +1,6 @@
 import { execFile } from 'node:child_process';
 import { existsSync } from 'node:fs';
-import { mkdtemp, writeFile } from 'node:fs/promises';
+import { lstat, mkdtemp, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -12,9 +12,9 @@ import { FIXTURES, serveDir } from '../helpers/serve';
 const exec = promisify(execFile);
 const BIN = fileURLToPath(new URL('../../bin/showtime.mjs', import.meta.url));
 
-async function cli(args: string[], cwd = tmpdir()) {
+async function cli(args: string[], cwd = tmpdir(), env: NodeJS.ProcessEnv = process.env) {
   try {
-    const r = await exec(process.execPath, [BIN, ...args], { cwd, maxBuffer: 50_000_000 });
+    const r = await exec(process.execPath, [BIN, ...args], { cwd, env, maxBuffer: 50_000_000 });
     return { code: 0, stdout: r.stdout, stderr: r.stderr };
   } catch (err) {
     const e = err as { code?: number; stdout?: string; stderr?: string };
@@ -62,5 +62,57 @@ describe('showtime CLI', () => {
     expect(r.code, r.stderr).toBe(0);
     expect(r.stdout).toContain('check passed');
     expect(existsSync(path.join(loaded.dir, 'demo.mp4'))).toBe(true);
+  });
+
+  it('lint --json reports script issues and exits 1 on a warning, without needing a take', async () => {
+    const loaded = await fixtureScript(server.url, (raw) => {
+      raw.scenes[0].steps[0].show.caption = 'Create a brand new report in just one click';
+    });
+    const r = await cli(['lint', loaded.scriptPath, '--json']);
+    expect(r.code).toBe(1);
+    const out = JSON.parse(r.stdout);
+    expect(out.timing).toBe(false);
+    expect(out.issues).toContainEqual(expect.objectContaining({ rule: 'caption-length', where: 'report#1', level: 'warn' }));
+  });
+
+  it('speaks JSON on every command: make, frames, render, lint with timing', async () => {
+    const loaded = await fixtureScript(server.url);
+    const made = await cli(['make', loaded.scriptPath, '--json']);
+    expect(made.code, made.stderr).toBe(0);
+    const m = JSON.parse(made.stdout);
+    expect(m.check.ok).toBe(true);
+    expect(m.take).toMatchObject({ steps: 8 });
+    expect(m.take.durationMs).toBeGreaterThan(5000);
+    expect(m.video.video).toBe(path.join(loaded.dir, 'demo.mp4'));
+    expect(m.video.durationMs).toBeGreaterThan(m.take.durationMs / 3);
+
+    const frames = JSON.parse((await cli(['frames', loaded.scriptPath, '--json'])).stdout);
+    expect(existsSync(frames.sheet)).toBe(true);
+    expect(frames.frames).toHaveLength(9);
+
+    const rendered = JSON.parse((await cli(['render', loaded.scriptPath, '--json', '-o', path.join(loaded.dir, 'again.mp4')])).stdout);
+    expect(rendered.video).toBe(path.join(loaded.dir, 'again.mp4'));
+
+    const lint = await cli(['lint', loaded.scriptPath, '--json']);
+    expect(JSON.parse(lint.stdout).timing).toBe(true);
+  });
+
+  it('record --json describes the take', async () => {
+    const loaded = await fixtureScript(server.url, (raw) => {
+      raw.scenes = [{ id: 'a', steps: [{ do: 'click', target: '#new-report' }] }];
+    });
+    const r = await cli(['record', loaded.scriptPath, '--json']);
+    expect(r.code, r.stderr).toBe(0);
+    expect(JSON.parse(r.stdout)).toMatchObject({ take: path.join(loaded.dir, '.showtime', 'demo', 'take'), steps: 1 });
+  });
+
+  it('setup --json --no-browsers links the skill for both agents under HOME', async () => {
+    const home = await mkdtemp(path.join(tmpdir(), 'showtime-home-'));
+    const r = await cli(['setup', '--json', '--no-browsers'], tmpdir(), { ...process.env, HOME: home });
+    expect(r.code, r.stderr).toBe(0);
+    const out = JSON.parse(r.stdout);
+    expect(out.browsers).toBe(false);
+    expect(out.links).toEqual([path.join(home, '.claude/skills/showtime'), path.join(home, '.agents/skills/showtime')]);
+    expect((await lstat(out.links[0])).isSymbolicLink()).toBe(true);
   });
 });
