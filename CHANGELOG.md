@@ -1,5 +1,19 @@
 # Changelog
 
+## Unreleased
+
+- Narration: `show.say` on any step is spoken by a TTS engine (`audio.voice`: the macOS/Linux
+  system voice, OpenAI, ElevenLabs or any command). The video holds the frame until a line ends.
+  Lines are cached; editing them needs no new take.
+- `audio.music`: a looped music bed that ducks under the voice. `audio.sounds`: click and
+  keystroke sounds (takes now log keystrokes; older takes spread them over each `type` step).
+- Subtitles from the narration: an `.srt` next to the video, or burned in (`audio.subtitles`).
+- `--aspect 9:16 | 1:1` on `render`, `make` and `frames`: cropped cuts with a camera that follows
+  the action, from the same take. Stills of a crop go to `frames-9x16/` or `frames-1x1/`.
+- `--format gif | webp` (or an `-o` with that extension) and `--width`; `--no-audio`.
+- `render --json` adds `subtitles`; the brand file accepts `audio`.
+- `lint`: `narration-stretch` flags lines that hold the frame for long.
+
 ## 0.3.0 — 2026-10-13
 
 - `showtime frames` also renders a contact sheet (`frames/sheet.png`) of every step.

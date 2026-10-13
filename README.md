@@ -8,7 +8,8 @@
 
 Your AI agent (Claude Code or Codex) writes a short JSON script. showTime clicks through your web app, films it and edits it
 the way a motion designer would (auto-zoom, a smooth cursor, click ripples, spotlights, captions,
-sped-up loading) and hands you a polished 1080p MP4.<br />
+sped-up loading, narration) and hands you a polished video: a 1080p MP4, a 9:16 cut for social or
+a GIF for your README.<br />
 No timeline editor. No re-take when a caption changes.
 
 [![tests](https://img.shields.io/github/actions/workflow/status/mineo71/showTime/ci.yml?branch=main&style=flat-square&label=tests)](https://github.com/mineo71/showTime/actions/workflows/ci.yml)
@@ -26,7 +27,7 @@ No timeline editor. No re-take when a caption changes.
 <div align="center">
   <a href="docs/media/demo.mp4"><img src="docs/media/hero.webp" width="860" alt="A demo of a fictional invoicing app, filmed and edited by showTime: the camera zooms on a chart, a cursor fills in a new invoice, a spotlight lands on the total, and the sent invoice appears in the table" /></a>
   <br />
-  <sub>Made by <a href="examples/fennel/demo.json">a 39-line script</a>, a <a href="examples/fennel/showtime.config.json">brand file</a> and one command, with no manual editing. <a href="docs/media/demo.mp4">▶ Full-quality MP4</a></sub>
+  <sub>Made by <a href="examples/fennel/demo.json">a 39-line script</a>, a <a href="examples/fennel/showtime.config.json">brand file</a> and one command, with no manual editing. <a href="docs/media/demo.mp4">▶ Full-quality MP4, with sound</a></sub>
 </div>
 
 ---
@@ -126,6 +127,27 @@ again.
   </tr>
   <tr>
     <td valign="top">
+<pre lang="json">
+"show": { "say": "Send it before lunch." }
+
+"audio": {
+  "voice": { "engine": "openai", "name": "nova" },
+  "music": { "file": "bed.mp3" },
+  "sounds": true,
+  "subtitles": "burn"
+}
+</pre>
+      <b>🎙️ Narration, music and clicks</b><br />
+      <sub>Give a step a line and a voice reads it: the built-in voice of macOS or Linux, OpenAI, ElevenLabs or any TTS command. The video holds the frame until the line ends, music ducks under the voice, and subtitles come as an <code>.srt</code> or burned in.</sub>
+    </td>
+    <td valign="top">
+      <img src="docs/media/formats.jpg" alt="The same moment in 16:9, 9:16 and 1:1" /><br />
+      <b>📱 Every format from one take</b><br />
+      <sub><code>--aspect 9:16</code> or <code>1:1</code> crops the window and a follow camera keeps the action in view. <code>--format gif</code> or <code>webp</code> for READMEs and docs. Nothing is re-recorded.</sub>
+    </td>
+  </tr>
+  <tr>
+    <td valign="top">
       <img src="docs/media/outro.jpg" alt="Outro card with logo, title and URL" /><br />
       <b>📣 Ends on your call to action</b><br />
       <sub>An outro card with your logo, a headline and the URL to visit. Put it in a brand file once and every demo ends the same way.</sub>
@@ -206,16 +228,19 @@ flowchart LR
   R --> E["events.json<br/>targets · clicks · idle"]
   S --> T["timeline.json<br/>camera · cursor · captions · speed"]
   E --> T
+  T --> A["mix.wav<br/>voice · music · clicks"]
   T --> M["Remotion"]
+  A --> M
   V --> M
-  M --> O["demo.mp4"]
+  M --> O["demo.mp4 · 9:16 · GIF"]
 ```
 
 The core idea is to **separate capture from direction**. `record` drives a real Chromium through
 the script and writes two things: a clean video with no cursor, and an event log of where every
 target was, when each click landed and when the page sat idle. A pure function,
 `buildTimeline(script, events)`, turns that log into speed segments, camera keyframes, cursor
-paths, captions and spotlights. Remotion renders the result frame by frame.
+paths, captions and spotlights, and holds the frame wherever a narration line needs more time.
+The soundtrack is mixed from the same timeline, and Remotion renders the result frame by frame.
 
 So presentation is cheap to change and recording stays honest: the app really is clicked, typed
 into and waited on, and everything cinematic is computed afterwards.
@@ -279,6 +304,7 @@ Targets are Playwright selectors: `role=button[name='Save']`, `text=Save`, `#id`
 | `spotlight` | boolean        | dim everything except the target |
 | `hold`      | ms             | extra real time after the step (changes the take) |
 | `speed`     | 0.25–16        | playback speed for this step |
+| `say`       | string         | narration spoken from the start of the step; the next narrated step waits for it |
 
 </details>
 
@@ -320,6 +346,36 @@ Targets are Playwright selectors: `role=button[name='Save']`, `text=Save`, `#id`
 </details>
 
 <details>
+<summary><b>Sound</b> (<code>audio</code>)</summary>
+
+```json
+"audio": {
+  "voice": { "engine": "system", "name": "Samantha", "speed": 1 },
+  "music": { "file": "music/bed.mp3", "volume": 0.25 },
+  "sounds": true,
+  "subtitles": "file"
+}
+```
+
+| field                | default    | |
+|----------------------|------------|-|
+| `voice.engine`       | `system`   | `system` (macOS `say`, Linux `espeak-ng`), `openai`, `elevenlabs`, or `command` |
+| `voice.name`         | engine default | voice name (`system`, `openai`), or voice id (`elevenlabs`, required) |
+| `voice.speed`        | `1`        | 0.5–2 |
+| `voice.model`        | engine default | `gpt-4o-mini-tts` (OpenAI), `eleven_multilingual_v2` (ElevenLabs) |
+| `voice.instructions` | none       | OpenAI only: how to speak ("warm, confident") |
+| `voice.command`      | none       | `command` only: reads the text on stdin, writes audio to `{out}` (e.g. Piper) |
+| `music`              | none       | `{ file, volume? }`: a bed under the whole video, looped and ducked under the voice |
+| `sounds`             | `false`    | click and keystroke sounds |
+| `subtitles`          | `file`     | `file`: an `.srt` next to the video; `burn`: also on the video (captions move up); `off` |
+
+`openai` and `elevenlabs` read `OPENAI_API_KEY` / `ELEVENLABS_API_KEY` from the environment
+(`OPENAI_BASE_URL` points at any OpenAI-compatible server). Each line is synthesized once and
+cached; edits to `say` or `audio` only need `render`.
+
+</details>
+
+<details>
 <summary><b>Cards</b> (<code>meta</code>)</summary>
 
 | field      | |
@@ -350,8 +406,8 @@ command in the script's folder (120 s timeout); `request` is an HTTP call that m
 <details>
 <summary><b>Brand file</b> (<code>showtime.config.json</code>)</summary>
 
-Put it next to your scripts or in any folder above them; the nearest one applies. Its `style` and
-`meta` are defaults, and a script's own fields win key by key.
+Put it next to your scripts or in any folder above them; the nearest one applies. Its `style`,
+`meta` and `audio` are defaults, and a script's own fields win key by key.
 
 ```json
 {
@@ -367,16 +423,17 @@ Put it next to your scripts or in any folder above them; the nearest one applies
 | command | what it does |
 |---|---|
 | `showtime setup [--agent claude\|codex\|all] [--no-browsers]` | download the browsers, link the skill |
-| `showtime make <script> [-o out.mp4]` | check → record → render |
+| `showtime make <script> [render options]` | check → record → render |
 | `showtime check <script> [--json] [--headed]` | rehearse; a screenshot per step; the first failure with an ARIA snapshot |
 | `showtime record <script> [--headed] [--keep-frames]` | record a take into `.showtime/<name>/take` |
-| `showtime render <script> [-o out.mp4]` | render from the last take, without re-recording |
-| `showtime frames <script>` | QA stills (intro, one per step, outro) and a contact sheet of them |
+| `showtime render <script> [-o out] [--aspect 16:9\|9:16\|1:1] [--format mp4\|gif\|webp] [--width px] [--no-audio]` | render from the last take, without re-recording |
+| `showtime frames <script> [--aspect …]` | QA stills (intro, one per step, outro) and a contact sheet of them |
 | `showtime lint <script>` | warnings about captions, pauses and length; timing checks need a take |
 | `showtime schema` | print the script's JSON Schema |
 
 Every command takes `--json` and then prints exactly one JSON document. The video lands next to
-the script (`demo/pitch.json` → `demo/pitch.mp4`). Working files live in
+the script (`demo/pitch.json` → `demo/pitch.mp4`, `demo/pitch-9x16.mp4`, `demo/pitch.gif`), with
+`demo/pitch.srt` when it is narrated. Working files live in
 `.showtime/<name>/`, which is worth adding to your `.gitignore`.
 
 ## Tips for a great demo
@@ -390,14 +447,19 @@ the script (`demo/pitch.json` → `demo/pitch.mp4`). Working files live in
   for anything personal, and `hooks` to reset the data between `check` and `record`.
 - **Pin the world.** Mock slow or random APIs with `app.mock` and pin the date with `app.clock`,
   so every take looks the same.
+- **Narrate the why, not the clicks.** One short sentence per moment. If `showtime lint` says a
+  line holds the frame for seconds, shorten it or give the step more to show.
 
 ## FAQ
 
 **Which apps does it work with?** Any web app Chromium can open: a localhost dev server, staging
 or production. Logged-in flows work through `app.storageState`.
 
-**Does showTime call an AI model?** No. showTime is deterministic and needs no API keys. The AI
-part (writing, fixing and reviewing the script) happens in your agent, guided by the skill.
+**Does showTime call an AI model?** Not for directing: the AI part (writing, fixing and reviewing
+the script) happens in your agent, guided by the skill. Narration is text-to-speech. The built-in
+voice of macOS or Linux needs no key and nothing leaves your machine; with `openai` or
+`elevenlabs`, only the narration text is sent to that provider, with your key from the
+environment.
 
 **Why not just screen-record?** You can, once. A screen recording can't be re-edited when the copy
 changes, the cursor is wherever your hand was, and the spinner plays at full length. With
@@ -408,8 +470,9 @@ needs Playwright and ffmpeg. Windows is untested.
 
 ## Roadmap
 
-- 🎙️ Narration: text-to-speech per scene, with steps stretched to fit the audio, and burnt-in subtitles.
-- 📱 Vertical 9:16 and square 1:1 cuts with a follow-cam, from the same take.
+- 🧑‍🎨 `showtime studio`: a local page with a live player and a timeline to drag captions, zooms and
+  speed, saving back to the JSON.
+- 🎥 `showtime record-human <url>`: click through the app yourself and get a script back.
 - 🎞️ Deterministic frame-by-frame capture in virtual time, for a perfect 60 fps.
 - 🧩 An MCP server for Claude Desktop, and a desktop studio for timeline tweaks.
 - 📲 Mobile (iOS Simulator) and desktop-app drivers that produce the same `events.json`.

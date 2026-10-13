@@ -6,6 +6,13 @@
   },
   "meta": {
     "logo": "logo.svg",
-    "outro": { "title": "Try Fennel free", "subtitle": "Invoicing for small studios", "url": "fennel.example" }
+    "outro": {
+      "title": "Try Fennel free",
+      "subtitle": "Invoicing for small studios",
+      "url": "fennel.example"
+    }
+  },
+  "audio": {
+    "sounds": true
   }
 }

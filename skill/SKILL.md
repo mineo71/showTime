@@ -1,13 +1,14 @@
 ---
 name: showtime
-description: Use when the user wants a product demo video, walkthrough, screencast or feature recording of a web app (for a pitch, talk, README or social post). Write a showTime JSON script, rehearse it, record it and render a polished MP4 with auto-zoom, smooth cursor, captions and sped-up loading via the `showtime` CLI.
+description: Use when the user wants a product demo video, walkthrough, screencast or feature recording of a web app (for a pitch, talk, README or social post). Write a showTime JSON script, rehearse it, record it and render a polished MP4 (or a 9:16 cut, GIF or WebP) with auto-zoom, smooth cursor, captions, narration and sped-up loading via the `showtime` CLI.
 ---
 
 # showTime — scripted demo videos
 
 `showtime` turns a JSON script into a polished 1080p MP4. You are the director: you write the
 script; the CLI clicks through the app, records it and edits it (zoom, cursor, ripples,
-spotlights, captions, speed-ups, intro card).
+spotlights, captions, speed-ups, intro card, narration, music, subtitles). One take renders as
+16:9, 9:16 or 1:1, as MP4, GIF or WebP.
 
 ## Setup
 
@@ -36,12 +37,14 @@ showtime setup    # downloads the browsers it records with
 5. **Lint:** `showtime lint demo/pitch.json` and fix every warning (long captions, pauses that
    should be waits, zoom or spotlight on steps without a target).
 6. **Record:** `showtime record demo/pitch.json` (runs in real time).
-7. **Render:** `showtime render demo/pitch.json` → `demo/pitch.mp4`.
+7. **Render:** `showtime render demo/pitch.json` → `demo/pitch.mp4`. For social posts add
+   `--aspect 9:16` (→ `demo/pitch-9x16.mp4`); for a README or docs `--format gif` or `--format webp`
+   (`--width` sets the size). Each is a render of the same take, never a new recording.
 8. **QA:** `showtime frames demo/pitch.json`, then Read the contact sheet it prints first
    (`sheet.png`: every step in one image); open single stills only to look closer. Check that zoom
    lands on the right control, captions are legible, and pacing feels right. Run `showtime lint`
    again: with a take it also flags captions on screen too briefly to read.
-9. **Iterate:** edits to `show`, `style` or `meta` only need `render`. Edits to actions (`do`,
+9. **Iterate:** edits to `show` (including `say`), `style`, `meta` or `audio` only need `render`. Edits to actions (`do`,
    targets, text, `hold`, `app`) need `record` again — `render` refuses a stale take.
 
 `showtime make <script>` runs check → record → render in one go. Every command takes `--json`
@@ -54,6 +57,28 @@ Remotion. They routinely take several minutes. In Claude Code run them with `tim
 with `run_in_background: true` and wait for the completion notification. In Codex and other
 agents, give the command a timeout of at least 10 minutes.
 A `record` that fails or is stopped halfway leaves the previous take in place.
+
+## Narration and sound
+
+Give a step `"say": "…"` and a voice reads it from the start of that step. The video holds the
+frame until the line ends before the next narrated step begins, so a line may cover several quick
+steps. Write one short sentence per moment about the benefit, not the clicks. `showtime lint`
+(with a take) flags lines that hold the frame for seconds (`narration-stretch`): shorten them.
+
+```
+"audio": { "voice": { "engine": "system" }, "sounds": true, "subtitles": "burn" }
+```
+
+- `voice.engine`: `system` (macOS `say`, Linux `espeak-ng`; free and offline) is the default.
+  Use `openai` or `elevenlabs` only when the user asks for a better voice and the key is in the
+  environment (`OPENAI_API_KEY` / `ELEVENLABS_API_KEY`); never write keys into the script. Those
+  engines send the narration text to the provider. `command` runs any TTS that reads stdin and
+  writes `{out}`.
+- `music: { file, volume? }` adds a looped bed that ducks under the voice; only use files the user
+  provides.
+- `subtitles`: `file` (default) writes `<video>.srt`; `burn` also draws them (good for 9:16, which
+  is often watched muted); `off`.
+- `--no-audio` renders without the soundtrack.
 
 ## Side effects
 
@@ -105,7 +130,10 @@ ask the user for one rather than guessing.
   `press {key}` · `hover {target}` · `select {target, value}` · `scroll {target} | {by}` ·
   `wait {for} | {ms}` · `pause {ms}`
 - **`show` (per step):** `zoom` (number, or `false`), `caption`, `spotlight`, `hold` (ms, real time),
-  `speed`.
+  `speed`, `say` (narration).
+- **`audio`:** `voice` (`{ engine: system | openai | elevenlabs | command, name?, speed?, model?,
+  instructions?, command? }`), `music` (`{ file, volume? }`), `sounds` (clicks and keystrokes),
+  `subtitles` (`file` | `burn` | `off`).
 - **`style`:** `background` (any CSS background), `chrome` (`browser` window frame | `none`), `address`
   (address-bar text), `padding`, `radius`, `shadow`, `font`, `accent`, `autoZoom`, `autoSpeed`, `maxZoom`.
 - **`app`:** `url`, `viewport`, `deviceScaleFactor`, `storageState` (Playwright storage-state JSON,
@@ -116,8 +144,10 @@ ask the user for one rather than guessing.
 - **`meta`:** `title`, `subtitle` (intro card), `logo` (SVG/PNG/JPEG/WebP), `outro`
   (`{ title, subtitle?, url? }`, closing card).
 - **`hooks`:** `before` / `after` lists of `{ run }` or `{ request }`.
-- **Brand file:** `showtime.config.json` in the script's folder or above holds default `style` and
-  `meta` (logo, outro) for every script; the script's own fields win.
+- **Brand file:** `showtime.config.json` in the script's folder or above holds default `style`,
+  `meta` (logo, outro) and `audio` for every script; the script's own fields win.
+- **Render options** (`render`, `make`): `-o <file>`, `--aspect 16:9|9:16|1:1`,
+  `--format mp4|gif|webp`, `--width <px>`, `--no-audio`. `frames --aspect` reviews a crop.
 - Output lands next to the script; working files in `.showtime/<script-name>/`.
 
 ## Direction tips
@@ -134,3 +164,5 @@ ask the user for one rather than guessing.
 - End pitch demos with `meta.outro`: the product name and the URL to visit. Put brand colours, logo
   and outro in `showtime.config.json` when a project has several demos.
 - Keep the default 1440×900 viewport at `deviceScaleFactor` 2 for crisp 16:9 zooms.
+- For a 9:16 cut, review it with `showtime frames <script> --aspect 9:16`: the camera follows each
+  target, so check that every step's target is the thing worth showing.

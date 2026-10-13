@@ -1,9 +1,11 @@
 // Rebuilds the README media in docs/media from the Fennel example take.
 //
-//   npm run example                              # terminal 1: serves examples/ on :4800
-//   showtime make examples/fennel/demo.json      # terminal 2: record + render
-//   showtime frames examples/fennel/demo.json    #             QA stills
-//   npm run media                                #             → docs/media
+//   npm run example                                       # terminal 1: serves examples/ on :4800
+//   showtime make examples/fennel/demo.json               # terminal 2: record + render
+//   showtime frames examples/fennel/demo.json             #             QA stills
+//   showtime frames examples/fennel/demo.json --aspect 9:16
+//   showtime frames examples/fennel/demo.json --aspect 1:1
+//   npm run media                                         #             → docs/media
 import { copyFileSync, existsSync, mkdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -30,6 +32,8 @@ const STILLS: Record<string, { shot: string; crop: Crop }> = {
   outro: { shot: '99-outro', crop: 'centre' },
 };
 const MARGIN = 48;
+/** The formats image: this shot in 16:9, 9:16 and 1:1, side by side. */
+const FORMATS_SHOT = '03-invoice-2-type';
 /** The before/after pair: the raw take and the render at the same source moment. */
 const COMPARE = '01-overview-1-hover';
 
@@ -66,6 +70,15 @@ async function main() {
 
   for (const [name, { shot, crop }] of Object.entries(STILLS)) await jpeg(need(path.join(frames, `${shot}.png`)), `${name}.jpg`, crops[crop]);
   await jpeg(need(path.join(frames, 'sheet.png')), 'sheet.jpg');
+
+  const cut = (dir: string) => need(path.join(work, dir, `${FORMATS_SHOT}.png`));
+  const tile = (i: number) => `[${i}]scale=-2:640:flags=lanczos,pad=iw+40:ih:20:0:color=0x0b1120[t${i}]`;
+  await run('ffmpeg', [
+    '-v', 'error', '-y',
+    '-i', cut('frames'), '-i', cut('frames-9x16'), '-i', cut('frames-1x1'),
+    '-filter_complex', `${tile(0)};${tile(1)};${tile(2)};[t0][t1][t2]hstack=inputs=3,pad=iw+40:ih+40:20:20:color=0x0b1120,scale=1280:-2:flags=lanczos`,
+    '-q:v', '3', path.join(out, 'formats.jpg'),
+  ]);
 
   const shot = qaShots(timeline, events.steps).find((s) => s.name === COMPARE);
   if (!shot) throw new Error(`No QA shot named ${COMPARE}`);

@@ -5,7 +5,7 @@ import { ensureVoices, type VoiceClip } from './audio/tts';
 import { ANIMATION_WIDTH, defaultOutput, formatOf, toGif, toWebp, type Format } from './convert';
 import { probeVideo } from './ffmpeg';
 import { logoDataUri } from './logo';
-import { workPaths } from './paths';
+import { stillsFor, workPaths } from './paths';
 import { renderStills, renderVideo } from './render/render';
 import { contactSheet } from './sheet';
 import type { LoadedScript } from './script/load';
@@ -99,12 +99,13 @@ export async function renderDemo(loaded: LoadedScript, opts: RenderOptions = {})
 export async function renderQaFrames(loaded: LoadedScript, opts: TimelineOptions = {}): Promise<{ sheet: string; frames: string[] }> {
   const { timeline, events } = await timelineFor(loaded, opts);
   const paths = workPaths(loaded);
-  await rm(paths.stills, { recursive: true, force: true });
-  await mkdir(paths.stills, { recursive: true });
-  const frames = await renderStills(timeline, paths.root, paths.stills, qaShots(timeline, events.steps));
+  const stills = stillsFor(paths, timeline.aspect);
+  await rm(stills.dir, { recursive: true, force: true });
+  await mkdir(stills.dir, { recursive: true });
+  const frames = await renderStills(timeline, paths.root, stills.dir, qaShots(timeline, events.steps));
   const sheet = await contactSheet(
     frames.map((file) => ({ file, label: path.basename(file, '.png') })),
-    paths.sheet,
+    stills.sheet,
   );
   return { sheet, frames };
 }

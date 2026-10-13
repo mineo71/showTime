@@ -2,7 +2,7 @@ import { mkdir, mkdtemp, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { workPaths } from '../../src/paths';
+import { stillsFor, workPaths } from '../../src/paths';
 import { loadScript } from '../../src/script/load';
 
 const base = { version: 1, app: { url: 'http://x' }, scenes: [{ id: 'a', steps: [{ do: 'click', target: 'text=Go' }] }] };
@@ -158,5 +158,15 @@ describe('workPaths', () => {
     expect(p.raw).toBe(join(dir, '.showtime', 'demo', 'take', 'raw.mp4'));
     expect(p.events).toBe(join(dir, '.showtime', 'demo', 'take', 'events.json'));
     expect(p.video).toBe(join(dir, 'demo.mp4'));
+  });
+
+  it('keeps the stills of each cropped format in their own folder', async () => {
+    const { dir, file } = await scriptIn(JSON.stringify(base));
+    const p = workPaths(await loadScript(file));
+    expect(stillsFor(p, '16:9')).toEqual({ dir: p.stills, sheet: p.sheet });
+    expect(stillsFor(p, '9:16')).toEqual({
+      dir: join(dir, '.showtime', 'demo', 'frames-9x16'),
+      sheet: join(dir, '.showtime', 'demo', 'frames-9x16', 'sheet.png'),
+    });
   });
 });

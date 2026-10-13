@@ -114,7 +114,9 @@ describe('render', () => {
     const out = path.join(loaded.dir, 'demo-9x16.mp4');
     const { video } = await renderDemo(current, { aspect: '9:16', out, audio: false });
     expect(await probeVideo(video)).toMatchObject({ width: 1080, height: 1920 });
-    const { frames: files } = await renderQaFrames(current, { aspect: '9:16' });
+    const { frames: files, sheet } = await renderQaFrames(current, { aspect: '9:16' });
+    expect(path.dirname(sheet)).toBe(path.join(workPaths(loaded).root, 'frames-9x16'));
+    expect(existsSync(path.join(workPaths(loaded).stills, '00-intro.png'))).toBe(true); // 16:9 stills stay
     const png = await readFile(files[1]);
     expect([png.readUInt32BE(16), png.readUInt32BE(20)]).toEqual([1080, 1920]);
   });

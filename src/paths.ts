@@ -1,5 +1,6 @@
 import path from 'node:path';
 import type { LoadedScript } from './script/load';
+import type { Aspect } from './timeline/types';
 
 export interface WorkPaths {
   root: string;
@@ -38,4 +39,11 @@ export function workPaths(loaded: LoadedScript): WorkPaths {
     mix: path.join(root, 'audio', 'mix.wav'),
     video: path.join(loaded.dir, `${loaded.name}.mp4`),
   };
+}
+
+/** QA stills of one format: `frames/` for 16:9, `frames-9x16/` and `frames-1x1/` for the crops. */
+export function stillsFor(paths: WorkPaths, aspect: Aspect): { dir: string; sheet: string } {
+  if (aspect === '16:9') return { dir: paths.stills, sheet: paths.sheet };
+  const dir = `${paths.stills}-${aspect.replace(':', 'x')}`;
+  return { dir, sheet: path.join(dir, 'sheet.png') };
 }
