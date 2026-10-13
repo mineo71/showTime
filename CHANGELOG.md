@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.3.0 — 2026-10-13
 
 - `showtime frames` also renders a contact sheet (`frames/sheet.png`) of every step.
 - `showtime lint`: long captions, pauses that should be waits, zoom/spotlight that cannot apply,
