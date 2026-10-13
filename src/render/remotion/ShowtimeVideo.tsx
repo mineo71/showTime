@@ -1,5 +1,5 @@
 import type { FC } from 'react';
-import { AbsoluteFill, Easing, Freeze, interpolate, OffthreadVideo, Sequence, staticFile, useCurrentFrame } from 'remotion';
+import { AbsoluteFill, Easing, Freeze, Html5Audio, interpolate, OffthreadVideo, Sequence, staticFile, useCurrentFrame } from 'remotion';
 import { cameraAt, cameraTransform } from '../../timeline/camera';
 import { introFrames, segmentPlan, sourceMsAtFrame, videoEndFrame } from '../../timeline/frames';
 import { BROWSER_BAR, windowLayout } from '../../timeline/layout';
@@ -8,13 +8,21 @@ import { BrowserBar } from './BrowserBar';
 import { Cursor } from './Cursor';
 import { Intro } from './Intro';
 import { Outro } from './Outro';
-import { Captions, Ripples, Spotlights } from './Overlays';
+import { Captions, Ripples, Spotlights, Subtitles } from './Overlays';
 
 export type ShowtimeVideoProps = { timeline: Timeline };
 
 const SHADOW = '0 30px 80px rgba(0, 0, 0, 0.45), 0 8px 24px rgba(0, 0, 0, 0.25)';
 
-export const ShowtimeVideo: FC<ShowtimeVideoProps> = ({ timeline: t }) => {
+/** The soundtrack plays across every frame; the picture switches between cards and the take. */
+export const ShowtimeVideo: FC<ShowtimeVideoProps> = ({ timeline: t }) => (
+  <>
+    {t.audio ? <Html5Audio src={staticFile(t.audio.src)} /> : null}
+    <Picture timeline={t} />
+  </>
+);
+
+const Picture: FC<ShowtimeVideoProps> = ({ timeline: t }) => {
   const frame = useCurrentFrame();
   const intro = introFrames(t);
   if (frame < intro) return <Intro timeline={t} frame={frame} />;
@@ -98,6 +106,7 @@ export const ShowtimeVideo: FC<ShowtimeVideoProps> = ({ timeline: t }) => {
       </div>
       <div style={{ opacity: leave }}>
         <Captions timeline={t} srcMs={src} top={win.y + Math.round(t.output.height * 0.03)} />
+        <Subtitles timeline={t} videoMs={((frame - intro) * 1000) / t.fps} bottom={Math.round(t.output.height * 0.06)} />
       </div>
     </AbsoluteFill>
   );

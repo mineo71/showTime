@@ -94,3 +94,30 @@ export const Captions: FC<LayerProps & { top: number }> = ({ timeline, srcMs, to
     </div>
   );
 };
+
+/** Burned-in narration subtitles. `videoMs` is output time from the start of the video. */
+export const Subtitles: FC<{ timeline: Timeline; videoMs: number; bottom: number }> = ({ timeline, videoMs, bottom }) => {
+  if (!timeline.subtitlesBurned) return null;
+  const c = timeline.subtitles.find((s) => videoMs >= s.startMs && videoMs < s.endMs);
+  if (!c) return null;
+  return (
+    <div style={{ position: 'absolute', left: 0, right: 0, bottom, display: 'flex', justifyContent: 'center' }}>
+      <div
+        style={{
+          maxWidth: '80%',
+          padding: '10px 24px',
+          borderRadius: 12,
+          background: 'rgba(0, 0, 0, 0.72)',
+          color: '#fff',
+          fontFamily: timeline.style.font,
+          fontSize: 34,
+          fontWeight: 500,
+          lineHeight: 1.35,
+          textAlign: 'center',
+        }}
+      >
+        {c.text}
+      </div>
+    </div>
+  );
+};

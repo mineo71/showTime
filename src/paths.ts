@@ -14,6 +14,9 @@ export interface WorkPaths {
   stills: string;
   /** contact sheet of the stills */
   sheet: string;
+  /** voice cache and the mixed soundtrack */
+  audio: string;
+  mix: string;
   video: string;
 }
 
@@ -31,6 +34,8 @@ export function workPaths(loaded: LoadedScript): WorkPaths {
     timeline: path.join(root, 'timeline.json'),
     stills: path.join(root, 'frames'),
     sheet: path.join(root, 'frames', 'sheet.png'),
+    audio: path.join(root, 'audio'),
+    mix: path.join(root, 'audio', 'mix.wav'),
     video: path.join(loaded.dir, `${loaded.name}.mp4`),
   };
 }

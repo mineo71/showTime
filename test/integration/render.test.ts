@@ -2,7 +2,7 @@ import { existsSync } from 'node:fs';
 import { readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { probeVideo } from '../../src/ffmpeg';
+import { hasAudio, probeVideo } from '../../src/ffmpeg';
 import { workPaths } from '../../src/paths';
 import { renderDemo, renderQaFrames, timelineFor } from '../../src/pipeline';
 import { record } from '../../src/runner/record';
@@ -30,8 +30,10 @@ async function editScript(mutate: (raw: any) => void): Promise<LoadedScript> {
 
 describe('render', () => {
   it('renders a 1080p MP4 whose length matches the timeline', async () => {
-    const out = await renderDemo(loaded);
+    const { video: out, subtitles } = await renderDemo(loaded);
     expect(out).toBe(workPaths(loaded).video);
+    expect(subtitles).toBeNull();
+    expect(await hasAudio(out)).toBe(false);
     const probe = await probeVideo(out);
     expect(probe).toMatchObject({ width: 1920, height: 1080 });
     const tl = JSON.parse(await readFile(workPaths(loaded).timeline, 'utf8')) as Timeline;
@@ -75,6 +77,36 @@ describe('render', () => {
     const { frames: files } = await renderQaFrames(edited);
     expect(path.basename(files.at(-1)!)).toBe('99-outro.png');
     expect(existsSync(files.at(-1)!)).toBe(true);
+  });
+
+  it('speaks narration, waits for it, mixes sounds and writes subtitles; a 0.3 take (no keys) still renders', async () => {
+    const events = JSON.parse(await readFile(workPaths(loaded).events, 'utf8'));
+    delete events.keys;
+    await writeFile(workPaths(loaded).events, JSON.stringify(events));
+    const edited = await editScript((raw) => {
+      raw.scenes[1].steps[1].show = { say: 'That is all. Thanks for watching!' };
+      raw.audio = {
+        voice: { engine: 'command', command: 'ffmpeg -v error -f lavfi -i sine=frequency=330:duration=3 -f wav -y {out}' },
+        sounds: true,
+        subtitles: 'burn',
+      };
+    });
+    const { video, subtitles } = await renderDemo(edited);
+    const tl = JSON.parse(await readFile(workPaths(loaded).timeline, 'utf8')) as Timeline;
+    expect(tl.narration).toHaveLength(1);
+    expect(tl.segments.at(-1)).toMatchObject({ speed: 0 });
+    expect(tl.sounds.some((s) => s.kind === 'key')).toBe(true);
+    expect(tl.audio).toEqual({ src: 'audio/mix.wav' });
+    expect(await hasAudio(video)).toBe(true);
+    const probe = await probeVideo(video);
+    expect(Math.abs(probe.durationMs - (totalFrames(tl) * 1000) / tl.fps)).toBeLessThan(100);
+    expect(subtitles).toBe(video.replace(/\.mp4$/, '.srt'));
+    expect(await readFile(subtitles!, 'utf8')).toMatch(/^1\n\d\d:\d\d:\d\d,\d{3} --> .*\nThat is all\./);
+  });
+
+  it('renders without a soundtrack on request', async () => {
+    const { video } = await renderDemo(await loadScript(loaded.scriptPath), { audio: false });
+    expect(await hasAudio(video)).toBe(false);
   });
 
   it('refuses a stale take after an action change', async () => {

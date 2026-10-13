@@ -52,7 +52,7 @@ describe('buildTimeline', () => {
 
   it('carries the take and defaults', () => {
     expect(t).toMatchObject({ version: 1, fps: 30, output: { width: 1920, height: 1080 }, stage: { width: 1440, height: 900 } });
-    expect(t.video).toEqual({ src: 'raw.mp4', durationMs: 12_000 });
+    expect(t.video).toEqual({ src: 'take/raw.mp4', durationMs: 12_000 });
     expect(t.intro).toEqual({ title: 'Demo', subtitle: 'Sub', durationMs: 2200 });
     expect(t.moves).toBe(events.moves);
     expect(t.clicks).toBe(events.clicks);

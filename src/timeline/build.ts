@@ -150,7 +150,7 @@ export function buildTimeline(script: Script, ev: TakeEvents, opts: BuildOptions
     fps: opts.fps ?? 30,
     output,
     stage,
-    video: { src: ev.video.file, durationMs: ev.video.durationMs },
+    video: { src: `take/${ev.video.file}`, durationMs: ev.video.durationMs },
     intro: script.meta.title ? { title: script.meta.title, subtitle: script.meta.subtitle, durationMs: INTRO_MS } : null,
     chrome:
       style.chrome === 'browser'

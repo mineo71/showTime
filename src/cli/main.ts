@@ -29,8 +29,8 @@ const takeSummary = (loaded: LoadedScript, ev: TakeEvents) => ({
 async function render(loaded: LoadedScript, o: { out?: string; json?: boolean }) {
   const { renderDemo } = await import('../pipeline');
   const { probeVideo } = await import('../ffmpeg');
-  const video = await renderDemo(loaded, { out: o.out, onProgress: progressFor(o.json) });
-  return { video, durationMs: (await probeVideo(video)).durationMs };
+  const { video, subtitles } = await renderDemo(loaded, { out: o.out, onProgress: progressFor(o.json) });
+  return { video, durationMs: (await probeVideo(video)).durationMs, subtitles };
 }
 
 const program = new Command('showtime')

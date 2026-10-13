@@ -8,7 +8,7 @@ import type { Timeline } from '../timeline/types';
 const ENTRY = fileURLToPath(new URL('./remotion/index.ts', import.meta.url));
 const COMPOSITION_ID = 'ShowtimeVideo';
 
-/** Bundle the composition with the take directory as public dir, so the raw video is staticFile('raw.mp4'). */
+/** Bundle the composition with `.showtime/<name>/` as public dir: the take is staticFile('take/raw.mp4'). */
 async function prepare(timeline: Timeline, publicDir: string) {
   const serveUrl = await bundle({ entryPoint: ENTRY, publicDir, symlinkPublicDir: true });
   const inputProps = { timeline };

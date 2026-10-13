@@ -14,6 +14,21 @@ export function run(cmd: string, args: string[]): Promise<string> {
   });
 }
 
+/** Run a command and collect its binary stdout. */
+export function runBuffer(cmd: string, args: string[]): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    const child = spawn(cmd, args, { stdio: ['ignore', 'pipe', 'pipe'] });
+    const out: Buffer[] = [];
+    let err = '';
+    child.stdout.on('data', (d: Buffer) => out.push(d));
+    child.stderr.on('data', (d) => (err += d));
+    child.on('error', reject);
+    child.on('close', (code) =>
+      code === 0 ? resolve(Buffer.concat(out)) : reject(new Error(`${cmd} exited with ${code}: ${err.trim().slice(-2000)}`)),
+    );
+  });
+}
+
 /** Run a command and stream data into its stdin; `feed` awaits back-pressure through `write`. */
 export function runWithInput(
   cmd: string,
@@ -69,4 +84,10 @@ export async function probeVideo(file: string): Promise<VideoProbe> {
   ]);
   const j = JSON.parse(out) as { streams: Array<{ width: number; height: number }>; format: { duration: string } };
   return { width: j.streams[0].width, height: j.streams[0].height, durationMs: Math.round(Number(j.format.duration) * 1000) };
+}
+
+/** Whether a media file has an audio stream. */
+export async function hasAudio(file: string): Promise<boolean> {
+  const out = await run('ffprobe', ['-v', 'error', '-select_streams', 'a', '-show_entries', 'stream=index', '-of', 'csv=p=0', file]);
+  return out.trim().length > 0;
 }
