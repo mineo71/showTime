@@ -83,7 +83,8 @@ export function lintTiming(timeline: Timeline, steps: StepEvent[]): Issue[] {
         rule: 'caption-too-short',
         level: 'warn',
         where: step ? `${step.sceneId}#${step.index + 1}` : 'script',
-        message: `"${c.text}" is on screen for ${(shown / 1000).toFixed(1)} s but needs about ${(need / 1000).toFixed(1)} s to read. Add show.hold or slow the step down.`,
+        // Round shown down and needed up, so the numbers never read as equal.
+        message: `"${c.text}" is on screen for ${(Math.floor(shown / 100) / 10).toFixed(1)} s but needs about ${(Math.ceil(need / 100) / 10).toFixed(1)} s to read. Add show.hold or slow the step down.`,
       });
     }
   }

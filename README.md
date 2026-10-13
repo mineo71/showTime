@@ -26,7 +26,7 @@ No timeline editor. No re-take when a caption changes.
 <div align="center">
   <a href="docs/media/demo.mp4"><img src="docs/media/hero.webp" width="860" alt="A demo of a fictional invoicing app, filmed and edited by showTime: the camera zooms on a chart, a cursor fills in a new invoice, a spotlight lands on the total, and the sent invoice appears in the table" /></a>
   <br />
-  <sub>Made by <a href="examples/fennel/demo.json">one 44-line script</a> and one command, with no manual editing. <a href="docs/media/demo.mp4">▶ Full-quality MP4</a></sub>
+  <sub>Made by <a href="examples/fennel/demo.json">a 39-line script</a>, a <a href="examples/fennel/showtime.config.json">brand file</a> and one command, with no manual editing. <a href="docs/media/demo.mp4">▶ Full-quality MP4</a></sub>
 </div>
 
 ---
@@ -121,7 +121,19 @@ again.
     <td valign="top">
       <img src="docs/media/intro.jpg" alt="Intro card with title and subtitle" /><br />
       <b>🎬 Intro card and window chrome</b><br />
-      <sub>Title card, a browser frame with your URL, a gradient backdrop, rounded corners and a shadow. Each of them is a <code>style</code> field.</sub>
+      <sub>Title card with your logo, a browser frame with your URL, a gradient backdrop, rounded corners and a shadow. Each of them is a <code>style</code> or <code>meta</code> field.</sub>
+    </td>
+  </tr>
+  <tr>
+    <td valign="top">
+      <img src="docs/media/outro.jpg" alt="Outro card with logo, title and URL" /><br />
+      <b>📣 Ends on your call to action</b><br />
+      <sub>An outro card with your logo, a headline and the URL to visit. Put it in a brand file once and every demo ends the same way.</sub>
+    </td>
+    <td valign="top">
+      <img src="docs/media/sheet.jpg" alt="Contact sheet of every step" /><br />
+      <b>🧪 Reviews its own work</b><br />
+      <sub><code>showtime frames</code> renders a contact sheet of every step, and <code>showtime lint</code> flags captions that are too long or too brief to read. The agent fixes them before you look.</sub>
     </td>
   </tr>
 </table>
@@ -132,8 +144,16 @@ And under the hood:
   When a step fails it prints an ARIA snapshot of the page, so Claude can fix its own selectors.
 - 🔁 **Stale-take detection.** The take stores a hash of the actions. Edit a caption and `render`
   reuses the take. Edit a click and `render` tells you to `record` again.
-- 🧪 **Self-review.** `showtime frames` renders a still per step so the agent can *look* at its
-  work before you do.
+- 🧹 **Clean state for every take.** `hooks` run a reset command or call an endpoint before and
+  after each rehearsal and take, so a flow that creates data works twice in a row.
+- 🎭 **Deterministic pages.** `app.mock` answers flaky or slow APIs with canned JSON, `app.clock`
+  freezes the date, and `app.dialogs` answers `confirm()` the way the demo needs.
+- 🎨 **One brand file.** `showtime.config.json` holds your colours, logo and outro; every script
+  below it inherits them.
+- 🛟 **Safe re-takes.** A take that fails halfway leaves the last good one untouched.
+- 🤖 **JSON everywhere.** Every command takes `--json`, so agents read results instead of parsing
+  prose. Captions also move to the top on their own when the action happens at the bottom of the
+  screen.
 - 📐 **Typed scripts.** Point `"$schema"` at [`docs/script.schema.json`](docs/script.schema.json)
   for autocomplete and validation in your editor.
 - 🖥️ **Crisp at 1080p.** The app is captured at 2× device scale, so zoomed shots stay sharp.
@@ -169,7 +189,8 @@ The agent takes it from there:
 3. **Rehearses** with `showtime check` until every step passes, fixing selectors from the ARIA
    snapshot.
 4. **Records and renders** with `showtime record` and `showtime render`.
-5. **Reviews** the stills from `showtime frames`, tightens captions and pacing, and re-renders.
+5. **Reviews** the contact sheet from `showtime frames` and the warnings from `showtime lint`,
+   tightens captions and pacing, and re-renders.
 
 The skill ([`skill/SKILL.md`](skill/SKILL.md)) is a plain-Markdown
 [Agent Skill](https://agentskills.io). Any agent that can run shell commands can follow it, and so
@@ -224,8 +245,9 @@ into and waited on, and everything cinematic is computed afterwards.
 }
 ```
 
-`meta.title` adds an intro card. `setup` steps run before the camera starts (cookie banners,
-onboarding). Scenes group steps for readability and for naming the stills.
+`meta.title` adds an intro card, `meta.outro` a closing card and `meta.logo` puts your logo on
+both. `setup` steps run before the camera starts (cookie banners, onboarding). Scenes group steps
+for readability and for naming the stills.
 
 <details>
 <summary><b>Actions</b> (<code>do</code>)</summary>
@@ -291,6 +313,51 @@ Targets are Playwright selectors: `role=button[name='Save']`, `text=Save`, `#id`
 | `colorScheme`       | none       | `light` or `dark`; also picks the browser-bar theme |
 | `locale`, `timezoneId` | none    | passed to the browser context |
 | `mask`              | `[]`       | CSS selectors to blur (plain CSS, not `text=`) |
+| `mock`              | `[]`       | `[{ url, method?, status?, json? \| body?, headers?, delayMs? }]`: answer matching requests (`url` is a glob like `**/api/stats*`) |
+| `clock`             | none       | freeze `Date` at this ISO date-time; timers keep running |
+| `dialogs`           | `accept`   | answer `alert`/`confirm`/`prompt` with `accept` or `dismiss` |
+
+</details>
+
+<details>
+<summary><b>Cards</b> (<code>meta</code>)</summary>
+
+| field      | |
+|------------|-|
+| `title`, `subtitle` | intro card |
+| `logo`     | SVG, PNG, JPEG or WebP (≤ 2 MB), relative to the file that names it; shown on the intro and outro |
+| `outro`    | `{ title, subtitle?, url? }`: closing card after the video |
+
+</details>
+
+<details>
+<summary><b>Hooks</b> (<code>hooks</code>)</summary>
+
+```json
+"hooks": {
+  "before": [{ "run": "npm run db:reset" }],
+  "after": [{ "request": { "url": "http://localhost:3000/api/test/reset", "method": "POST" } }]
+}
+```
+
+`before` hooks run at the start of every `check` and `record` (so `make` resets between the
+rehearsal and the take); `after` hooks run when they end, even after a failure. `run` is a shell
+command in the script's folder (120 s timeout); `request` is an HTTP call that must answer 2xx.
+
+</details>
+
+<details>
+<summary><b>Brand file</b> (<code>showtime.config.json</code>)</summary>
+
+Put it next to your scripts or in any folder above them; the nearest one applies. Its `style` and
+`meta` are defaults, and a script's own fields win key by key.
+
+```json
+{
+  "style": { "background": "linear-gradient(135deg, #0f172a, #312e81)", "accent": "#6366f1", "address": "app.acme.com" },
+  "meta": { "logo": "brand/logo.svg", "outro": { "title": "Try Acme free", "url": "acme.com" } }
+}
+```
 
 </details>
 
@@ -303,10 +370,12 @@ Targets are Playwright selectors: `role=button[name='Save']`, `text=Save`, `#id`
 | `showtime check <script> [--json] [--headed]` | rehearse; a screenshot per step; the first failure with an ARIA snapshot |
 | `showtime record <script> [--headed] [--keep-frames]` | record a take into `.showtime/<name>/take` |
 | `showtime render <script> [-o out.mp4]` | render from the last take, without re-recording |
-| `showtime frames <script>` | QA stills: the intro plus one per step |
+| `showtime frames <script>` | QA stills (intro, one per step, outro) and a contact sheet of them |
+| `showtime lint <script>` | warnings about captions, pauses and length; timing checks need a take |
 | `showtime schema` | print the script's JSON Schema |
 
-The video lands next to the script (`demo/pitch.json` → `demo/pitch.mp4`). Working files live in
+Every command takes `--json` and then prints exactly one JSON document. The video lands next to
+the script (`demo/pitch.json` → `demo/pitch.mp4`). Working files live in
 `.showtime/<name>/`, which is worth adding to your `.gitignore`.
 
 ## Tips for a great demo
@@ -317,7 +386,9 @@ The video lands next to the script (`demo/pitch.json` → `demo/pitch.mp4`). Wor
   `spotlight` on the one number that sells it.
 - **Never `pause` for loading.** Use `wait` with a selector and auto-speed compresses the spinner.
 - **Start clean.** Use `setup` for cookie banners, `app.storageState` to skip the login, `app.mask`
-  for anything personal, and seed data you can reset between `check` and `record`.
+  for anything personal, and `hooks` to reset the data between `check` and `record`.
+- **Pin the world.** Mock slow or random APIs with `app.mock` and freeze the date with `app.clock`,
+  so every take looks the same.
 
 ## FAQ
 

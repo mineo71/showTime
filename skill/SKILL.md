@@ -33,14 +33,19 @@ showtime setup    # downloads the browsers it records with
 4. **Rehearse:** `showtime check demo/pitch.json`. On failure read the error, the ARIA snapshot it
    prints and `.showtime/<name>/check/failure.png`; fix the selector or add a `wait`, repeat until
    green.
-5. **Record:** `showtime record demo/pitch.json` (runs in real time).
-6. **Render:** `showtime render demo/pitch.json` → `demo/pitch.mp4`.
-7. **QA:** `showtime frames demo/pitch.json`, then Read the PNGs it lists. Check that zoom lands on
-   the right control, captions are legible and do not hide the action, and pacing feels right.
-8. **Iterate:** edits to `show`, `style` or `meta` only need `render`. Edits to actions (`do`,
+5. **Lint:** `showtime lint demo/pitch.json` and fix every warning (long captions, pauses that
+   should be waits, zoom or spotlight on steps without a target).
+6. **Record:** `showtime record demo/pitch.json` (runs in real time).
+7. **Render:** `showtime render demo/pitch.json` → `demo/pitch.mp4`.
+8. **QA:** `showtime frames demo/pitch.json`, then Read the contact sheet it prints first
+   (`sheet.png`: every step in one image); open single stills only to look closer. Check that zoom
+   lands on the right control, captions are legible, and pacing feels right. Run `showtime lint`
+   again: with a take it also flags captions on screen too briefly to read.
+9. **Iterate:** edits to `show`, `style` or `meta` only need `render`. Edits to actions (`do`,
    targets, text, `hold`, `app`) need `record` again — `render` refuses a stale take.
 
-`showtime make <script>` runs check → record → render in one go.
+`showtime make <script>` runs check → record → render in one go. Every command takes `--json`
+and then prints exactly one JSON document on stdout.
 
 ## Long-running commands
 
@@ -54,8 +59,16 @@ Never let a `record` be killed halfway: it replaces the previous take.
 
 `check` performs every action for real (it is a full run, just fast), and `record` repeats them.
 Flows that create data ("New project", sign-up, checkout) can collide on the second run
-("name already exists"). Use a resettable demo account or seed data, make names unique, or undo
-the change in `setup`; after a green `check`, reset the data before `record`.
+("name already exists"). Add `hooks` that reset the data: `before` hooks run at the start of every
+`check` and `record`, `after` hooks when they end.
+
+```
+"hooks": { "before": [{ "run": "npm run db:reset" }] }
+```
+
+A hook is `{ "run": "<shell command, run in the script folder>" }` or
+`{ "request": { "url": "…", "method": "POST", "json": {…} } }`. If the project has no reset command,
+ask the user for one rather than guessing.
 
 ## Example
 
@@ -97,7 +110,14 @@ the change in `setup`; after a green `check`, reset the data before `record`.
   (address-bar text), `padding`, `radius`, `shadow`, `font`, `accent`, `autoZoom`, `autoSpeed`, `maxZoom`.
 - **`app`:** `url`, `viewport`, `deviceScaleFactor`, `storageState` (Playwright storage-state JSON,
   path relative to the script), `colorScheme`, `locale`, `timezoneId`, `mask` (CSS selectors to blur —
-  plain CSS only, not `text=` / `role=`).
+  plain CSS only, not `text=` / `role=`), `mock` (`[{ url: "**/api/x*", json | body, status?,
+  method?, delayMs? }]`), `clock` (ISO date-time; freezes `Date`), `dialogs` (`accept` | `dismiss`).
+  Relative `goto` URLs resolve against `app.url`.
+- **`meta`:** `title`, `subtitle` (intro card), `logo` (SVG/PNG/JPEG/WebP), `outro`
+  (`{ title, subtitle?, url? }`, closing card).
+- **`hooks`:** `before` / `after` lists of `{ run }` or `{ request }`.
+- **Brand file:** `showtime.config.json` in the script's folder or above holds default `style` and
+  `meta` (logo, outro) for every script; the script's own fields win.
 - Output lands next to the script; working files in `.showtime/<script-name>/`.
 
 ## Direction tips
@@ -109,4 +129,8 @@ the change in `setup`; after a green `check`, reset the data before `record`.
 - Never `pause` to wait for loading — use `wait {for}`; auto-speed compresses the loader.
 - Use `setup` for cookie banners and onboarding, `app.storageState` to start logged in, `app.mask`
   to blur personal data.
+- Mock APIs that are slow, random or need real accounts (`app.mock`), and freeze the date
+  (`app.clock`) so every take shows the same numbers and timestamps.
+- End pitch demos with `meta.outro`: the product name and the URL to visit. Put brand colours, logo
+  and outro in `showtime.config.json` when a project has several demos.
 - Keep the default 1440×900 viewport at `deviceScaleFactor` 2 for crisp 16:9 zooms.

@@ -1,5 +1,22 @@
 # Changelog
 
+## Unreleased
+
+- `showtime frames` also renders a contact sheet (`frames/sheet.png`) of every step.
+- `showtime lint`: long captions, pauses that should be waits, zoom/spotlight that cannot apply,
+  and, with a take, captions too brief to read and overall length.
+- `--json` on every command.
+- `hooks.before` / `hooks.after`: shell commands or HTTP calls around every `check` and `record`,
+  so state can be reset between rehearsal and take.
+- `app.mock` (canned responses for matching requests), `app.clock` (frozen `Date`),
+  `app.dialogs` (accept or dismiss native dialogs; accepted by default).
+- Safe re-takes: a failed `record` leaves the previous take untouched (`take.tmp` keeps the failure).
+- Settling ignores event streams; relative `goto` URLs resolve against `app.url`.
+- Captions never overlap, and move to the top when the action is at the bottom of the screen.
+- `meta.outro` closing card and `meta.logo` on the intro and outro cards.
+- `showtime.config.json` brand file with default `style` and `meta` for every script below it.
+- Takes recorded with 0.2 stay valid.
+
 ## 0.2.1 — 2026-10-13
 
 - Releases are automated: `npm version patch|minor|major` dates the changelog, tags and pushes;

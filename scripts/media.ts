@@ -26,6 +26,7 @@ const STILLS: Record<string, { shot: string; crop: Crop }> = {
   spotlight: { shot: '09-invoice-8-hover', crop: 'window' },
   speed: { shot: '10-invoice-9-click', crop: 'window' },
   tracked: { shot: '12-tracked-1-scroll', crop: 'window' },
+  outro: { shot: '99-outro', crop: 'centre' },
 };
 const MARGIN = 48;
 /** The before/after pair: the raw take and the render at the same source moment. */
@@ -63,6 +64,7 @@ async function main() {
     run('ffmpeg', ['-v', 'error', '-y', '-i', src, '-vf', `${crop}scale=1280:-1:flags=lanczos`, '-q:v', '3', path.join(out, dest)]);
 
   for (const [name, { shot, crop }] of Object.entries(STILLS)) await jpeg(need(path.join(frames, `${shot}.png`)), `${name}.jpg`, crops[crop]);
+  await jpeg(need(path.join(frames, 'sheet.png')), 'sheet.jpg');
 
   const shot = qaShots(timeline, events.steps).find((s) => s.name === COMPARE);
   if (!shot) throw new Error(`No QA shot named ${COMPARE}`);
