@@ -122,20 +122,27 @@ Chromium via Playwright, headless by default (`--headed` for debugging). Context
 script's viewport, DPR, storageState, colorScheme, locale, timezone. Mask selectors get
 `filter: blur(10px)` via an init-script stylesheet.
 
-Order: launch → `goto app.url` → `setup` steps (fast, not captured) → start capture → scenes →
-final 800 ms tail → stop capture.
+Launch flags: `--force-device-scale-factor=<DPR>` **and** context `deviceScaleFactor` — verified
+on Playwright 1.64: only with both does the screencast deliver device-pixel frames (2880×1800 at
+60 fps for 1440×900 @2x) with `devicePixelRatio = 2`.
+
+Order: launch → `goto app.url` → `setup` steps (fast, not captured) → start capture → 800 ms
+establishing beat → scenes → final 800 ms tail → stop capture.
 
 Per step:
 
-1. Resolve locator; `scrollIntoViewIfNeeded`; read `boundingBox()` (CSS px, viewport-relative)
-   and computed `cursor` style (`pointer` → hand, `text` → I-beam, else arrow).
+1. Resolve locator (must be visible and unique); if it is not fully in the viewport, scroll it
+   to the centre (`scrollIntoView`, smooth when recording); wait until its `boundingBox()` is
+   stable (CSS px, viewport-relative); read computed `cursor` (`text` → I-beam, `pointer` →
+   pointer, else arrow).
 2. Cursor travel (record mode only): duration `clamp(350 + dist*0.35, 350, 900)` ms. The real
    mouse is moved with `page.mouse.move(..., { steps })` across that time so hover states
    fire as they would for a person. A `move` event is logged.
 3. Perform the action. Clicks log `{tMs, x, y}`. Human typing: 45–110 ms/char jitter.
-4. Settle: best-effort `waitForLoadState('networkidle')` capped at 3 s, plus a 450 ms beat,
-   plus `show.hold`. Time spent waiting beyond 300 ms is logged as an **idle** interval, as is
-   every `wait` step.
+4. Settle: wait until no request has been in flight for 300 ms (own request counter —
+   `waitForLoadState('networkidle')` only covers the initial navigation), capped at 3 s; then a
+   450 ms beat plus `show.hold`. Time spent waiting beyond 300 ms is logged as an **idle**
+   interval, as is every `wait` and `goto` step.
 
 Per-step timeout 10 s (`wait`: 15 s). Failure aborts the run.
 
@@ -171,8 +178,10 @@ interface TakeEvents {
   video: { file: "raw.mp4"; width: number; height: number; fps: 30; durationMs: number };
   steps: Array<{
     sceneId: string; index: number; do: string;
-    startMs: number; endMs: number;   // endMs excludes settle/hold
-    settledMs: number;                // after settle + hold
+    startMs: number;                  // step begins (before scroll / cursor travel)
+    actionMs: number;                 // cursor arrived, action performed
+    endMs: number;                    // action finished (excludes settle/hold)
+    settledMs: number;                // after settle + beat + hold
     target?: { x: number; y: number; width: number; height: number };  // CSS px
   }>;
   moves: Array<{ startMs: number; endMs: number; from: Pt; to: Pt; cursor: "arrow" | "pointer" | "text" }>;
@@ -207,8 +216,8 @@ at any speed.
 
 ### 6.3 Action hash
 
-`sha256` of the canonical JSON of `app` (minus `mask`), `setup`, and for each step all fields
-except `show` (plus `show.hold`). `render` refuses to use a take whose hash differs and says
+`sha256` of the canonical JSON of `app` (including `mask`, which is applied at capture time),
+`setup`, and for each step all fields except `show` (plus `show.hold`). `render` refuses to use a take whose hash differs and says
 "actions changed since the take — run `showtime record`".
 
 ## 7. Timeline rules
@@ -220,14 +229,15 @@ except `show` (plus `show.hold`). `render` refuses to use a take whose hash diff
   of an idle interval. Adjacent segments with equal speed are merged.
 - **Zoom regions.** For each step with a target and zoom enabled:
   `depth = explicit ?? clamp(min(vw / (w + 160), vh / (h + 160)), 1, maxZoom)`; skip if
-  `depth < 1.15`. Region = `[move.startMs, settledMs]`, focus = bbox centre.
+  `depth < 1.15`. Region = `[actionMs, settledMs]` (the zoom-in lead overlaps the cursor
+  travel), focus = bbox centre.
 - **Camera keyframes.** Region → `(start − 700, 1×, centre)`, `(start, d, f)`, `(end, d, f)`,
   `(end + 700, 1×, centre)`. If the next region starts within 1500 ms of this one's end, they
   connect: pan straight from `(end, d1, f1)` to `(start2, d2, f2)` without zooming out.
   Focus is clamped so the visible window stays inside the stage:
   `cx ∈ [0.5/scale, 1 − 0.5/scale]` (same for `cy`). Interpolation is easeInOutCubic.
 - **Captions** from `show.caption`: `[startMs, max(settledMs, startMs + 1500)]`.
-- **Spotlights** from `show.spotlight`: `[startMs, settledMs]`, rect = bbox padded by 8 px.
+- **Spotlights** from `show.spotlight`: `[actionMs, settledMs]`, rect = bbox padded by 8 px.
 
 ## 8. Renderer (Remotion)
 
@@ -244,9 +254,9 @@ Layers, back to front:
      segment's source start with `playbackRate = speed`, muted.
    - **Spotlight**: rounded hole via a huge box-shadow, 250 ms fade.
    - **Click ripples**: accent-coloured ring, 0 → 48 px radius, fade over 450 ms.
-   - **Cursor**: SVG arrow / hand / I-beam at the eased position (easeInOutCubic with a
-     slight perpendicular arc); 0.85× squash for 120 ms on each click. Hidden until the first
-     move starts.
+   - **Cursor**: SVG arrow (default and `pointer`) or I-beam (`text`) at the eased position
+     (easeInOutCubic with a slight perpendicular arc); 0.85× squash for 140 ms on each click.
+     Hidden until the first move starts, then fades in over 200 ms.
 3. **Captions** (screen space, not zoomed): bottom-centre pill, `style.font`, fade + 12 px
    slide in/out over 220 ms.
 4. **Intro** (before the video): title + subtitle over the background, scale/fade in.
@@ -297,8 +307,9 @@ re-record hint. Exit code 1 on any failure.
 
 ## 12. Tech and testing
 
-TypeScript (ESM, Node ≥ 20), pnpm, zod, commander, playwright, remotion +
-`@remotion/bundler` + `@remotion/renderer`, react, system ffmpeg/ffprobe, vitest.
+TypeScript 5.9 (ESM, Node ≥ 20, run through tsx — no build step), npm, zod 4, commander 14,
+playwright 1.64, remotion 4.0.535 +
+`@remotion/bundler` + `@remotion/renderer`, react 19, system ffmpeg/ffprobe, vitest 4.
 
 - Unit: script schema + defaults, action hash, time mapping, segment builder, zoom depth,
   camera keyframes + evaluation, cursor interpolation.
