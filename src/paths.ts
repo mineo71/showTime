@@ -10,6 +10,8 @@ export interface WorkPaths {
   events: string;
   timeline: string;
   stills: string;
+  /** contact sheet of the stills */
+  sheet: string;
   video: string;
 }
 
@@ -25,6 +27,7 @@ export function workPaths(loaded: LoadedScript): WorkPaths {
     events: path.join(take, 'events.json'),
     timeline: path.join(root, 'timeline.json'),
     stills: path.join(root, 'frames'),
+    sheet: path.join(root, 'frames', 'sheet.png'),
     video: path.join(loaded.dir, `${loaded.name}.mp4`),
   };
 }

@@ -82,8 +82,9 @@ program
   .action(async (file: string) => {
     const loaded = await loadScript(file);
     const { renderQaFrames } = await import('../pipeline');
-    const files = await renderQaFrames(loaded);
-    say(files.join('\n'));
+    const { sheet, frames } = await renderQaFrames(loaded);
+    say(`sheet: ${sheet}`);
+    say(frames.join('\n'));
   });
 
 program

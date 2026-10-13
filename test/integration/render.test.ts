@@ -41,8 +41,10 @@ describe('render', () => {
     expect(tl.captions.map((c) => c.text)).toContain('Кешбек видно одразу');
   });
 
-  it('renders QA stills: intro + one per step', async () => {
-    const files = await renderQaFrames(loaded);
+  it('renders QA stills: intro + one per step, plus a contact sheet', async () => {
+    const { sheet, frames: files } = await renderQaFrames(loaded);
+    expect(sheet).toBe(path.join(workPaths(loaded).stills, 'sheet.png'));
+    expect((await readFile(sheet)).readUInt32BE(16)).toBe(1920);
     expect(files).toHaveLength(9);
     for (const f of files) expect(existsSync(f)).toBe(true);
     expect(path.basename(files[0])).toBe('00-intro.png');
@@ -70,7 +72,7 @@ describe('render', () => {
     const { timeline } = await timelineFor(edited);
     expect(timeline.logo).toMatch(/^data:image\/svg\+xml;base64,/);
     expect(timeline.outro).toEqual({ title: 'Try Acme', url: 'acme.example', durationMs: 2600 });
-    const files = await renderQaFrames(edited);
+    const { frames: files } = await renderQaFrames(edited);
     expect(path.basename(files.at(-1)!)).toBe('99-outro.png');
     expect(existsSync(files.at(-1)!)).toBe(true);
   });

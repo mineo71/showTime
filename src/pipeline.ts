@@ -3,6 +3,7 @@ import path from 'node:path';
 import { logoDataUri } from './logo';
 import { workPaths } from './paths';
 import { renderStills, renderVideo } from './render/render';
+import { contactSheet } from './sheet';
 import type { LoadedScript } from './script/load';
 import { loadTake } from './take';
 import { buildTimeline } from './timeline/build';
@@ -31,10 +32,16 @@ export async function renderDemo(
   return out;
 }
 
-export async function renderQaFrames(loaded: LoadedScript): Promise<string[]> {
+/** QA stills (intro, one per step, outro) and a contact sheet of all of them. */
+export async function renderQaFrames(loaded: LoadedScript): Promise<{ sheet: string; frames: string[] }> {
   const { timeline, events } = await timelineFor(loaded);
   const paths = workPaths(loaded);
   await rm(paths.stills, { recursive: true, force: true });
   await mkdir(paths.stills, { recursive: true });
-  return renderStills(timeline, paths.take, paths.stills, qaShots(timeline, events.steps));
+  const frames = await renderStills(timeline, paths.take, paths.stills, qaShots(timeline, events.steps));
+  const sheet = await contactSheet(
+    frames.map((file) => ({ file, label: path.basename(file, '.png') })),
+    paths.sheet,
+  );
+  return { sheet, frames };
 }
