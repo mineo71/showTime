@@ -1,4 +1,5 @@
 import { existsSync } from 'node:fs';
+import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { check } from '../../src/runner/check';
@@ -61,5 +62,18 @@ describe('check', () => {
   it('fails clearly when the app is unreachable', async () => {
     const loaded = await fixtureScript('http://127.0.0.1:9/');
     await expect(check(loaded)).rejects.toThrow(/Cannot open app\.url/);
+  });
+});
+
+describe('check with hooks', () => {
+  it('runs before hooks first and after hooks last, in the script folder', async () => {
+    const append = (text: string) => `node -e "require('fs').appendFileSync('hooks.log', '${text}')"`;
+    const loaded = await fixtureScript(server.url, (raw) => {
+      raw.hooks = { before: [{ run: append('before,') }], after: [{ run: append('after') }] };
+      raw.scenes = [{ id: 'a', steps: [{ do: 'click', target: '#new-report' }] }];
+    });
+    const report = await check(loaded);
+    expect(report.ok).toBe(true);
+    expect(await readFile(path.join(loaded.dir, 'hooks.log'), 'utf8')).toBe('before,after');
   });
 });

@@ -1,11 +1,13 @@
 import { existsSync } from 'node:fs';
-import { readFile } from 'node:fs/promises';
+import { readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { probeVideo } from '../../src/ffmpeg';
 import { workPaths } from '../../src/paths';
 import { record } from '../../src/runner/record';
 import { actionHash } from '../../src/script/hash';
+import { loadScript } from '../../src/script/load';
+import { loadTake } from '../../src/take';
 import { fixtureScript } from '../helpers/fixture';
 import { FIXTURES, serveDir } from '../helpers/serve';
 
@@ -16,6 +18,24 @@ beforeAll(async () => {
 afterAll(() => server.close());
 
 describe('record', () => {
+  it('a failed re-take leaves the previous take untouched', async () => {
+    const loaded = await fixtureScript(server.url, (raw) => {
+      raw.scenes = [{ id: 'a', steps: [{ do: 'click', target: '#new-report' }] }];
+    });
+    await record(loaded);
+    const paths = workPaths(loaded);
+    const before = await readFile(paths.events, 'utf8');
+
+    const raw = JSON.parse(await readFile(loaded.scriptPath, 'utf8'));
+    raw.scenes[0].steps.push({ do: 'click', target: '#does-not-exist' });
+    await writeFile(loaded.scriptPath, JSON.stringify(raw));
+    await expect(record(await loadScript(loaded.scriptPath))).rejects.toThrow(/Recording aborted.*previous take is untouched/s);
+
+    expect(await readFile(paths.events, 'utf8')).toBe(before);
+    expect(existsSync(path.join(paths.takeTmp, 'failure.png'))).toBe(true);
+    await expect(loadTake(loaded)).resolves.toMatchObject({ actionHash: actionHash(loaded.script) });
+  });
+
   it('records a take: device-pixel raw video, wall-clock duration, consistent events', async () => {
     const loaded = await fixtureScript(server.url);
     const ev = await record(loaded);
@@ -61,6 +81,6 @@ describe('record', () => {
       raw.scenes[1].steps[0] = { do: 'click', target: '#missing' };
     });
     await expect(record(loaded)).rejects.toThrow(/showtime check/);
-    expect(existsSync(path.join(workPaths(loaded).take, 'failure.png'))).toBe(true);
+    expect(existsSync(path.join(workPaths(loaded).takeTmp, 'failure.png'))).toBe(true);
   });
 });

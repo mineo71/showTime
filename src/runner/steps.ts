@@ -14,6 +14,8 @@ export interface StepContext {
   log: EventLog;
   net: NetworkTracker;
   cursor: Pt;
+  /** Relative `goto` URLs resolve against this (app.url); the current page when absent. */
+  baseUrl?: string;
 }
 
 export interface StepWhere {
@@ -69,7 +71,7 @@ async function perform(ctx: StepContext, step: Step, where: StepWhere): Promise<
 
   switch (step.do) {
     case 'goto':
-      await page.goto(step.url, { waitUntil: 'load', timeout: WAIT_TIMEOUT_MS });
+      await page.goto(new URL(step.url, ctx.baseUrl ?? page.url()).href, { waitUntil: 'load', timeout: WAIT_TIMEOUT_MS });
       break;
     case 'click':
     case 'hover':

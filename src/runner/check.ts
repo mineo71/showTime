@@ -4,6 +4,7 @@ import { workPaths } from '../paths';
 import type { LoadedScript } from '../script/load';
 import { openSession, prepare } from './browser';
 import { EventLog } from './events';
+import { withHooks } from './hooks';
 import { describeStep, runStep, StepError, type StepContext } from './steps';
 
 export interface RunOptions {
@@ -42,11 +43,17 @@ export async function check(loaded: LoadedScript, opts: RunOptions = {}): Promis
   await rm(paths.check, { recursive: true, force: true });
   await mkdir(paths.check, { recursive: true });
 
+  return withHooks(script.hooks, loaded.dir, () => rehearse(loaded, opts), opts.log);
+}
+
+async function rehearse(loaded: LoadedScript, opts: RunOptions): Promise<CheckReport> {
+  const { script } = loaded;
+  const paths = workPaths(loaded);
   const report: CheckReport = { ok: true, steps: [], failure: null };
   const session = await openSession(script, opts);
   try {
     const cursor = await prepare(session, script);
-    const ctx: StepContext = { page: session.page, mode: 'check', log: new EventLog(), net: session.net, cursor };
+    const ctx: StepContext = { page: session.page, mode: 'check', log: new EventLog(), net: session.net, cursor, baseUrl: script.app.url };
     let n = 0;
     for (const scene of script.scenes) {
       for (const [index, step] of scene.steps.entries()) {

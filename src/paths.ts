@@ -5,6 +5,8 @@ export interface WorkPaths {
   root: string;
   check: string;
   take: string;
+  /** a take being recorded; swapped in for `take` only when it succeeds */
+  takeTmp: string;
   rawFrames: string;
   raw: string;
   events: string;
@@ -22,6 +24,7 @@ export function workPaths(loaded: LoadedScript): WorkPaths {
     root,
     check: path.join(root, 'check'),
     take,
+    takeTmp: path.join(root, 'take.tmp'),
     rawFrames: path.join(take, 'frames'),
     raw: path.join(take, 'raw.mp4'),
     events: path.join(take, 'events.json'),

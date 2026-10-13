@@ -1,5 +1,5 @@
-import { chromium, type Browser, type BrowserContext, type Page } from 'playwright';
-import { ScriptError, type Script } from '../script/schema';
+import { chromium, type Browser, type BrowserContext, type Page, type Request, type Route } from 'playwright';
+import { ScriptError, type Mock, type Script } from '../script/schema';
 import type { Pt } from '../timeline/types';
 import { EventLog } from './events';
 import { runStep, STEP_TIMEOUT_MS, type StepContext } from './steps';
@@ -18,8 +18,12 @@ export interface Session {
   close(): Promise<void>;
 }
 
+/** Event streams never finish; counting them would hold every step for the full settle cap. */
+const isStream = (r: Request) => r.resourceType() === 'eventsource' || (r.headers().accept ?? '').includes('text/event-stream');
+
 export function trackNetwork(page: Page): NetworkTracker {
   let inflight = 0;
+  const counted = new Set<Request>();
   let lastChange = Date.now();
   const up = () => {
     inflight++;
@@ -29,9 +33,16 @@ export function trackNetwork(page: Page): NetworkTracker {
     inflight = Math.max(0, inflight - 1);
     lastChange = Date.now();
   };
-  page.on('request', up);
-  page.on('requestfinished', down);
-  page.on('requestfailed', down);
+  page.on('request', (r) => {
+    if (isStream(r)) return;
+    counted.add(r);
+    up();
+  });
+  const done = (r: Request) => {
+    if (counted.delete(r)) down();
+  };
+  page.on('requestfinished', done);
+  page.on('requestfailed', done);
   return {
     async idle(quietMs, capMs) {
       const start = Date.now();
@@ -79,8 +90,13 @@ export async function openSession(script: Script, opts: { headed?: boolean } = {
       timezoneId: app.timezoneId,
     });
     if (app.mask.length) await context.addInitScript({ content: maskScript(app.mask) });
+    if (app.clock) await context.clock.setFixedTime(app.clock);
+    for (const mock of app.mock) await context.route(mock.url, (route) => answer(route, mock));
     const page = await context.newPage();
     page.setDefaultTimeout(STEP_TIMEOUT_MS);
+    page.on('dialog', (dialog) => {
+      (app.dialogs === 'accept' ? dialog.accept() : dialog.dismiss()).catch(() => undefined);
+    });
     const invalid = await page.evaluate(
       (selectors) =>
         selectors.map((s) => {
@@ -106,6 +122,25 @@ export async function openSession(script: Script, opts: { headed?: boolean } = {
   }
 }
 
+const CORS = { 'access-control-allow-origin': '*', 'access-control-allow-methods': '*', 'access-control-allow-headers': '*' };
+
+/** Fulfil a request from an `app.mock` entry (cross-origin friendly). */
+async function answer(route: Route, mock: Mock): Promise<void> {
+  const method = route.request().method().toUpperCase();
+  if (method === 'OPTIONS') return route.fulfill({ status: 204, headers: CORS }).catch(() => undefined);
+  if (mock.method && method !== mock.method.toUpperCase()) return route.fallback();
+  if (mock.delayMs) await sleep(mock.delayMs);
+  const json = mock.json !== undefined;
+  // The page may have navigated away while we waited: a closed route is not an error.
+  await route
+    .fulfill({
+      status: mock.status,
+      headers: { ...CORS, ...(json ? { 'content-type': 'application/json' } : {}), ...mock.headers },
+      body: json ? JSON.stringify(mock.json) : (mock.body ?? ''),
+    })
+    .catch(() => undefined);
+}
+
 /** Open app.url, run setup steps (fast, unlogged), park the mouse at the centre. */
 export async function prepare(session: Session, script: Script): Promise<Pt> {
   const { page } = session;
@@ -115,7 +150,7 @@ export async function prepare(session: Session, script: Script): Promise<Pt> {
     throw new Error(`Cannot open app.url ${script.app.url}: ${(err as Error).message.split('\n')[0]}`);
   }
   const centre = { x: Math.round(script.app.viewport.width / 2), y: Math.round(script.app.viewport.height / 2) };
-  const ctx: StepContext = { page, mode: 'check', log: new EventLog(), net: session.net, cursor: centre };
+  const ctx: StepContext = { page, mode: 'check', log: new EventLog(), net: session.net, cursor: centre, baseUrl: script.app.url };
   for (const [index, step] of script.setup.entries()) await runStep(ctx, step, { sceneId: 'setup', index });
   await page.mouse.move(centre.x, centre.y);
   return centre;

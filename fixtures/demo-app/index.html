@@ -52,6 +52,12 @@
         <div id="side" style="height: 120px; overflow: auto; display: grid; gap: 6px; margin-top: 8px"></div>
       </div>
       <div id="status" style="margin-top: 24px"></div>
+      <div class="card" id="lab" style="margin-top: 24px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap">
+        <button class="secondary" id="load-stats">Load stats</button> <span id="stats"></span>
+        <button class="secondary" id="danger">Delete all</button> <span id="danger-result"></span>
+        <button class="secondary" id="live">Go live</button> <span id="live-count"></span>
+        <span id="today"></span>
+      </div>
       <div class="far card"><button id="export">Export CSV</button></div>
     </main>
     <div class="modal-bg" id="modal">
@@ -93,6 +99,21 @@
         $('#side').append(item);
       }
       $('#export').onclick = () => { $('#export').textContent = 'Exported ✓'; };
+      // Lab: network, clock, dialog and streaming behaviour for the runner tests.
+      $('#today').textContent = `Today ${new Date().toISOString().slice(0, 10)}`;
+      $('#load-stats').onclick = async () => {
+        try {
+          const stats = await (await fetch('/api/stats')).json();
+          $('#stats').textContent = `Visitors ${stats.visitors}`;
+        } catch {
+          $('#stats').textContent = 'Stats failed';
+        }
+      };
+      $('#danger').onclick = () => { $('#danger-result').textContent = confirm('Delete everything?') ? 'Deleted' : 'Kept'; };
+      $('#live').onclick = () => {
+        const source = new EventSource('/sse');
+        source.onmessage = (e) => { $('#live-count').textContent = `Live ${e.data}`; };
+      };
     </script>
   </body>
 </html>
