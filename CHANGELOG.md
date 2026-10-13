@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.4.0 — 2026-10-13
 
 - Narration: `show.say` on any step is spoken by a TTS engine (`audio.voice`: the macOS/Linux
   system voice, OpenAI, ElevenLabs or any command). The video holds the frame until a line ends.
