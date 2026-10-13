@@ -18,6 +18,31 @@
         },
         "subtitle": {
           "type": "string"
+        },
+        "logo": {
+          "description": "SVG/PNG/JPEG/WebP shown on the intro and outro cards",
+          "type": "string",
+          "minLength": 1
+        },
+        "outro": {
+          "description": "Closing card after the video",
+          "type": "object",
+          "properties": {
+            "title": {
+              "type": "string",
+              "minLength": 1
+            },
+            "subtitle": {
+              "type": "string"
+            },
+            "url": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "title"
+          ],
+          "additionalProperties": false
         }
       },
       "additionalProperties": false
@@ -83,11 +108,203 @@
             "type": "string",
             "minLength": 1
           }
+        },
+        "mock": {
+          "default": [],
+          "description": "Answer matching network requests with canned responses",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "url": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Playwright URL glob of the requests to answer, e.g. **/api/reports*"
+              },
+              "method": {
+                "description": "Only answer this HTTP method; others go to the network",
+                "type": "string",
+                "minLength": 1
+              },
+              "status": {
+                "default": 200,
+                "type": "integer",
+                "minimum": 100,
+                "maximum": 599
+              },
+              "json": {
+                "description": "Response body, sent as application/json"
+              },
+              "body": {
+                "description": "Raw response body",
+                "type": "string"
+              },
+              "headers": {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {
+                  "type": "string"
+                }
+              },
+              "delayMs": {
+                "description": "Wait this long before answering",
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 30000
+              }
+            },
+            "required": [
+              "url"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "clock": {
+          "description": "Freeze Date in the page at this ISO date-time (timers keep running)",
+          "type": "string"
+        },
+        "dialogs": {
+          "default": "accept",
+          "description": "How to answer alert/confirm/prompt dialogs",
+          "type": "string",
+          "enum": [
+            "accept",
+            "dismiss"
+          ]
         }
       },
       "required": [
         "url"
       ],
+      "additionalProperties": false
+    },
+    "hooks": {
+      "default": {},
+      "type": "object",
+      "properties": {
+        "before": {
+          "default": [],
+          "description": "Run before every check and record, e.g. to reset demo data",
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "run": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Shell command, run in the script folder"
+                  }
+                },
+                "required": [
+                  "run"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "request": {
+                    "type": "object",
+                    "properties": {
+                      "url": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "method": {
+                        "default": "POST",
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "json": {},
+                      "headers": {
+                        "type": "object",
+                        "propertyNames": {
+                          "type": "string"
+                        },
+                        "additionalProperties": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "required": [
+                      "url"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "request"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          }
+        },
+        "after": {
+          "default": [],
+          "description": "Run after every check and record, even when it failed",
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "run": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Shell command, run in the script folder"
+                  }
+                },
+                "required": [
+                  "run"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "request": {
+                    "type": "object",
+                    "properties": {
+                      "url": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "method": {
+                        "default": "POST",
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "json": {},
+                      "headers": {
+                        "type": "object",
+                        "propertyNames": {
+                          "type": "string"
+                        },
+                        "additionalProperties": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "required": [
+                      "url"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "request"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          }
+        }
+      },
       "additionalProperties": false
     },
     "setup": {

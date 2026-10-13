@@ -24,6 +24,15 @@ describe('actionHash', () => {
     expect(actionHash(make({ do: 'click', target: 'text=Go', show: { hold: 500 } }))).not.toBe(actionHash(base));
   });
 
+  it('ignores hooks (they prepare the world, they are not recorded)', () => {
+    expect(actionHash(make({ do: 'click', target: 'text=Go' }, { hooks: { before: [{ run: 'reset' }] } }))).toBe(actionHash(base));
+  });
+
+  it('changes when a network mock changes (it shapes what is recorded)', () => {
+    const mocked = make({ do: 'click', target: 'text=Go' }, { app: { url: 'http://x', mock: [{ url: '**/api', json: {} }] } });
+    expect(actionHash(mocked)).not.toBe(actionHash(base));
+  });
+
   it('changes when the mask changes (applied at capture)', () => {
     const masked = make({ do: 'click', target: 'text=Go' }, { app: { url: 'http://x', mask: ['.email'] } });
     expect(actionHash(masked)).not.toBe(actionHash(base));

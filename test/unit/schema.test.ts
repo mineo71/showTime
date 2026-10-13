@@ -70,6 +70,44 @@ describe('scriptJsonSchema', () => {
   });
 });
 
+describe('0.3 script fields', () => {
+  const full = {
+    ...minimal,
+    meta: { title: 'T', logo: 'logo.svg', outro: { title: 'Try it', subtitle: 'Free', url: 'acme.com' } },
+    app: {
+      url: 'http://x',
+      mock: [{ url: '**/api/*', json: { ok: true }, delayMs: 300 }],
+      clock: '2026-10-13T09:30:00Z',
+      dialogs: 'dismiss',
+    },
+    hooks: { before: [{ run: 'npm run reset' }, { request: { url: 'http://x/reset' } }], after: [{ run: 'echo done' }] },
+  };
+
+  it('accepts hooks, mocks, a frozen clock, dialogs, an outro and a logo', () => {
+    const s = parseScript(full);
+    expect(s.app.mock[0]).toEqual({ url: '**/api/*', json: { ok: true }, delayMs: 300, status: 200 });
+    expect(s.app.clock).toBe('2026-10-13T09:30:00Z');
+    expect(s.app.dialogs).toBe('dismiss');
+    expect(s.hooks.before).toEqual([{ run: 'npm run reset' }, { request: { url: 'http://x/reset', method: 'POST' } }]);
+    expect(s.hooks.after).toEqual([{ run: 'echo done' }]);
+    expect(s.meta).toEqual({ title: 'T', logo: 'logo.svg', outro: { title: 'Try it', subtitle: 'Free', url: 'acme.com' } });
+  });
+
+  it('defaults to no hooks, no mocks and accepted dialogs', () => {
+    const s = parseScript(minimal);
+    expect(s.hooks).toEqual({ before: [], after: [] });
+    expect(s.app.mock).toEqual([]);
+    expect(s.app.dialogs).toBe('accept');
+    expect(s.app.clock).toBeUndefined();
+  });
+
+  it('rejects an unparseable clock, an unknown hook kind and a mock with both json and body', () => {
+    expect(() => parseScript({ ...minimal, app: { url: 'http://x', clock: 'yesterday' } })).toThrow(/app\.clock/);
+    expect(() => parseScript({ ...minimal, hooks: { before: [{ shell: 'x' }] } })).toThrow(/hooks\.before\.0/);
+    expect(() => parseScript({ ...minimal, app: { url: 'http://x', mock: [{ url: '*', json: {}, body: 'x' }] } })).toThrow(/app\.mock\.0/);
+  });
+});
+
 describe('docs/script.schema.json', () => {
   it('matches the schema the CLI prints (run `npm run schema:write` after changing the format)', () => {
     const shipped = JSON.parse(readFileSync(new URL('../../docs/script.schema.json', import.meta.url), 'utf8'));

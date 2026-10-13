@@ -69,6 +69,21 @@ export const StyleSchema = z
   })
   .strict();
 
+const headers = z.record(z.string(), z.string());
+
+export const MockSchema = z
+  .object({
+    url: z.string().min(1).describe('Playwright URL glob of the requests to answer, e.g. **/api/reports*'),
+    method: z.string().min(1).optional().describe('Only answer this HTTP method; others go to the network'),
+    status: z.number().int().min(100).max(599).default(200),
+    json: z.unknown().optional().describe('Response body, sent as application/json'),
+    body: z.string().optional().describe('Raw response body'),
+    headers: headers.optional(),
+    delayMs: z.number().int().min(0).max(30_000).optional().describe('Wait this long before answering'),
+  })
+  .strict()
+  .refine((m) => m.json === undefined || m.body === undefined, { message: 'a mock takes "json" or "body", not both' });
+
 export const AppSchema = z
   .object({
     url: z.string().min(1),
@@ -85,6 +100,49 @@ export const AppSchema = z
       .array(z.string().min(1))
       .default([])
       .describe('CSS selectors (not Playwright selectors) of elements to blur in the recording'),
+    mock: z.array(MockSchema).default([]).describe('Answer matching network requests with canned responses'),
+    clock: z
+      .string()
+      .refine((v) => !Number.isNaN(Date.parse(v)), { message: 'must be an ISO date-time, e.g. 2026-10-13T09:30:00Z' })
+      .optional()
+      .describe('Freeze Date in the page at this ISO date-time (timers keep running)'),
+    dialogs: z.enum(['accept', 'dismiss']).default('accept').describe('How to answer alert/confirm/prompt dialogs'),
+  })
+  .strict();
+
+export const HookSchema = z.union([
+  z.object({ run: z.string().min(1).describe('Shell command, run in the script folder') }).strict(),
+  z
+    .object({
+      request: z
+        .object({
+          url: z.string().min(1),
+          method: z.string().min(1).default('POST'),
+          json: z.unknown().optional(),
+          headers: headers.optional(),
+        })
+        .strict(),
+    })
+    .strict(),
+]);
+
+export const HooksSchema = z
+  .object({
+    before: z.array(HookSchema).default([]).describe('Run before every check and record, e.g. to reset demo data'),
+    after: z.array(HookSchema).default([]).describe('Run after every check and record, even when it failed'),
+  })
+  .strict();
+
+export const MetaSchema = z
+  .object({
+    title: z.string().optional(),
+    subtitle: z.string().optional(),
+    logo: z.string().min(1).optional().describe('SVG/PNG/JPEG/WebP shown on the intro and outro cards'),
+    outro: z
+      .object({ title: z.string().min(1), subtitle: z.string().optional(), url: z.string().optional() })
+      .strict()
+      .optional()
+      .describe('Closing card after the video'),
   })
   .strict();
 
@@ -99,8 +157,9 @@ export const ScriptSchema = z
   .object({
     $schema: z.string().optional(),
     version: z.literal(1),
-    meta: z.object({ title: z.string().optional(), subtitle: z.string().optional() }).strict().default({}),
+    meta: MetaSchema.default({}),
     app: AppSchema,
+    hooks: HooksSchema.prefault({}),
     setup: z.array(StepSchema).default([]),
     style: StyleSchema.prefault({}),
     scenes: z.array(SceneSchema).min(1),
@@ -121,6 +180,8 @@ export type ScriptInput = z.input<typeof ScriptSchema>;
 export type Step = z.output<typeof StepSchema>;
 export type Show = z.output<typeof ShowSchema>;
 export type Style = z.output<typeof StyleSchema>;
+export type Hook = z.output<typeof HookSchema>;
+export type Mock = z.output<typeof MockSchema>;
 
 export class ScriptError extends Error {
   constructor(message: string) {

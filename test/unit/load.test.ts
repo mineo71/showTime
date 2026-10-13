@@ -40,6 +40,56 @@ describe('loadScript', () => {
   });
 });
 
+describe('brand file and logo', () => {
+  async function project() {
+    const root = await mkdtemp(join(tmpdir(), 'showtime-brand-'));
+    await mkdir(join(root, 'brand'));
+    await mkdir(join(root, 'demos'));
+    await writeFile(join(root, 'brand', 'logo.svg'), '<svg xmlns="http://www.w3.org/2000/svg"/>');
+    return root;
+  }
+
+  it('applies the nearest showtime.config.json as defaults, the script winning key by key', async () => {
+    const root = await project();
+    const config = {
+      style: { accent: '#111111', radius: 20 },
+      meta: { logo: 'brand/logo.svg', outro: { title: 'Try Acme' } },
+    };
+    await writeFile(join(root, 'showtime.config.json'), JSON.stringify(config));
+    const file = join(root, 'demos', 'a.json');
+    await writeFile(file, JSON.stringify({ ...base, style: { accent: '#222222' }, meta: { title: 'A' } }));
+    const loaded = await loadScript(file);
+    expect(loaded.config).toBe(join(root, 'showtime.config.json'));
+    expect(loaded.script.style).toMatchObject({ accent: '#222222', radius: 20 });
+    expect(loaded.script.meta).toEqual({ title: 'A', logo: join(root, 'brand', 'logo.svg'), outro: { title: 'Try Acme' } });
+  });
+
+  it('resolves the script\'s own logo against the script folder', async () => {
+    const root = await project();
+    await writeFile(join(root, 'demos', 'mark.svg'), '<svg xmlns="http://www.w3.org/2000/svg"/>');
+    const file = join(root, 'demos', 'a.json');
+    await writeFile(file, JSON.stringify({ ...base, meta: { logo: 'mark.svg' } }));
+    const loaded = await loadScript(file);
+    expect(loaded.script.meta.logo).toBe(join(root, 'demos', 'mark.svg'));
+    expect(loaded.config).toBeNull();
+  });
+
+  it('reports a missing logo file', async () => {
+    const root = await project();
+    const file = join(root, 'demos', 'a.json');
+    await writeFile(file, JSON.stringify({ ...base, meta: { logo: 'nope.svg' } }));
+    await expect(loadScript(file)).rejects.toThrow(/meta\.logo not found: .*nope\.svg/);
+  });
+
+  it('rejects unknown keys in the brand file and names it', async () => {
+    const root = await project();
+    await writeFile(join(root, 'showtime.config.json'), JSON.stringify({ colours: {} }));
+    const file = join(root, 'demos', 'a.json');
+    await writeFile(file, JSON.stringify(base));
+    await expect(loadScript(file)).rejects.toThrow(/showtime\.config\.json[\s\S]*colours/);
+  });
+});
+
 describe('workPaths', () => {
   it('keeps everything under .showtime/<name> next to the script', async () => {
     const { dir, file } = await scriptIn(JSON.stringify(base));
