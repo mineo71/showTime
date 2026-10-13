@@ -1,11 +1,13 @@
 import { randomBytes } from 'node:crypto';
-import { createReadStream, watch, type FSWatcher } from 'node:fs';
-import { readFile, rename, stat, writeFile } from 'node:fs/promises';
+import { watch, type FSWatcher } from 'node:fs';
+import { pipeline } from 'node:stream';
+import { open, readFile, rename, writeFile } from 'node:fs/promises';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import path from 'node:path';
 import { mixSoundtrack } from '../audio/soundtrack';
 import { aspectOf, formatOf } from '../convert';
+import { workPaths } from '../paths';
 import { renderDemo, timelineFor } from '../pipeline';
 import { record } from '../runner/record';
 import { describeStep } from '../runner/steps';
@@ -14,10 +16,11 @@ import { parseLoaded, type LoadedScript } from '../script/load';
 import { loadTake } from '../take';
 import { stepFrames } from '../timeline/frames';
 import { stepKey } from '../timeline/narration';
+import type { Style } from '../script/schema';
 import type { Aspect, Timeline } from '../timeline/types';
 import { bundleClient } from './bundle';
 import { STYLES } from './client/styles';
-import { applyEdit, formatScript, parseEdit } from './edit';
+import { applyEdit, formatScript, parseEdit, StaleStepError, stepId } from './edit';
 import { filePath, hostAllowed, originAllowed, tokenOk } from './guard';
 
 type Json = Record<string, unknown>;
@@ -36,6 +39,8 @@ export interface Studio {
 
 export interface StepInfo {
   where: string;
+  /** what the step does (`stepId`): edits carry it, so they never land on a step that moved */
+  id: string;
   do: string;
   label: string;
   show: Json;
@@ -62,6 +67,8 @@ export interface StudioState {
   /** why the script or the preview could not be built; the last good preview stays */
   error: string | null;
   script: Json | null;
+  /** the script's look with brand-file defaults, whatever the state of the take */
+  style: Style | null;
   steps: StepInfo[];
   timeline: Timeline | null;
   job: Job | null;
@@ -129,8 +136,14 @@ async function readBody(req: IncomingMessage): Promise<unknown> {
 
 /** Serve a file, honouring a single `Range: bytes=a-b` so video can seek. */
 async function sendFile(req: IncomingMessage, res: ServerResponse, file: string) {
-  const info = await stat(file).catch(() => null);
-  if (!info?.isFile()) throw new HttpError(404, 'Not found.');
+  // Open before answering, so a file that can't be read gets an error status, not a cut-off body.
+  const fh = await open(file, 'r').catch(() => null);
+  if (!fh) throw new HttpError(404, 'Not found.');
+  const info = await fh.stat().catch(() => null);
+  if (!info?.isFile()) {
+    await fh.close();
+    throw new HttpError(404, 'Not found.');
+  }
   const type = TYPES[path.extname(file).toLowerCase()] ?? 'application/octet-stream';
   const headers = { 'content-type': type, 'accept-ranges': 'bytes', 'cache-control': 'no-cache' };
   const m = /^bytes=(\d*)-(\d*)$/.exec(String(req.headers.range ?? ''));
@@ -138,15 +151,23 @@ async function sendFile(req: IncomingMessage, res: ServerResponse, file: string)
     const start = m[1] ? Number(m[1]) : Math.max(0, info.size - Number(m[2]));
     const end = m[1] && m[2] ? Math.min(Number(m[2]), info.size - 1) : info.size - 1;
     if (start > end || start >= info.size) {
+      await fh.close();
       res.writeHead(416, { 'content-range': `bytes */${info.size}` }).end();
       return;
     }
     res.writeHead(206, { ...headers, 'content-range': `bytes ${start}-${end}/${info.size}`, 'content-length': end - start + 1 });
-    createReadStream(file, { start, end }).pipe(res);
+    stream(fh.createReadStream({ start, end }), res);
     return;
   }
   res.writeHead(200, { ...headers, 'content-length': info.size });
-  createReadStream(file).pipe(res);
+  stream(fh.createReadStream(), res);
+}
+
+/** Pipe a file, closing both ends on an error or an aborted request (a seeking video aborts a lot). */
+function stream(from: NodeJS.ReadableStream, res: ServerResponse) {
+  pipeline(from, res, (err) => {
+    if (err) res.destroy();
+  });
 }
 
 /**
@@ -160,7 +181,19 @@ export async function startStudio(scriptFile: string, opts: StudioOptions = {}):
   const root = path.join(dir, '.showtime', name);
   const token = randomBytes(18).toString('base64url');
   const client = await bundleClient();
-  const state: StudioState = { name, file, aspect: opts.aspect ?? '16:9', take: 'missing', error: null, script: null, steps: [], timeline: null, job: null, version: 0 };
+  const state: StudioState = {
+    name,
+    file,
+    aspect: opts.aspect ?? '16:9',
+    take: 'missing',
+    error: null,
+    script: null,
+    style: null,
+    steps: [],
+    timeline: null,
+    job: null,
+    version: 0,
+  };
   let loaded: LoadedScript | null = null;
   let lastText: string | null = null;
   const streams = new Set<ServerResponse>();
@@ -181,10 +214,15 @@ export async function startStudio(scriptFile: string, opts: StudioOptions = {}):
     return next;
   };
 
-  const stepsOf = (l: LoadedScript): StepInfo[] =>
-    l.script.scenes.flatMap((scene) =>
+  const rawStep = (raw: Json, sceneIndex: number, index: number): unknown => {
+    const scenes = raw.scenes as Array<{ steps?: unknown[] }> | undefined;
+    return scenes?.[sceneIndex]?.steps?.[index];
+  };
+  const stepsOf = (l: LoadedScript, raw: Json): StepInfo[] =>
+    l.script.scenes.flatMap((scene, sceneIndex) =>
       scene.steps.map((step, index) => ({
         where: stepKey(scene.id, index),
+        id: stepId(rawStep(raw, sceneIndex, index)),
         do: step.do,
         label: describeStep(step),
         show: (step.show ?? {}) as Json,
@@ -198,6 +236,7 @@ export async function startStudio(scriptFile: string, opts: StudioOptions = {}):
     try {
       text = await readFile(file, 'utf8');
     } catch {
+      lastText = null;
       state.error = `Cannot read ${file}.`;
       return changed();
     }
@@ -216,8 +255,9 @@ export async function startStudio(scriptFile: string, opts: StudioOptions = {}):
       return changed();
     }
     state.script = raw as Json;
+    state.style = loaded.script.style;
     state.error = null;
-    state.steps = stepsOf(loaded);
+    state.steps = stepsOf(loaded, raw as Json);
     let steps;
     try {
       steps = (await loadTake(loaded)).steps;
@@ -230,7 +270,8 @@ export async function startStudio(scriptFile: string, opts: StudioOptions = {}):
     state.take = 'ok';
     try {
       const { timeline, clips } = await timelineFor(loaded, { aspect: state.aspect, log: opts.log });
-      const src = await mixSoundtrack(loaded, timeline, clips);
+      // The preview has its own mix: a render running meanwhile writes mix.wav.
+      const src = await mixSoundtrack(loaded, timeline, clips, workPaths(loaded).preview);
       // A fresh query string, so the page doesn't play a cached mix.
       if (src) timeline.audio = { src: `${src}?v=${state.version + 1}` };
       const frames = new Map(stepFrames(timeline, steps).map((f) => [f.where, f]));
@@ -261,7 +302,7 @@ export async function startStudio(scriptFile: string, opts: StudioOptions = {}):
         next = applyEdit(raw, change);
         await parseLoaded(next, file);
       } catch (err) {
-        throw new HttpError(400, message(err));
+        throw new HttpError(err instanceof StaleStepError ? 409 : 400, message(err));
       }
       await writeAtomic(file, formatScript(next));
       await rebuild();
@@ -360,7 +401,15 @@ export async function startStudio(scriptFile: string, opts: StudioOptions = {}):
     (async () => {
       if (!hostAllowed(req.headers.host, port)) throw new HttpError(403, 'Forbidden.');
       if (route === '/' || route === '/index.html') {
-        res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' }).end(page(name, token));
+        // Never inside another site's frame: it could click Record, which runs the script's hooks.
+        res
+          .writeHead(200, {
+            'content-type': 'text/html; charset=utf-8',
+            'cache-control': 'no-store',
+            'x-frame-options': 'DENY',
+            'content-security-policy': "frame-ancestors 'none'",
+          })
+          .end(page(name, token));
         return;
       }
       if (route === '/app.js') {

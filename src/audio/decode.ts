@@ -1,3 +1,4 @@
+import { stat } from 'node:fs/promises';
 import { run, runBuffer } from '../ffmpeg';
 import { RATE } from './wav';
 
@@ -16,4 +17,23 @@ export async function decodeAudio(file: string, o: { channels: 1 | 2; lufs?: num
   const channels = Array.from({ length: o.channels }, () => new Float32Array(n));
   for (let i = 0; i < n; i++) for (let c = 0; c < o.channels; c++) channels[c][i] = raw.readFloatLE((i * o.channels + c) * 4);
   return channels;
+}
+
+const musicCache = new Map<string, Promise<Float32Array[]>>();
+
+/**
+ * A music bed as stereo samples, decoded (and loudness-normalised, which reads the whole file) once
+ * per file version: the studio remixes on every edit.
+ */
+export async function musicSamples(file: string, lufs: number): Promise<Float32Array[]> {
+  const { mtimeMs, size } = await stat(file);
+  const key = `${file}|${mtimeMs}|${size}|${lufs}`;
+  let samples = musicCache.get(key);
+  if (!samples) {
+    for (const k of musicCache.keys()) if (k.startsWith(`${file}|`)) musicCache.delete(k);
+    samples = decodeAudio(file, { channels: 2, lufs });
+    samples.catch(() => musicCache.delete(key));
+    musicCache.set(key, samples);
+  }
+  return samples;
 }

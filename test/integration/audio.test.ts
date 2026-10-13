@@ -1,6 +1,8 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { utimes } from 'node:fs/promises';
+import { musicSamples } from '../../src/audio/decode';
 import { ensureVoices } from '../../src/audio/tts';
 import { readWav } from '../../src/audio/wav';
 import { fixtureScript } from '../helpers/fixture';
@@ -29,6 +31,30 @@ describe('ensureVoices', () => {
 
     await ensureVoices(loaded);
     expect((await readFile(counter, 'utf8')).trim().split('\n')).toHaveLength(2);
+  });
+
+  it('lets two runs synthesize the same new line at once', async () => {
+    const loaded = await fixtureScript('http://127.0.0.1:1/', (raw) => {
+      raw.scenes[1].steps[0].show.say = 'Both at once.';
+    });
+    loaded.script.audio.voice = { engine: 'command', speed: 1, command: 'sleep 0.3; ffmpeg -v error -f lavfi -i sine=duration=0.5 -f wav -y {out}' };
+    const [a, b] = await Promise.all([ensureVoices(loaded), ensureVoices(loaded)]);
+    expect(a['export#1'].durationMs).toBeGreaterThan(400);
+    expect(b['export#1'].file).toBe(a['export#1'].file);
+  });
+
+  it('decodes a music file once until it changes', async () => {
+    const loaded = await fixtureScript('http://127.0.0.1:1/');
+    const music = path.join(loaded.dir, 'bed.wav');
+    await new Promise<void>((resolve, reject) => {
+      import('node:child_process').then(({ execFile }) =>
+        execFile('ffmpeg', ['-v', 'error', '-f', 'lavfi', '-i', 'sine=duration=1', '-y', music], (err) => (err ? reject(err) : resolve())),
+      );
+    });
+    const first = await musicSamples(music, -20);
+    expect(await musicSamples(music, -20)).toBe(first);
+    await utimes(music, new Date(), new Date(Date.now() + 5000));
+    expect(await musicSamples(music, -20)).not.toBe(first);
   });
 
   it('names the step whose line failed', async () => {

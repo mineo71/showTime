@@ -4,7 +4,7 @@ import { workPaths } from '../paths';
 import type { LoadedScript } from '../script/load';
 import { introFrames, totalFrames } from '../timeline/frames';
 import type { Timeline } from '../timeline/types';
-import { decodeAudio } from './decode';
+import { musicSamples } from './decode';
 import { mixTrack } from './mix';
 import { clickSamples, KEY_VARIANTS, keySamples } from './sfx';
 import type { VoiceClip } from './tts';
@@ -16,11 +16,16 @@ export const KEY_GAIN = 0.2;
 const MUSIC_LUFS = -20;
 
 /**
- * Mix narration, music and sounds into `.showtime/<name>/audio/mix.wav`, as long as the whole video
- * (cards included). Returns its path relative to the renderer's public folder, or null when the
- * video has no sound.
+ * Mix narration, music and sounds into `out` (default `.showtime/<name>/audio/mix.wav`), as long as
+ * the whole video (cards included). Returns its path relative to the renderer's public folder, or
+ * null when the video has no sound.
  */
-export async function mixSoundtrack(loaded: LoadedScript, t: Timeline, clips: Record<string, VoiceClip>): Promise<string | null> {
+export async function mixSoundtrack(
+  loaded: LoadedScript,
+  t: Timeline,
+  clips: Record<string, VoiceClip>,
+  out = workPaths(loaded).mix,
+): Promise<string | null> {
   const music = loaded.script.audio.music;
   if (!t.narration.length && !t.sounds.length && !music) return null;
   const frameMs = 1000 / t.fps;
@@ -40,10 +45,10 @@ export async function mixSoundtrack(loaded: LoadedScript, t: Timeline, clips: Re
     totalMs: totalFrames(t) * frameMs,
     voices,
     sounds,
-    music: music ? { channels: await decodeAudio(music.file, { channels: 2, lufs: MUSIC_LUFS }), volume: music.volume } : undefined,
+    music: music ? { channels: await musicSamples(music.file, MUSIC_LUFS), volume: music.volume } : undefined,
   });
   const paths = workPaths(loaded);
   await mkdir(paths.audio, { recursive: true });
-  await writeWav(paths.mix, track);
-  return path.relative(paths.root, paths.mix).split(path.sep).join('/');
+  await writeWav(out, track);
+  return path.relative(paths.root, out).split(path.sep).join('/');
 }

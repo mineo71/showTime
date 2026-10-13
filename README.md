@@ -226,11 +226,13 @@ with the edited video playing, a timeline of the steps and an inspector:
 <img src="docs/media/studio.jpg" alt="showTime studio: the video preview, an inspector with caption, narration, zoom and speed for the selected step, the look panel, and a timeline of every step" />
 
 - Pick a step and change its caption, narration line, zoom, spotlight or speed; the preview updates
-  in about a second and the change is saved to the JSON (one step per line, so the diff stays small).
+  in about a second and the change is saved to the JSON. The studio writes the file with one step
+  per line, so the first save may reformat it; after that each edit is a one-line diff.
 - Switch the preview between 16:9, 9:16 and 1:1, and render MP4, GIF or WebP from the page.
 - The page reloads on its own when the file changes on disk, so you can keep it open while your
   agent edits the script.
-- It only listens on `127.0.0.1` and only accepts requests from its own page.
+- It only listens on `127.0.0.1`. Changes need a token that only its own page has, and the page
+  can't be framed by another site.
 
 **Rather show the flow than describe it?** `showtime record-human http://localhost:3000 -o demo/flow.json`
 opens a browser. Click through the flow and close the window: you get a script of those steps with

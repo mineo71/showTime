@@ -1,10 +1,10 @@
-import type { FC } from 'react';
+import { useEffect, useRef, type FC } from 'react';
 import type { Edit } from '../edit';
 import type { StudioState } from '../server';
 import { Row, TextField } from './fields';
 
 export const Look: FC<{ state: StudioState; onEdit: (edit: Edit) => void }> = ({ state, onEdit }) => {
-  const style = state.timeline?.style;
+  const style = state.style;
   const meta = (state.script?.meta ?? {}) as { title?: string; subtitle?: string };
   const setStyle = (changes: Record<string, unknown>) => onEdit({ style: changes } as Edit);
   const setMeta = (changes: Record<string, unknown>) => onEdit({ meta: changes } as Edit);
@@ -21,7 +21,7 @@ export const Look: FC<{ state: StudioState; onEdit: (edit: Edit) => void }> = ({
         <>
           <Row label="Accent">
             <span className="color">
-              <input type="color" data-field="accent" value={/^#[0-9a-f]{6}$/i.test(style.accent) ? style.accent : '#6366f1'} onChange={(e) => setStyle({ accent: e.target.value })} />
+              <ColorInput value={style.accent} onCommit={(accent) => setStyle({ accent })} />
               <code>{style.accent}</code>
             </span>
           </Row>
@@ -44,4 +44,22 @@ export const Look: FC<{ state: StudioState; onEdit: (edit: Edit) => void }> = ({
       ) : null}
     </section>
   );
+};
+
+/**
+ * A colour picker that saves once, when the pick is done (the native `change` event), not on every
+ * step of a drag (React's onChange is the `input` event).
+ */
+const ColorInput: FC<{ value: string; onCommit: (value: string) => void }> = ({ value, onCommit }) => {
+  const ref = useRef<HTMLInputElement>(null);
+  const commit = useRef(onCommit);
+  commit.current = onCommit;
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const done = () => commit.current(el.value);
+    el.addEventListener('change', done);
+    return () => el.removeEventListener('change', done);
+  }, []);
+  return <input ref={ref} type="color" data-field="accent" defaultValue={/^#[0-9a-f]{6}$/i.test(value) ? value : '#6366f1'} key={value} />;
 };

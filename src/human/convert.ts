@@ -21,11 +21,17 @@ export type HumanStep =
   | { do: 'press'; key: string }
   | { do: 'goto'; url: string };
 
-/** One part of a selector chain, rewritten to its public form when it has one. */
+/**
+ * One part of a selector chain, rewritten to its public form only where that form matches the same
+ * elements. The recorder's role names and `i` texts are case-insensitive substrings (it shortens long
+ * names); exact (`s`) matches have no public twin with the same meaning, so they stay as recorded.
+ */
 function part(p: string): string {
-  if (p.startsWith('internal:role=')) return p.slice('internal:'.length);
-  const text = /^internal:text="([^"\\]*)"([is])$/.exec(p);
-  if (text) return text[2] === 'i' ? `text=${text[1]}` : `text="${text[1]}"`;
+  const role = /^internal:role=(\w+)((?:\[[^\]]*\])*)$/.exec(p);
+  if (role && !/"s\]/.test(role[2])) return `role=${role[1]}${role[2].replace(/\[name="/g, '[name*="')}`;
+  const text = /^internal:text="([^"\\]*)"i$/.exec(p);
+  // `text=/x/` would be a regex and `text='x'` an exact match: those stay as recorded.
+  if (text && !/^[/'"\s]/.test(text[1]) && !/\s$/.test(text[1])) return `text=${text[1]}`;
   const testid = /^internal:testid=\[([\w-]+)="([^"\\]*)"s\]$/.exec(p);
   if (testid) return `[${testid[1]}="${testid[2]}"]`;
   return p;

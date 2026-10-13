@@ -30,7 +30,14 @@ const StyleEdit = z
 const MetaEdit = z.object({ title: nullable(z.string()), subtitle: nullable(z.string()) }).strict();
 
 export const EditSchema = z.union([
-  z.object({ where: z.string().regex(/^[A-Za-z0-9_-]+#\d+$/), show: ShowEdit }).strict(),
+  z
+    .object({
+      where: z.string().regex(/^[A-Za-z0-9_-]+#\d+$/),
+      /** the step's fingerprint when the page saw it (`stepId`), so an edit never lands on a step that moved */
+      step: z.string().optional(),
+      show: ShowEdit,
+    })
+    .strict(),
   z.object({ style: StyleEdit }).strict(),
   z.object({ meta: MetaEdit }).strict(),
 ]);
@@ -45,6 +52,27 @@ export function parseEdit(body: unknown): Edit {
 }
 
 const isObject = (v: unknown): v is Json => typeof v === 'object' && v !== null && !Array.isArray(v);
+
+/** Thrown when an edit names a step that is no longer the one the page showed. */
+export class StaleStepError extends Error {}
+
+const canonical = (v: unknown): string =>
+  Array.isArray(v)
+    ? `[${v.map(canonical).join(',')}]`
+    : isObject(v)
+      ? `{${Object.keys(v)
+          .filter((k) => v[k] !== undefined)
+          .sort()
+          .map((k) => `${JSON.stringify(k)}:${canonical(v[k])}`)
+          .join(',')}}`
+      : JSON.stringify(v);
+
+/** A step's identity: what it does, without how it is presented (`show`), independent of key order. */
+export function stepId(step: unknown): string {
+  if (!isObject(step)) return '';
+  const { show: _show, ...action } = step;
+  return canonical(action);
+}
 
 /** `section` with `changes` applied (null removes a key); undefined when nothing is left. */
 function merge(section: unknown, changes: Json): Json | undefined {
@@ -72,6 +100,9 @@ export function applyEdit<T extends Json>(raw: T, edit: Edit): T & Json {
     const steps = scene && Array.isArray(scene.steps) ? scene.steps : [];
     const step = steps[Number(n) - 1];
     if (!isObject(step)) throw new Error(`No step ${edit.where} in the script.`);
+    if (edit.step !== undefined && stepId(step) !== edit.step) {
+      throw new StaleStepError(`The script changed on disk: ${edit.where} is a different step now. Check it and edit again.`);
+    }
     setOrDelete(step, 'show', merge(step.show, edit.show));
   } else if ('style' in edit) {
     setOrDelete(next, 'style', merge(next.style, edit.style));

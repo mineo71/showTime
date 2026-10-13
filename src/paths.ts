@@ -18,6 +18,8 @@ export interface WorkPaths {
   /** voice cache and the mixed soundtrack */
   audio: string;
   mix: string;
+  /** the studio's soundtrack, kept apart from the render's */
+  preview: string;
   video: string;
 }
 
@@ -37,6 +39,7 @@ export function workPaths(loaded: LoadedScript): WorkPaths {
     sheet: path.join(root, 'frames', 'sheet.png'),
     audio: path.join(root, 'audio'),
     mix: path.join(root, 'audio', 'mix.wav'),
+    preview: path.join(root, 'audio', 'preview.wav'),
     video: path.join(loaded.dir, `${loaded.name}.mp4`),
   };
 }

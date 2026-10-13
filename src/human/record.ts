@@ -32,22 +32,34 @@ type Recordable = BrowserContext & {
   _stopRecording?: () => Promise<void>;
 };
 
-/** Resolves when every page of the context is closed (the person closed the window) or on Ctrl+C. */
+/** Resolves when every page of the context is closed: the person closed the window. */
 function untilClosed(context: BrowserContext): Promise<void> {
   return new Promise((resolve) => {
-    const done = () => {
-      process.off('SIGINT', done);
-      resolve();
-    };
     const check = () => {
-      if (!context.pages().length) done();
+      if (!context.pages().length) resolve();
     };
     const watch = (page: Page) => page.on('close', check);
     context.pages().forEach(watch);
     context.on('page', watch);
-    context.on('close', done);
-    process.on('SIGINT', done);
+    context.on('close', () => resolve());
   });
+}
+
+/** Resolves on Ctrl+C, and stops listening once `work` settles. */
+async function orInterrupt(work: Promise<void>): Promise<void> {
+  let stop = () => undefined as void;
+  const interrupted = new Promise<void>((resolve) => {
+    stop = () => {
+      process.off('SIGINT', stop);
+      resolve();
+    };
+    process.on('SIGINT', stop);
+  });
+  try {
+    await Promise.race([work, interrupted]);
+  } finally {
+    process.off('SIGINT', stop);
+  }
 }
 
 /**
@@ -58,8 +70,10 @@ export async function recordHuman(url: string, opts: RecordHumanOptions): Promis
   const file = path.resolve(opts.out);
   if (existsSync(file) && !opts.force) throw new Error(`${file} exists. Pass --force to overwrite it, or -o to write somewhere else.`);
   const viewport = opts.viewport ?? { width: 1440, height: 900 };
-  const browser = await chromium.launch({ headless: opts.headless ?? false });
+  // Playwright would close the browser and exit on Ctrl+C itself; showTime handles it, so the script gets written.
+  const browser = await chromium.launch({ headless: opts.headless ?? false, handleSIGINT: false });
   const actions: RecordedAction[] = [];
+  const pageNotes: string[] = [];
   let title = '';
   try {
     const context = (await browser.newContext({ viewport })) as Recordable;
@@ -70,28 +84,36 @@ export async function recordHuman(url: string, opts: RecordHumanOptions): Promis
     await page.goto(url);
     title = await page.title();
     const say = (a: RecordedAction) => opts.log?.(`● ${a.name}${a.selector ? ` ${toTarget(a.selector)}` : ''}${a.text ? ` "${a.text}"` : ''}`);
+    // showTime films one page: actions in popups and new tabs are left out, with a note.
+    const otherPage = () => {
+      if (!pageNotes.length) pageNotes.push('actions in a popup or new tab were skipped; showTime records one page');
+    };
     await context._startRecording(
       { language: 'jsonl' },
       {
-        actionAdded: (_page, action) => {
+        actionAdded: (from, action) => {
+          if (from !== page) return otherPage();
           actions.push(action);
           say(action);
         },
         // Typing into a field arrives as one fill, updated keystroke by keystroke.
-        actionUpdated: (_page, action) => {
-          actions[actions.length - 1] = action;
+        actionUpdated: (from, action) => {
+          if (from === page && actions.length) actions[actions.length - 1] = action;
         },
-        signalAdded: () => undefined,
+        signalAdded: (_from, signal) => {
+          if ((signal as { name?: string }).name === 'popup') otherPage();
+        },
       },
     );
-    if (opts.drive) await opts.drive(page);
-    else await untilClosed(context);
+    await orInterrupt(opts.drive ? opts.drive(page) : untilClosed(context));
     await context._stopRecording?.().catch(() => undefined);
   } finally {
     await browser.close().catch(() => undefined);
   }
 
-  const { steps, notes } = toSteps(actions, url);
+  const converted = toSteps(actions, url);
+  const steps = converted.steps;
+  const notes = [...converted.notes, ...pageNotes];
   for (const note of notes) opts.log?.(`⚠ ${note}`);
   if (!steps.length) throw new Error('Nothing was recorded, so no script was written.');
   const script = {

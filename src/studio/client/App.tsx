@@ -13,17 +13,30 @@ import { TopBar } from './TopBar';
 export const App = () => {
   const [state, setState] = useState<StudioState | null>(null);
   const [job, setJob] = useState<Job | null>(null);
-  const [selected, setSelected] = useState<string | null>(null);
+  // The selected step, by position and by what it does: when the agent inserts a step, the selection follows its step.
+  const [selected, setSelected] = useState<{ where: string; id: string } | null>(null);
   const [frame, setFrame] = useState(0);
   const [toast, setToast] = useState<string | null>(null);
   const player = useRef<PlayerRef>(null);
 
-  const refresh = useCallback(() => {
-    api.state().then((s) => {
-      setState(s);
-      setJob(s.job);
-    }, (err: Error) => setToast(err.message));
+  const latest = useRef(-1);
+  const accept = useCallback((s: StudioState) => {
+    // Responses can arrive out of order; never go back to an older state.
+    if (s.version < latest.current) return;
+    latest.current = s.version;
+    setState(s);
+    setJob(s.job);
+    setSelected((sel) => {
+      if (!sel) return sel;
+      if (s.steps.find((x) => x.where === sel.where)?.id === sel.id) return sel;
+      const moved = s.steps.find((x) => x.id === sel.id);
+      return moved ? { where: moved.where, id: moved.id } : null;
+    });
   }, []);
+
+  const refresh = useCallback(() => {
+    api.state().then(accept, (err: Error) => setToast(err.message));
+  }, [accept]);
 
   useEffect(() => {
     refresh();
@@ -38,7 +51,7 @@ export const App = () => {
 
   const edit = useCallback(async (change: Edit) => {
     try {
-      setState(await api.edit(change));
+      accept(await api.edit(change));
     } catch (err) {
       setToast((err as Error).message);
       refresh();
@@ -54,14 +67,14 @@ export const App = () => {
   };
 
   if (!state) return <div className="loading">Loading the studio…</div>;
-  const step = state.steps.find((s) => s.where === selected) ?? null;
+  const step = state.steps.find((s) => s.where === selected?.where) ?? null;
 
   return (
     <div className="studio">
       <TopBar
         state={state}
         job={job}
-        onAspect={(a) => api.aspect(a).then(setState, (err: Error) => setToast(err.message))}
+        onAspect={(a) => api.aspect(a).then(accept, (err: Error) => setToast(err.message))}
         onRender={(format) => run(() => api.render(format))}
         onRecord={() => run(api.record)}
       />
@@ -76,9 +89,10 @@ export const App = () => {
       <Timeline
         state={state}
         frame={frame}
-        selected={selected}
+        selected={selected?.where ?? null}
         onSelect={(where, f) => {
-          setSelected(where);
+          const s = state.steps.find((x) => x.where === where);
+          setSelected(s ? { where, id: s.id } : null);
           if (f !== null) seek(f);
         }}
         onSeek={seek}

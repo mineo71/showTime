@@ -1,4 +1,4 @@
-import { readFile, writeFile } from 'node:fs/promises';
+import { chmod, readFile, writeFile } from 'node:fs/promises';
 import { request } from 'node:http';
 import path from 'node:path';
 import { chromium } from 'playwright';
@@ -110,6 +110,50 @@ describe('studio server', () => {
     expect(state.timeline.captions.map((c: { text: string }) => c.text)).toContain('Edited by the agent');
   });
 
+  it('refuses an edit aimed at a step that moved, and writes nothing', async () => {
+    const state = await (await api('/api/state')).json();
+    const before = await readFile(loaded.scriptPath, 'utf8');
+    const wrong = state.steps[1].id;
+    const res = await api('/api/edit', { method: 'POST', body: JSON.stringify({ where: 'report#1', step: wrong, show: { caption: 'x' } }) });
+    expect(res.status).toBe(409);
+    expect((await res.json()).error).toMatch(/changed on disk/);
+    expect(await readFile(loaded.scriptPath, 'utf8')).toBe(before);
+  });
+
+  it('forbids framing the page', async () => {
+    const page = await fetch(studio.url);
+    expect(page.headers.get('x-frame-options')).toBe('DENY');
+    expect(page.headers.get('content-security-policy')).toMatch(/frame-ancestors 'none'/);
+  });
+
+  it('survives a file it cannot read', async () => {
+    const locked = path.join(loaded.dir, '.showtime', loaded.name, 'locked.png');
+    await writeFile(locked, 'x');
+    await chmod(locked, 0o000);
+    const res = await fetch(new URL('/files/locked.png', studio.url));
+    expect(res.status).toBeGreaterThanOrEqual(400);
+    expect((await fetch(studio.url)).status).toBe(200);
+  });
+
+  it('keeps the look panel on the script, even with a stale take', async () => {
+    await api('/api/edit', { method: 'POST', body: JSON.stringify({ where: 'report#6', show: { hold: 1500 } }) });
+    const stale = await (await api('/api/state')).json();
+    expect(stale.take).toBe('stale');
+    const res = await api('/api/edit', { method: 'POST', body: JSON.stringify({ style: { accent: '#ff0000' } }) });
+    expect((await res.json()).style.accent).toBe('#ff0000');
+    await api('/api/edit', { method: 'POST', body: JSON.stringify({ where: 'report#6', show: { hold: 1200 } }) });
+    expect((await (await api('/api/state')).json()).take).toBe('ok');
+  });
+
+  it('mixes the preview soundtrack apart from the render one', async () => {
+    const raw = JSON.parse(await readFile(loaded.scriptPath, 'utf8'));
+    raw.audio = { sounds: true };
+    await writeFile(loaded.scriptPath, JSON.stringify(raw, null, 2));
+    await expect
+      .poll(async () => (await (await api('/api/state')).json()).timeline?.audio?.src ?? '', { timeout: 20_000 })
+      .toMatch(/^audio\/preview\.wav\?v=\d+$/);
+  });
+
   it('says when there is no take yet', async () => {
     const fresh = await fixtureScript(server.url);
     const other = await startStudio(fresh.scriptPath, { port: 0 });
@@ -144,6 +188,22 @@ describe('studio page', () => {
         .poll(async () => (await readFile(loaded.scriptPath, 'utf8')).includes('"caption": "Typed in the studio"'), { timeout: 20_000 })
         .toBe(true);
       await expect.poll(() => page.locator('[data-where="report#2"] [data-icon=caption]').count()).toBe(1);
+
+      // A zoom the agent wrote that isn't in the list still shows as itself.
+      await api('/api/edit', { method: 'POST', body: JSON.stringify({ where: 'report#3', show: { zoom: 1.6 } }) });
+      await page.locator('[data-where="report#3"]').click();
+      await expect.poll(() => page.locator('[data-field=zoom]').inputValue()).toBe('1.6');
+
+      // Dragging through the colour picker saves once, when the pick is done.
+      const before = await readFile(loaded.scriptPath, 'utf8');
+      await page.locator('[data-field=accent]').evaluate((el: HTMLInputElement) => {
+        el.value = '#123456';
+        el.dispatchEvent(new Event('input', { bubbles: true }));
+      });
+      await page.waitForTimeout(1500);
+      expect(await readFile(loaded.scriptPath, 'utf8')).toBe(before);
+      await page.locator('[data-field=accent]').evaluate((el: HTMLInputElement) => el.dispatchEvent(new Event('change', { bubbles: true })));
+      await expect.poll(async () => (await readFile(loaded.scriptPath, 'utf8')).includes('#123456'), { timeout: 20_000 }).toBe(true);
       expect(errors).toEqual([]);
     } finally {
       await browser.close();

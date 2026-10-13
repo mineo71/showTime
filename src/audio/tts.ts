@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process';
-import { createHash } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { mkdir, rename, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
@@ -167,16 +167,19 @@ export async function ensureVoices(
       if (!existsSync(file)) {
         await mkdir(dir, { recursive: true });
         opts.log?.(`Voice for ${where}…`);
-        const base = path.join(dir, `tmp-${key}`);
+        // Per-run names: two runs (the studio and a render, say) may synthesize the same line at once.
+        const run = `${process.pid}-${randomBytes(4).toString('hex')}`;
+        const base = path.join(dir, `tmp-${key}-${run}`);
+        const part = `${file}.${run}.part`;
         try {
           const raw = await synthesize(voice, text, base, opts);
-          await normalizeVoice(raw, `${file}.part`);
-          await rename(`${file}.part`, file);
+          await normalizeVoice(raw, part);
+          await rename(part, file);
         } catch (err) {
           throw new Error(`audio.voice (${voice.engine}) failed for ${where}: ${(err as Error).message}`);
         } finally {
           for (const ext of ['.txt', '.aiff', '.wav', '.mp3']) await rm(`${base}${ext}`, { force: true });
-          await rm(`${file}.part`, { force: true });
+          await rm(part, { force: true });
         }
       }
       clips[where] = { file, durationMs: await wavDurationMs(file) };

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { applyEdit, formatScript, parseEdit } from '../../src/studio/edit';
+import { applyEdit, formatScript, parseEdit, stepId } from '../../src/studio/edit';
 
 const raw = () => ({
   version: 1,
@@ -31,6 +31,16 @@ describe('applyEdit', () => {
     expect(styled.style).toEqual({ accent: '#ef4444', chrome: 'none' });
     expect(applyEdit(styled, { style: { accent: null, chrome: null } }).style).toBeUndefined();
     expect(applyEdit(raw(), { meta: { title: 'Acme', subtitle: 'Reports' } }).meta).toEqual({ title: 'Acme', subtitle: 'Reports' });
+  });
+
+  it('refuses an edit meant for a step that has since changed', () => {
+    const id = stepId(raw().scenes[0].steps[0]);
+    expect(applyEdit(raw(), { where: 'a#1', step: id, show: { caption: 'ok' } }).scenes[0].steps[0].show).toEqual({ caption: 'ok' });
+    const moved = raw();
+    moved.scenes[0].steps.unshift({ do: 'pause', ms: 100 } as never);
+    expect(() => applyEdit(moved, { where: 'a#1', step: id, show: { caption: 'lost' } })).toThrow(/changed on disk/);
+    // The fingerprint ignores presentation and key order.
+    expect(stepId({ show: { caption: 'x' }, target: '#a', do: 'click' })).toBe(id);
   });
 
   it('refuses steps that do not exist', () => {

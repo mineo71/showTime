@@ -9,8 +9,12 @@ const SPEEDS = ['auto', '0.5', '1', '1.5', '2', '4'];
 export const Inspector: FC<{ step: StepInfo | null; take: StudioState['take']; onEdit: (edit: Edit) => void }> = ({ step, onEdit }) => {
   if (!step) return <section className="panel hint">Select a step on the timeline to edit how it is presented.</section>;
   const show = step.show as { caption?: string; say?: string; zoom?: number | false; spotlight?: boolean; speed?: number; hold?: number };
-  const set = (changes: Record<string, unknown>) => onEdit({ where: step.where, show: changes } as Edit);
+  const set = (changes: Record<string, unknown>) => onEdit({ where: step.where, step: step.id, show: changes } as Edit);
   const zoom = show.zoom === false ? 'off' : show.zoom === undefined ? 'auto' : String(show.zoom);
+  const speed = show.speed === undefined ? 'auto' : String(show.speed);
+  // A value the agent wrote that isn't in the list is still shown as itself.
+  const zooms = ZOOMS.includes(zoom) ? ZOOMS : [...ZOOMS, zoom];
+  const speeds = SPEEDS.includes(speed) ? SPEEDS : [...SPEEDS, speed];
   return (
     <section className="panel">
       <h2>
@@ -25,7 +29,7 @@ export const Inspector: FC<{ step: StepInfo | null; take: StudioState['take']; o
       <div className="pair">
         <Row label="Zoom">
           <select data-field="zoom" value={zoom} onChange={(e) => set({ zoom: e.target.value === 'auto' ? null : e.target.value === 'off' ? false : Number(e.target.value) })}>
-            {ZOOMS.map((z) => (
+            {zooms.map((z) => (
               <option key={z} value={z}>
                 {z}
               </option>
@@ -33,8 +37,8 @@ export const Inspector: FC<{ step: StepInfo | null; take: StudioState['take']; o
           </select>
         </Row>
         <Row label="Speed">
-          <select data-field="speed" value={show.speed === undefined ? 'auto' : String(show.speed)} onChange={(e) => set({ speed: e.target.value === 'auto' ? null : Number(e.target.value) })}>
-            {SPEEDS.map((s) => (
+          <select data-field="speed" value={speed} onChange={(e) => set({ speed: e.target.value === 'auto' ? null : Number(e.target.value) })}>
+            {speeds.map((s) => (
               <option key={s} value={s}>
                 {s === 'auto' ? 'auto' : `${s}×`}
               </option>

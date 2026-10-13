@@ -1,4 +1,5 @@
-import { open, readFile, writeFile } from 'node:fs/promises';
+import { randomBytes } from 'node:crypto';
+import { open, readFile, rename, writeFile } from 'node:fs/promises';
 
 /** Sample rate of everything showTime mixes. */
 export const RATE = 48_000;
@@ -76,7 +77,12 @@ export function decodeWav(buf: Buffer): { rate: number; channels: Float32Array[]
   return { rate: f.rate, channels };
 }
 
-export const writeWav = (file: string, channels: Float32Array[], rate = RATE) => writeFile(file, encodeWav(channels, rate));
+/** Write a WAV through a temp file and a rename, so a reader never sees half of it. */
+export async function writeWav(file: string, channels: Float32Array[], rate = RATE): Promise<void> {
+  const tmp = `${file}.${process.pid}.${randomBytes(4).toString('hex')}.tmp`;
+  await writeFile(tmp, encodeWav(channels, rate));
+  await rename(tmp, file);
+}
 
 export const readWav = async (file: string) => decodeWav(await readFile(file));
 
