@@ -11,7 +11,7 @@ export const Outro: FC<{ timeline: Timeline; frame: number }> = ({ timeline: t, 
     <AbsoluteFill
       style={{ background: t.style.background, fontFamily: t.style.font, alignItems: 'center', justifyContent: 'center', color: '#fff', textAlign: 'center' }}
     >
-      <div style={{ opacity: enter, transform: `translateY(${(1 - enter) * 24}px)` }}>
+      <div style={{ maxWidth: '86%', opacity: enter, transform: `translateY(${(1 - enter) * 24}px)` }}>
         <Logo src={t.logo} />
         <div style={{ fontSize: 80, fontWeight: 800, letterSpacing: -1.5 }}>{o?.title}</div>
         {o?.subtitle ? <div style={{ marginTop: 18, fontSize: 34, opacity: 0.75 }}>{o.subtitle}</div> : null}

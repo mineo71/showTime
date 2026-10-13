@@ -20,7 +20,7 @@ export const Intro: FC<{ timeline: Timeline; frame: number }> = ({ timeline: t, 
         textAlign: 'center',
       }}
     >
-      <div style={{ opacity: Math.min(enter, exit), transform: `scale(${0.94 + 0.06 * enter})` }}>
+      <div style={{ maxWidth: '86%', opacity: Math.min(enter, exit), transform: `scale(${0.94 + 0.06 * enter})` }}>
         <Logo src={t.logo} />
         <div style={{ fontSize: 88, fontWeight: 800, letterSpacing: -1.5 }}>{t.intro?.title}</div>
         {t.intro?.subtitle ? <div style={{ marginTop: 18, fontSize: 36, opacity: 0.75 }}>{t.intro.subtitle}</div> : null}

@@ -2,7 +2,7 @@ import type { FC } from 'react';
 import { AbsoluteFill, Easing, Freeze, Html5Audio, interpolate, OffthreadVideo, Sequence, staticFile, useCurrentFrame } from 'remotion';
 import { cameraAt, cameraTransform } from '../../timeline/camera';
 import { introFrames, segmentPlan, sourceMsAtFrame, videoEndFrame } from '../../timeline/frames';
-import { BROWSER_BAR, windowLayout } from '../../timeline/layout';
+import { BROWSER_BAR, viewLayout } from '../../timeline/layout';
 import type { Timeline } from '../../timeline/types';
 import { BrowserBar } from './BrowserBar';
 import { Cursor } from './Cursor';
@@ -30,9 +30,15 @@ const Picture: FC<ShowtimeVideoProps> = ({ timeline: t }) => {
   if (t.outro && frame >= end) return <Outro timeline={t} frame={frame - end} />;
 
   const src = sourceMsAtFrame(t, frame) ?? 0;
-  const win = windowLayout(t.output, t.stage, t.style.padding, t.chrome ? BROWSER_BAR : 0);
+  const win = viewLayout(t.output, t.stage, t.style.padding, t.chrome ? BROWSER_BAR : 0, t.aspect);
   const cam = cameraAt(t.camera, src);
-  const k = win.width / t.stage.width;
+  const { content } = win;
+  const k = content.width / t.stage.width;
+  const H = t.output.height;
+  // 9:16 puts captions and subtitles in the bands above and below the window; the others overlay it.
+  const bands = t.aspect === '9:16';
+  const above = { top: 0, height: win.y - win.bar, alignItems: 'center' } as const;
+  const below = { top: win.y + win.height, bottom: 0, alignItems: 'center' } as const;
   // After an intro card the window rises into place instead of cutting in.
   const enter = intro
     ? interpolate(frame - intro, [0, 16], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp', easing: Easing.out(Easing.cubic) })
@@ -64,10 +70,10 @@ const Picture: FC<ShowtimeVideoProps> = ({ timeline: t }) => {
               position: 'absolute',
               left: 0,
               top: 0,
-              width: win.width,
-              height: win.height,
+              width: content.width,
+              height: content.height,
               transformOrigin: '0 0',
-              transform: cameraTransform(cam, win.width, win.height),
+              transform: cameraTransform(cam, win.width, win.height, content),
             }}
           >
             {segmentPlan(t).map((p) => {
@@ -77,7 +83,7 @@ const Picture: FC<ShowtimeVideoProps> = ({ timeline: t }) => {
                   trimBefore={p.trimBefore}
                   playbackRate={p.speed || 1}
                   muted
-                  style={{ position: 'absolute', left: 0, top: 0, width: win.width, height: win.height }}
+                  style={{ position: 'absolute', left: 0, top: 0, width: content.width, height: content.height }}
                 />
               );
               return (
@@ -105,8 +111,19 @@ const Picture: FC<ShowtimeVideoProps> = ({ timeline: t }) => {
         </div>
       </div>
       <div style={{ opacity: leave }}>
-        <Captions timeline={t} srcMs={src} top={win.y + Math.round(t.output.height * 0.03)} />
-        <Subtitles timeline={t} videoMs={((frame - intro) * 1000) / t.fps} bottom={Math.round(t.output.height * 0.06)} />
+        <Captions
+          timeline={t}
+          srcMs={src}
+          top={bands ? above : { top: win.y + Math.round(H * 0.03) }}
+          bottom={bands ? below : { bottom: Math.round(H * 0.075) }}
+          fontSize={bands ? 46 : 36}
+        />
+        <Subtitles
+          timeline={t}
+          videoMs={((frame - intro) * 1000) / t.fps}
+          place={bands ? below : { bottom: Math.round(H * 0.06) }}
+          fontSize={bands ? 40 : 34}
+        />
       </div>
     </AbsoluteFill>
   );

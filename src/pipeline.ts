@@ -11,10 +11,11 @@ import { loadTake } from './take';
 import { buildTimeline } from './timeline/build';
 import { introFrames, qaShots } from './timeline/frames';
 import { toSrt } from './timeline/narration';
-import type { TakeEvents, Timeline } from './timeline/types';
+import type { Aspect, TakeEvents, Timeline } from './timeline/types';
 
 export interface TimelineOptions {
   log?: (line: string) => void;
+  aspect?: Aspect;
 }
 
 /** The timeline for the last take, with narration synthesized (cached) and its holds in place. */
@@ -26,6 +27,7 @@ export async function timelineFor(
   const clips = await ensureVoices(loaded, { log: opts.log });
   const { logo } = loaded.script.meta;
   const timeline = buildTimeline(loaded.script, events, {
+    aspect: opts.aspect,
     logo: logo ? await logoDataUri(logo) : undefined,
     voices: Object.fromEntries(Object.entries(clips).map(([where, c]) => [where, c.durationMs])),
   });
@@ -74,8 +76,8 @@ export async function renderDemo(loaded: LoadedScript, opts: RenderOptions = {})
 }
 
 /** QA stills (intro, one per step, outro) and a contact sheet of all of them. */
-export async function renderQaFrames(loaded: LoadedScript): Promise<{ sheet: string; frames: string[] }> {
-  const { timeline, events } = await timelineFor(loaded);
+export async function renderQaFrames(loaded: LoadedScript, opts: TimelineOptions = {}): Promise<{ sheet: string; frames: string[] }> {
+  const { timeline, events } = await timelineFor(loaded, opts);
   const paths = workPaths(loaded);
   await rm(paths.stills, { recursive: true, force: true });
   await mkdir(paths.stills, { recursive: true });

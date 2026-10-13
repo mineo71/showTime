@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { projectRect } from '../../src/timeline/layout';
+import { BROWSER_BAR, OUTPUT_SIZES, projectRect, viewLayout, windowLayout, type View } from '../../src/timeline/layout';
 
 const stage = { width: 1440, height: 900 };
 const win = { x: 100, y: 50, width: 1440, height: 900, bar: 0 };
@@ -29,6 +29,53 @@ describe('projectRect', () => {
       x: 50,
       y: 50,
       width: 50,
+      height: 50,
+    });
+  });
+});
+
+describe('viewLayout', () => {
+  const out = OUTPUT_SIZES;
+  const covers = (v: View) => {
+    expect(v.content.width).toBeGreaterThanOrEqual(v.width);
+    expect(v.content.height).toBeGreaterThanOrEqual(v.height);
+  };
+
+  it('is the 0.3 window for 16:9, with content the size of the window', () => {
+    const v = viewLayout(out['16:9'], stage, 0.06, BROWSER_BAR, '16:9');
+    expect(v).toEqual({ ...windowLayout(out['16:9'], stage, 0.06, BROWSER_BAR), content: { width: v.width, height: v.height } });
+  });
+
+  it('fills the padded square for 1:1, the viewport covering it', () => {
+    const v = viewLayout(out['1:1'], stage, 0.06, BROWSER_BAR, '1:1');
+    expect(v.width).toBe(950);
+    expect(v.height + v.bar).toBe(950);
+    expect(v.x).toBe(65);
+    covers(v);
+    expect(v.content.width / v.width).toBeGreaterThan(1.4);
+  });
+
+  it('puts a window 1.3× taller than wide in the middle of 9:16, covering it', () => {
+    const v = viewLayout(out['9:16'], stage, 0.06, BROWSER_BAR, '9:16');
+    expect(v.width).toBe(950);
+    expect(v.height + v.bar).toBe(1235);
+    expect(v.y - v.bar).toBe(Math.round((1920 - 1235) / 2));
+    covers(v);
+    expect(Math.abs(v.content.height - v.height)).toBeLessThanOrEqual(1);
+  });
+
+  it('covers the window with a portrait (mobile) viewport too', () => {
+    covers(viewLayout(out['9:16'], { width: 390, height: 844 }, 0.06, BROWSER_BAR, '9:16'));
+    covers(viewLayout(out['1:1'], { width: 390, height: 844 }, 0.06, 0, '1:1'));
+  });
+
+  it('projects through cropped content', () => {
+    const v: View = { x: 0, y: 0, width: 500, height: 500, bar: 0, content: { width: 1000, height: 500 } };
+    // Focus at the left quarter: content x 250 sits at the window centre.
+    expect(projectRect({ x: 360, y: 0, width: 144, height: 90 }, { scale: 1, cx: 0.25, cy: 0.5 }, { width: 1440, height: 900 }, v)).toEqual({
+      x: 250,
+      y: 0,
+      width: 100,
       height: 50,
     });
   });

@@ -22,7 +22,28 @@ describe('clampFocus', () => {
   });
 });
 
+describe('clampFocus in a crop', () => {
+  it('keeps the visible part inside the content', () => {
+    const visible = { x: 0.5, y: 1 };
+    expect(clampFocus(1, 0.1, 0.1, visible)).toEqual({ cx: 0.25, cy: 0.5 });
+    expect(clampFocus(1, 0.9, 0.9, visible)).toEqual({ cx: 0.75, cy: 0.5 });
+    expect(clampFocus(2, 0.9, 0.9, visible)).toEqual({ cx: 0.875, cy: 0.75 });
+  });
+});
+
 describe('buildCamera', () => {
+  it('holds the last focus between regions in hold mode instead of returning to the centre', () => {
+    const keys = buildCamera(
+      [
+        { startMs: 2000, endMs: 3000, scale: 1, cx: 0.2, cy: 0.5 },
+        { startMs: 9000, endMs: 10_000, scale: 1, cx: 0.7, cy: 0.5 },
+      ],
+      { visible: { x: 0.5, y: 1 }, hold: true },
+    );
+    expect(keys.map((k) => k.cx)).toEqual([0.5, 0.25, 0.25, 0.25, 0.25, 0.7, 0.7, 0.7]);
+    expect(keys.every((k) => k.cy === 0.5)).toBe(true);
+  });
+
   it('zooms in before and out after a single region', () => {
     const keys = buildCamera([{ startMs: 2000, endMs: 4000, scale: 2, cx: 0.5, cy: 0.5 }]);
     expect(keys).toEqual([
@@ -79,6 +100,11 @@ describe('cameraAt', () => {
 });
 
 describe('cameraTransform', () => {
+  it('pans content wider than the window', () => {
+    expect(cameraTransform({ tMs: 0, scale: 1, cx: 0.25, cy: 0.5 }, 500, 500, { width: 1000, height: 500 })).toBe('translate(0px, 0px) scale(1)');
+    expect(cameraTransform({ tMs: 0, scale: 1, cx: 0.75, cy: 0.5 }, 500, 500, { width: 1000, height: 500 })).toBe('translate(-500px, 0px) scale(1)');
+  });
+
   it('is the identity at scale 1', () => {
     expect(cameraTransform({ tMs: 0, scale: 1, cx: 0.5, cy: 0.5 }, 100, 50)).toBe('translate(0px, 0px) scale(1)');
   });

@@ -119,10 +119,13 @@ export interface NarrationLine {
 
 export type ResolvedStyle = Style;
 
+export type Aspect = '16:9' | '9:16' | '1:1';
+
 /** The renderer contract. Overlay times are source ms; sound and subtitle times are output ms from the video start. */
 export interface Timeline {
   version: 1;
   fps: number;
+  aspect: Aspect;
   output: { width: number; height: number };
   stage: { width: number; height: number };
   video: { src: string; durationMs: number };

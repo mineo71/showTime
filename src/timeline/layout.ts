@@ -1,4 +1,4 @@
-import type { CameraKey, Rect } from './types';
+import type { Aspect, CameraKey, Rect } from './types';
 
 export interface Box {
   x: number;
@@ -9,6 +9,21 @@ export interface Box {
 
 /** Height of the browser bar, in stage (viewport) pixels. */
 export const BROWSER_BAR = 44;
+
+export const OUTPUT_SIZES: Record<Aspect, { width: number; height: number }> = {
+  '16:9': { width: 1920, height: 1080 },
+  '9:16': { width: 1080, height: 1920 },
+  '1:1': { width: 1080, height: 1080 },
+};
+
+/** In 9:16 the window (bar included) is this many times taller than wide. */
+const PORTRAIT_WINDOW = 1.3;
+
+/** The window on screen, and the size the viewport is drawn at inside it (larger when cropped). */
+export interface View extends Box {
+  bar: number;
+  content: { width: number; height: number };
+}
 
 /**
  * Where the recorded viewport sits inside the output frame. `bar` (stage px) reserves room for a
@@ -30,6 +45,40 @@ export function windowLayout(
   return { x: Math.round((output.width - width) / 2), y: top + barPx, width, height, bar: barPx };
 }
 
+/**
+ * The window for an aspect ratio. 16:9 fits the whole viewport (the 0.3 layout). 1:1 fills the
+ * padded square and 9:16 uses a tall window in the middle; in both the viewport covers the window,
+ * so it is cropped and the camera decides what shows.
+ */
+export function viewLayout(
+  output: { width: number; height: number },
+  stage: { width: number; height: number },
+  padding: number,
+  bar = 0,
+  aspect: Aspect = '16:9',
+): View {
+  if (aspect === '16:9') {
+    const w = windowLayout(output, stage, padding, bar);
+    return { ...w, content: { width: w.width, height: w.height } };
+  }
+  const width = Math.round(output.width * (1 - 2 * padding));
+  const total = aspect === '9:16' ? Math.round(width * PORTRAIT_WINDOW) : Math.round(output.height * (1 - 2 * padding));
+  const k = Math.max(width / stage.width, total / (stage.height + bar));
+  const barPx = Math.round(bar * k);
+  const top = Math.round((output.height - total) / 2);
+  return {
+    x: Math.round((output.width - width) / 2),
+    y: top + barPx,
+    width,
+    height: total - barPx,
+    bar: barPx,
+    content: { width: Math.round(stage.width * k), height: Math.round(stage.height * k) },
+  };
+}
+
+/** How much of the content shows at camera scale 1, per axis (1 = all of it). */
+export const visibleFraction = (v: View) => ({ x: Math.min(1, v.width / v.content.width), y: Math.min(1, v.height / v.content.height) });
+
 const r2 = (v: number) => Math.round(v * 100) / 100;
 
 /** Where a stage rect (CSS px) lands in the output: through the camera, inside the window viewport. */
@@ -37,10 +86,10 @@ export function projectRect(
   r: Rect,
   cam: Pick<CameraKey, 'scale' | 'cx' | 'cy'>,
   stage: { width: number; height: number },
-  win: Box,
+  win: Box & { content?: { width: number; height: number } },
 ): Rect {
-  const w = win.width * cam.scale;
-  const h = win.height * cam.scale;
+  const w = (win.content?.width ?? win.width) * cam.scale;
+  const h = (win.content?.height ?? win.height) * cam.scale;
   return {
     x: r2(win.x + win.width / 2 + (r.x / stage.width - cam.cx) * w),
     y: r2(win.y + win.height / 2 + (r.y / stage.height - cam.cy) * h),

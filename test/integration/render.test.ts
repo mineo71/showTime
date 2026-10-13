@@ -109,6 +109,22 @@ describe('render', () => {
     expect(await hasAudio(video)).toBe(false);
   });
 
+  it('cuts 9:16 from the same take, video and stills', async () => {
+    const current = await loadScript(loaded.scriptPath);
+    const out = path.join(loaded.dir, 'demo-9x16.mp4');
+    const { video } = await renderDemo(current, { aspect: '9:16', out, audio: false });
+    expect(await probeVideo(video)).toMatchObject({ width: 1080, height: 1920 });
+    const { frames: files } = await renderQaFrames(current, { aspect: '9:16' });
+    const png = await readFile(files[1]);
+    expect([png.readUInt32BE(16), png.readUInt32BE(20)]).toEqual([1080, 1920]);
+  });
+
+  it('renders 1:1 stills', async () => {
+    const { frames: files } = await renderQaFrames(await loadScript(loaded.scriptPath), { aspect: '1:1' });
+    const png = await readFile(files[1]);
+    expect([png.readUInt32BE(16), png.readUInt32BE(20)]).toEqual([1080, 1080]);
+  });
+
   it('refuses a stale take after an action change', async () => {
     const edited = await editScript((raw) => {
       raw.scenes[0].steps[1].text = 'Q4 revenue';

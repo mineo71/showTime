@@ -193,3 +193,41 @@ describe('buildTimeline: sound', () => {
     expect(buildTimeline(voiced(), events).music).toBeNull();
   });
 });
+
+describe('buildTimeline: aspect ratios', () => {
+  it('defaults to 16:9 at 1920×1080', () => {
+    const t = buildTimeline(script(), events);
+    expect(t.aspect).toBe('16:9');
+    expect(t.output).toEqual({ width: 1920, height: 1080 });
+  });
+
+  it('follows each target with the camera in 9:16, holding focus between them', () => {
+    const t = buildTimeline(script(), events, { aspect: '9:16' });
+    expect(t.output).toEqual({ width: 1080, height: 1920 });
+    // No zoom on top of the crop's own magnification (1.8 × ~0.5 < 1).
+    expect(t.camera.every((k) => k.scale === 1)).toBe(true);
+    const at = (ms: number) => t.camera.find((k) => k.tMs === ms)!;
+    expect(at(1400).cx).toBeCloseTo(0.25, 1); // the click target at the far left, clamped to the crop
+    expect(at(7000).cx).toBeCloseTo(750 / 1440, 2);
+    expect(at(2600).cx).toBe(at(1900).cx); // between targets the focus stays put
+  });
+
+  it('adds only the depth a zoom has beyond the crop in 1:1', () => {
+    const t = buildTimeline(script(), events, { aspect: '1:1' });
+    const deepest = Math.max(...t.camera.map((k) => k.scale));
+    expect(deepest).toBeGreaterThan(1.1);
+    expect(deepest).toBeLessThan(1.3);
+  });
+
+  it('keeps following a target with zoom: false in a crop', () => {
+    const s = script();
+    s.scenes[0].steps[2] = { do: 'type', target: '#q', text: 'hi', pace: 'human', clear: false, show: { zoom: false } };
+    const t = buildTimeline(s, events, { aspect: '9:16' });
+    expect(t.camera.find((k) => k.tMs === 7000)?.cx).toBeCloseTo(750 / 1440, 2);
+  });
+
+  it('puts 9:16 captions in the bottom band whatever the target, and on top when subtitles are burned', () => {
+    const low = { ...events, steps: events.steps.map((e, i) => (i === 0 ? { ...e, target: { x: 600, y: 830, width: 200, height: 40 } } : e)) };
+    expect(buildTimeline(script(), low, { aspect: '9:16' }).captions[0].position).toBe('bottom');
+  });
+});

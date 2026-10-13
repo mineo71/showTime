@@ -1,10 +1,10 @@
 import type { Script, Step } from '../script/schema';
 import { buildCamera, cameraAt, MIN_ZOOM, zoomDepth, type ZoomRegion } from './camera';
-import { BROWSER_BAR, projectRect, windowLayout, type Box } from './layout';
+import { BROWSER_BAR, OUTPUT_SIZES, projectRect, viewLayout, visibleFraction, type View } from './layout';
 import { clamp } from './math';
 import { soundEvents, stepKey, subtitleCues, withNarration, type Typing } from './narration';
 import { buildSegments, sourceToOutput, type SpeedSpan } from './timemap';
-import type { CameraKey, Caption, NarrationLine, Rect, Spotlight, StepEvent, TakeEvents, Timeline } from './types';
+import type { Aspect, CameraKey, Caption, NarrationLine, Rect, Spotlight, StepEvent, TakeEvents, Timeline } from './types';
 
 export const AUTO_SPEED_MIN_IDLE_MS = 800;
 export const AUTO_SPEED_TARGET_MS = 600;
@@ -14,13 +14,13 @@ export const SPOTLIGHT_PAD = 8;
 export const OUTRO_MS = 2600;
 /** Bottom captions own the output below this fraction of its height. */
 export const CAPTION_BAND = 0.78;
-const DEFAULT_OUTPUT = { width: 1920, height: 1080 };
 
 const ZOOMABLE = new Set<Step['do']>(['click', 'type', 'select', 'hover']);
 
 export interface BuildOptions {
   fps?: number;
-  output?: { width: number; height: number };
+  /** 16:9 by default; 9:16 and 1:1 crop the viewport and follow the action. */
+  aspect?: Aspect;
   /** Logo as a data URI. */
   logo?: string;
   /** Length of each synthesized `show.say` line, by step (`scene#n`); lines without one are left out. */
@@ -49,7 +49,7 @@ function captionPosition(
   c: { startMs: number; endMs: number },
   camera: CameraKey[],
   stage: { width: number; height: number },
-  win: Box,
+  win: View,
   output: { width: number; height: number },
 ): Caption['position'] {
   if (!target) return 'bottom';
@@ -66,7 +66,13 @@ const pad = (r: Rect, p: number): Rect => ({ x: r.x - p, y: r.y - p, width: r.wi
 export function buildTimeline(script: Script, ev: TakeEvents, opts: BuildOptions = {}): Timeline {
   const { style } = script;
   const stage = ev.viewport;
-  const output = opts.output ?? DEFAULT_OUTPUT;
+  const aspect = opts.aspect ?? '16:9';
+  const output = OUTPUT_SIZES[aspect];
+  const win = viewLayout(output, stage, style.padding, style.chrome === 'browser' ? BROWSER_BAR : 0, aspect);
+  const visible = visibleFraction(win);
+  // Cropped formats follow every target; a zoom only adds what the crop doesn't already magnify.
+  const crop = aspect !== '16:9';
+  const cropDepth = Math.min(visible.x, visible.y);
   const pairs = ev.steps.map((e) => ({ e, step: stepOf(script, e) }));
 
   // Speed: auto idle first, explicit `show.speed` next, pauses last (later spans win).
@@ -90,9 +96,10 @@ export function buildTimeline(script: Script, ev: TakeEvents, opts: BuildOptions
   for (const { e, step } of pairs) {
     const zoom = step.show?.zoom;
     const wantsZoom = typeof zoom === 'number' || (zoom === undefined && style.autoZoom && ZOOMABLE.has(step.do));
-    if (e.target && wantsZoom) {
-      const scale = typeof zoom === 'number' ? zoom : zoomDepth(e.target, stage, style.maxZoom);
-      if (scale >= MIN_ZOOM) {
+    if (e.target && (wantsZoom || crop)) {
+      const depth = wantsZoom ? (typeof zoom === 'number' ? zoom : zoomDepth(e.target, stage, style.maxZoom)) : 1;
+      const scale = crop ? Math.max(1, depth * cropDepth) : depth;
+      if (scale >= MIN_ZOOM || crop) {
         regions.push({
           startMs: e.actionMs,
           endMs: e.settledMs,
@@ -128,8 +135,7 @@ export function buildTimeline(script: Script, ev: TakeEvents, opts: BuildOptions
     step.do === 'type' && step.pace !== 'fast' ? [{ startMs: e.actionMs, endMs: e.endMs, chars: [...step.text].length }] : [],
   );
 
-  const camera = buildCamera(regions);
-  const win = windowLayout(output, stage, style.padding, style.chrome === 'browser' ? BROWSER_BAR : 0);
+  const camera = buildCamera(regions, { visible, hold: crop });
   // A caption ends when the next one starts: no overlap, so captions dip instead of colliding.
   drafts.sort((a, b) => a.startMs - b.startMs);
   drafts.forEach((d, i) => {
@@ -142,12 +148,14 @@ export function buildTimeline(script: Script, ev: TakeEvents, opts: BuildOptions
       startMs: d.startMs,
       endMs: d.endMs,
       text: d.text,
-      position: subtitlesBurned ? 'top' : captionPosition(d.target, d, camera, stage, win, output),
+      // 9:16 captions sit in the band under the window, clear of the action.
+      position: subtitlesBurned ? 'top' : aspect === '9:16' ? 'bottom' : captionPosition(d.target, d, camera, stage, win, output),
     }));
 
   return {
     version: 1,
     fps: opts.fps ?? 30,
+    aspect,
     output,
     stage,
     video: { src: `take/${ev.video.file}`, durationMs: ev.video.durationMs },

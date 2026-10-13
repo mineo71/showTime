@@ -7,6 +7,7 @@ const timeline = (intro: boolean, outro = false): Timeline =>
   ({
     version: 1,
     fps: 30,
+    aspect: '16:9',
     output: { width: 1920, height: 1080 },
     stage: { width: 1440, height: 900 },
     video: { src: 'raw.mp4', durationMs: 10_000 },

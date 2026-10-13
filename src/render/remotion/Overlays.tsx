@@ -1,4 +1,4 @@
-import type { FC } from 'react';
+import type { CSSProperties, FC } from 'react';
 import { ripplesAt } from '../../timeline/cursor';
 import { clamp, easeOutCubic } from '../../timeline/math';
 import type { Timeline } from '../../timeline/types';
@@ -55,23 +55,19 @@ export const Ripples: FC<LayerProps> = ({ timeline, srcMs }) => (
   </>
 );
 
-/** `top` is where a top caption's box starts (output px); bottom captions sit at a fixed inset. */
-export const Captions: FC<LayerProps & { top: number }> = ({ timeline, srcMs, top }) => {
+/** Where an overlay row sits: an inset from the top or bottom, or a band (top + height / top + bottom). */
+type Place = Pick<CSSProperties, 'top' | 'bottom' | 'height' | 'alignItems'>;
+
+const row = (place: Place): CSSProperties => ({ position: 'absolute', left: 0, right: 0, display: 'flex', justifyContent: 'center', ...place });
+
+/** The active caption, placed at `top` or `bottom` by its position. */
+export const Captions: FC<LayerProps & { top: Place; bottom: Place; fontSize: number }> = ({ timeline, srcMs, top, bottom, fontSize }) => {
   const active = timeline.captions.filter((c) => srcMs >= c.startMs && srcMs <= c.endMs);
   const c = active[active.length - 1];
   if (!c) return null;
   const o = envelope(srcMs, c.startMs, c.endMs, 220);
   return (
-    <div
-      style={{
-        position: 'absolute',
-        left: 0,
-        right: 0,
-        ...(c.position === 'top' ? { top } : { bottom: Math.round(timeline.output.height * 0.075) }),
-        display: 'flex',
-        justifyContent: 'center',
-      }}
-    >
+    <div style={row(c.position === 'top' ? top : bottom)}>
       <div
         style={{
           maxWidth: '70%',
@@ -80,7 +76,7 @@ export const Captions: FC<LayerProps & { top: number }> = ({ timeline, srcMs, to
           background: 'rgba(15, 23, 42, 0.9)',
           color: '#fff',
           fontFamily: timeline.style.font,
-          fontSize: 36,
+          fontSize,
           fontWeight: 600,
           lineHeight: 1.25,
           textAlign: 'center',
@@ -96,12 +92,12 @@ export const Captions: FC<LayerProps & { top: number }> = ({ timeline, srcMs, to
 };
 
 /** Burned-in narration subtitles. `videoMs` is output time from the start of the video. */
-export const Subtitles: FC<{ timeline: Timeline; videoMs: number; bottom: number }> = ({ timeline, videoMs, bottom }) => {
+export const Subtitles: FC<{ timeline: Timeline; videoMs: number; place: Place; fontSize: number }> = ({ timeline, videoMs, place, fontSize }) => {
   if (!timeline.subtitlesBurned) return null;
   const c = timeline.subtitles.find((s) => videoMs >= s.startMs && videoMs < s.endMs);
   if (!c) return null;
   return (
-    <div style={{ position: 'absolute', left: 0, right: 0, bottom, display: 'flex', justifyContent: 'center' }}>
+    <div style={row(place)}>
       <div
         style={{
           maxWidth: '80%',
@@ -110,7 +106,7 @@ export const Subtitles: FC<{ timeline: Timeline; videoMs: number; bottom: number
           background: 'rgba(0, 0, 0, 0.72)',
           color: '#fff',
           fontFamily: timeline.style.font,
-          fontSize: 34,
+          fontSize,
           fontWeight: 500,
           lineHeight: 1.35,
           textAlign: 'center',

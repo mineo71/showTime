@@ -19,14 +19,33 @@ export function zoomDepth(target: Rect, stage: { width: number; height: number }
   return clamp(fit, 1, maxZoom);
 }
 
-export function clampFocus(scale: number, cx: number, cy: number): { cx: number; cy: number } {
-  const half = 0.5 / scale;
-  return { cx: clamp(cx, half, 1 - half), cy: clamp(cy, half, 1 - half) };
+/** Share of the content visible at scale 1, per axis: 1 unless the format crops the viewport. */
+export interface Visible {
+  x: number;
+  y: number;
+}
+
+const FULL: Visible = { x: 1, y: 1 };
+
+/** Keep the focus where the visible part stays inside the content. */
+export function clampFocus(scale: number, cx: number, cy: number, visible: Visible = FULL): { cx: number; cy: number } {
+  const hx = Math.min(0.5, visible.x / (2 * scale));
+  const hy = Math.min(0.5, visible.y / (2 * scale));
+  return { cx: clamp(cx, hx, 1 - hx), cy: clamp(cy, hy, 1 - hy) };
 }
 
 const rest = (tMs: number): CameraKey => ({ tMs, scale: 1, cx: 0.5, cy: 0.5 });
 
-export function buildCamera(regions: ZoomRegion[]): CameraKey[] {
+export interface CameraOptions {
+  visible?: Visible;
+  /** Between regions keep the last focus (at scale 1) instead of returning to the centre: the follow camera of cropped formats. */
+  hold?: boolean;
+}
+
+export function buildCamera(regions: ZoomRegion[], opts: CameraOptions = {}): CameraKey[] {
+  const visible = opts.visible ?? FULL;
+  let last = { cx: 0.5, cy: 0.5 };
+  const restAt = (tMs: number): CameraKey => (opts.hold ? { tMs, scale: 1, ...clampFocus(1, last.cx, last.cy, visible) } : rest(tMs));
   const rs = [...regions].sort((a, b) => a.startMs - b.startMs);
   const keys: CameraKey[] = [];
   rs.forEach((r, i) => {
@@ -34,14 +53,15 @@ export function buildCamera(regions: ZoomRegion[]): CameraKey[] {
     const next = rs[i + 1];
     const start = prev ? Math.max(r.startMs, prev.endMs) : r.startMs;
     const end = Math.max(start, r.endMs);
-    const focus = clampFocus(r.scale, r.cx, r.cy);
+    const focus = clampFocus(r.scale, r.cx, r.cy, visible);
     if (!prev || start - prev.endMs > CONNECT_GAP_MS) {
       const lastT = keys.length ? keys[keys.length - 1].tMs : 0;
-      keys.push(rest(Math.max(lastT, start - ZOOM_LEAD_MS)));
+      keys.push(restAt(Math.max(lastT, start - ZOOM_LEAD_MS)));
     }
     keys.push({ tMs: start, scale: r.scale, ...focus });
     keys.push({ tMs: end, scale: r.scale, ...focus });
-    if (!next || next.startMs - end > CONNECT_GAP_MS) keys.push(rest(end + ZOOM_LEAD_MS));
+    last = focus;
+    if (!next || next.startMs - end > CONNECT_GAP_MS) keys.push(restAt(end + ZOOM_LEAD_MS));
   });
   return keys;
 }
@@ -60,10 +80,13 @@ export function cameraAt(keys: CameraKey[], tMs: number): CameraKey {
   return { ...keys[keys.length - 1], tMs };
 }
 
-/** CSS transform (transform-origin 0 0) that puts the focus point at the centre of a width×height box. */
-export function cameraTransform(cam: CameraKey, width: number, height: number): string {
-  const tx = width / 2 - cam.cx * width * cam.scale;
-  const ty = height / 2 - cam.cy * height * cam.scale;
+/**
+ * CSS transform (transform-origin 0 0) for content of `content` size that puts the focus point at
+ * the centre of a width×height window (content defaults to the window's size).
+ */
+export function cameraTransform(cam: CameraKey, width: number, height: number, content = { width, height }): string {
+  const tx = width / 2 - cam.cx * content.width * cam.scale;
+  const ty = height / 2 - cam.cy * content.height * cam.scale;
   const r = (v: number) => Math.round(v * 100) / 100 + 0;
   return `translate(${r(tx)}px, ${r(ty)}px) scale(${r(cam.scale * 1000) / 1000})`;
 }
