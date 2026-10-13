@@ -1,4 +1,7 @@
+import { spawn } from 'node:child_process';
+import { existsSync } from 'node:fs';
 import { createRequire } from 'node:module';
+import path from 'node:path';
 import { Command } from 'commander';
 import { workPaths } from '../paths';
 import { loadScript, type LoadedScript } from '../script/load';
@@ -192,6 +195,62 @@ withRenderFlags(program.command('make <script>').description('check → record �
     const video = await render(loaded, o);
     if (o.json) emit({ check: report, take, video });
     else sayRendered(video);
+  });
+
+/** Open a URL in the default browser; best effort. */
+function openBrowser(url: string) {
+  const [cmd, args] =
+    process.platform === 'darwin' ? ['open', [url]] : process.platform === 'win32' ? ['cmd', ['/c', 'start', '""', url]] : ['xdg-open', [url]];
+  spawn(cmd, args, { stdio: 'ignore', detached: true }).on('error', () => undefined).unref();
+}
+
+program
+  .command('studio <script>')
+  .description('open the studio: a live preview, a step timeline and an inspector that saves to the script')
+  .option('--port <n>', 'port on 127.0.0.1', '4848')
+  .option('--aspect <ratio>', 'preview 16:9, 9:16 or 1:1', '16:9')
+  .option('--no-open', 'print the URL without opening the browser')
+  .action(async (file: string, o: { port: string; aspect: string; open: boolean }) => {
+    const port = Number(o.port);
+    if (!Number.isInteger(port) || port < 0 || port > 65535) throw new Error(`--port must be a port number (got "${o.port}")`);
+    const aspect = aspectOf(o.aspect);
+    if (!existsSync(file)) throw new Error(`Cannot read script: ${path.resolve(file)}`);
+    const { startStudio } = await import('../studio/server');
+    const studio = await startStudio(file, { port, aspect, log: say });
+    say(`Studio: ${studio.url}  (Ctrl+C to stop)`);
+    if (o.open) openBrowser(studio.url);
+    await new Promise((resolve) => process.once('SIGINT', resolve));
+    await studio.close();
+  });
+
+program
+  .command('record-human <url>')
+  .description('click through your app in a browser; closing the window writes a script of what you did')
+  .option('-o, --out <file>', 'the script to write', 'demo.json')
+  .option('--viewport <WxH>', 'browser size', '1440x900')
+  .option('--force', 'overwrite the script if it exists')
+  .option('--json', 'print { file, steps, notes } as JSON')
+  .action(async (url: string, o: { out: string; viewport: string; force?: boolean; json?: boolean }) => {
+    let parsed: URL | null = null;
+    try {
+      parsed = new URL(url);
+    } catch {
+      // reported below
+    }
+    if (!parsed || !/^https?:$/.test(parsed.protocol)) throw new Error(`record-human needs an http(s) URL (got "${url}")`);
+    const size = /^(\d{3,4})x(\d{3,4})$/.exec(o.viewport);
+    if (!size) throw new Error(`--viewport must look like 1440x900 (got "${o.viewport}")`);
+    const { recordHuman } = await import('../human/record');
+    if (!o.json) say('Recording. Click through the flow, then close the browser window (or press Ctrl+C here).');
+    const r = await recordHuman(url, {
+      out: o.out,
+      viewport: { width: Number(size[1]), height: Number(size[2]) },
+      force: o.force,
+      log: o.json ? undefined : say,
+    });
+    if (o.json) return emit({ file: r.file, steps: r.steps.length, notes: r.notes });
+    say(`✓ ${r.steps.length} steps → ${r.file}`);
+    say(`Next: add captions (or ask your agent), then \`showtime check ${r.file}\`.`);
   });
 
 program.parseAsync().catch((err: Error) => {

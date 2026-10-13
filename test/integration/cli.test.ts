@@ -36,6 +36,23 @@ describe('showtime CLI', () => {
     expect((await cli(['schema', '--json'])).code).toBe(0);
   });
 
+  it('documents studio and record-human, and rejects bad input before opening anything', async () => {
+    const studio = await cli(['studio', '--help']);
+    expect(studio.stdout).toMatch(/--port/);
+    expect(studio.stdout).toMatch(/--aspect/);
+    expect(studio.stdout).toMatch(/--no-open/);
+    const human = await cli(['record-human', '--help']);
+    for (const flag of ['--out', '--viewport', '--force']) expect(human.stdout).toContain(flag);
+    const badUrl = await cli(['record-human', 'not a url']);
+    expect(badUrl.code).toBe(1);
+    expect(badUrl.stderr).toMatch(/http/);
+    const badSize = await cli(['record-human', 'http://127.0.0.1:1/', '--viewport', 'big']);
+    expect(badSize.stderr).toMatch(/--viewport must look like 1440x900/);
+    const missing = await cli(['studio', '/definitely/missing.json', '--no-open']);
+    expect(missing.code).toBe(1);
+    expect(missing.stderr).toMatch(/Cannot read script/);
+  });
+
   it('fails clearly on an invalid script', async () => {
     const dir = await mkdtemp(path.join(tmpdir(), 'showtime-cli-'));
     const file = path.join(dir, 'bad.json');
