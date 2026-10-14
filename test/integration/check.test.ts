@@ -13,6 +13,13 @@ beforeAll(async () => {
 afterAll(() => server.close());
 
 describe('check', () => {
+  it('stops after the step named by until', async () => {
+    const report = await check(await fixtureScript(server.url), { until: 'report#2' });
+    expect(report.ok).toBe(true);
+    expect(report.steps.map((s) => `${s.sceneId}#${s.index + 1}`)).toEqual(['report#1', 'report#2']);
+    await expect(check(await fixtureScript(server.url), { until: 'report#99' })).rejects.toThrow(/--until report#99 names no step/);
+  });
+
   it('passes the demo script and writes a screenshot per step', async () => {
     const report = await check(await fixtureScript(server.url));
     expect(report.failure).toBeNull();

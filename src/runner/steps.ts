@@ -107,7 +107,7 @@ async function perform(ctx: StepContext, step: Step, where: StepWhere): Promise<
       else await wheel(ctx, step.by ?? 0);
       break;
     case 'wait':
-      if (step.for) await page.locator(step.for).waitFor({ state: 'visible', timeout: WAIT_TIMEOUT_MS });
+      if (step.for) await page.locator(step.for).waitFor({ state: 'visible', timeout: step.timeoutMs ?? WAIT_TIMEOUT_MS });
       else await sleep(step.ms ?? 0);
       break;
     case 'pause':

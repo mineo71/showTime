@@ -101,3 +101,36 @@ describe('settling', () => {
     });
   });
 });
+
+describe('app.hide, app.reducedMotion and long waits', () => {
+  it('hides matching elements without moving the layout', async () => {
+    await run({ hide: ['#export', '.does-not-exist'] }, [], async (_ctx, session) => {
+      const style = await session.page.locator('#export').evaluate((el) => getComputedStyle(el).visibility);
+      expect(style).toBe('hidden');
+    });
+  });
+
+  it('names an invalid hide selector', async () => {
+    await expect(run({ hide: ['role=button'] }, [])).rejects.toThrow(/app\.hide\[0\] "role=button" is not a valid CSS selector/);
+  });
+
+  it('passes reduced motion to the page', async () => {
+    await run({ reducedMotion: 'reduce' }, [], async (_ctx, session) => {
+      expect(await session.page.evaluate(() => matchMedia('(prefers-reduced-motion: reduce)').matches)).toBe(true);
+    });
+  });
+
+  it('waits past 15 s when the step asks for it', async () => {
+    await run({}, [], async (ctx, session) => {
+      await session.page.evaluate(() => {
+        setTimeout(() => {
+          const el = document.createElement('p');
+          el.id = 'slow-result';
+          el.textContent = 'done';
+          document.body.appendChild(el);
+        }, 16_000);
+      });
+      await runStep(ctx, { do: 'wait', for: '#slow-result', timeoutMs: 25_000 }, where);
+    });
+  }, 40_000);
+});

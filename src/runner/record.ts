@@ -11,6 +11,7 @@ import type { RunOptions } from './check';
 import { encodeFrames } from './encode';
 import { EventLog } from './events';
 import { withHooks } from './hooks';
+import { withServer } from './server';
 import { describeStep, runStep, StepError, type StepContext } from './steps';
 import { sleep } from './time';
 
@@ -67,7 +68,7 @@ export async function record(loaded: LoadedScript, opts: RecordOptions = {}): Pr
   await mkdir(frames, { recursive: true });
 
   // After hooks run once the take is saved, so a failing one cannot cost the take.
-  return withHooks(
+  return withServer(script.server, script.app.url, loaded.dir, () => withHooks(
     script.hooks,
     loaded.dir,
     async () => {
@@ -111,5 +112,5 @@ export async function record(loaded: LoadedScript, opts: RecordOptions = {}): Pr
       return events;
     },
     opts.warn,
-  );
+  ), opts.log);
 }

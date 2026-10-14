@@ -54,13 +54,20 @@ export function trackNetwork(page: Page): NetworkTracker {
   };
 }
 
+/** Init script that blurs `selectors` (app.mask). */
+export const maskScript = (selectors: string[]) => styleScript(selectors, 'filter: blur(10px) !important;');
+
+/** Init script that hides `selectors` without moving the layout (app.hide). */
+export const hideScript = (selectors: string[]) => styleScript(selectors, 'visibility: hidden !important;');
+
 /**
- * Init script that blurs `selectors`. Built as a string on purpose: a function would be serialized
- * with whatever helpers the transpiler injected (tsx adds `__name(...)`), which are undefined in the page.
+ * Init script that adds `declarations` to every element matching `selectors`. Built as a string on
+ * purpose: a function would be serialized with whatever helpers the transpiler injected (tsx adds
+ * `__name(...)`), which are undefined in the page.
  */
-export function maskScript(selectors: string[]): string {
+function styleScript(selectors: string[], declarations: string): string {
   // One rule per selector: an invalid selector only drops its own rule.
-  const css = JSON.stringify(selectors.map((s) => `${s} { filter: blur(10px) !important; }`).join('\n'));
+  const css = JSON.stringify(selectors.map((s) => `${s} { ${declarations} }`).join('\n'));
   return `(() => {
   const css = ${css};
   const add = () => {
@@ -88,8 +95,10 @@ export async function openSession(script: Script, opts: { headed?: boolean } = {
       colorScheme: app.colorScheme,
       locale: app.locale,
       timezoneId: app.timezoneId,
+      reducedMotion: app.reducedMotion,
     });
     if (app.mask.length) await context.addInitScript({ content: maskScript(app.mask) });
+    if (app.hide.length) await context.addInitScript({ content: hideScript(app.hide) });
     // Starts the page clock at app.clock and lets it run: frozen time would stall Date-based debounce.
     if (app.clock) await context.clock.install({ time: app.clock });
     // Playwright tries the most recently added route first; reversed, the first matching mock wins.
@@ -99,23 +108,26 @@ export async function openSession(script: Script, opts: { headed?: boolean } = {
     page.on('dialog', (dialog) => {
       (app.dialogs === 'accept' ? dialog.accept() : dialog.dismiss()).catch(() => undefined);
     });
-    const invalid = await page.evaluate(
-      (selectors) =>
-        selectors.map((s) => {
-          try {
-            document.querySelector(s);
-            return false;
-          } catch {
-            return true;
-          }
-        }),
-      app.mask,
-    );
-    const bad = invalid.indexOf(true);
-    if (bad >= 0) {
-      throw new ScriptError(
-        `app.mask[${bad}] "${app.mask[bad]}" is not a valid CSS selector — masks take CSS selectors (.email, #card), not Playwright ones like text= or role=`,
+    for (const field of ['mask', 'hide'] as const) {
+      const selectors = app[field];
+      const invalid = await page.evaluate(
+        (list) =>
+          list.map((s) => {
+            try {
+              document.querySelector(s);
+              return false;
+            } catch {
+              return true;
+            }
+          }),
+        selectors,
       );
+      const bad = invalid.indexOf(true);
+      if (bad >= 0) {
+        throw new ScriptError(
+          `app.${field}[${bad}] "${selectors[bad]}" is not a valid CSS selector — app.${field} takes CSS selectors (.email, #card), not Playwright ones like text= or role=`,
+        );
+      }
     }
     return { browser, context, page, net: trackNetwork(page), close: () => browser.close() };
   } catch (err) {

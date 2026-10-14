@@ -1,10 +1,12 @@
 import { mkdir, rm } from 'node:fs/promises';
 import path from 'node:path';
 import { workPaths } from '../paths';
+import { stepKey } from '../timeline/narration';
 import type { LoadedScript } from '../script/load';
 import { openSession, prepare } from './browser';
 import { EventLog } from './events';
 import { withHooks } from './hooks';
+import { withServer } from './server';
 import { describeStep, runStep, StepError, type StepContext } from './steps';
 
 export interface RunOptions {
@@ -12,6 +14,11 @@ export interface RunOptions {
   log?: (line: string) => void;
   /** Non-fatal problems, such as a failing after hook (default: stderr). */
   warn?: (line: string) => void;
+}
+
+export interface CheckOptions extends RunOptions {
+  /** rehearse only up to and including this step (`scene#n`) */
+  until?: string;
 }
 
 export interface CheckStep {
@@ -39,16 +46,19 @@ export interface CheckReport {
 
 const ARIA_LIMIT = 8000;
 
-export async function check(loaded: LoadedScript, opts: RunOptions = {}): Promise<CheckReport> {
+export async function check(loaded: LoadedScript, opts: CheckOptions = {}): Promise<CheckReport> {
   const { script } = loaded;
   const paths = workPaths(loaded);
+  if (opts.until && !script.scenes.some((s) => s.steps.some((_, i) => stepKey(s.id, i) === opts.until))) {
+    throw new Error(`--until ${opts.until} names no step; use scene#n, e.g. ${stepKey(script.scenes[0].id, 0)}.`);
+  }
   await rm(paths.check, { recursive: true, force: true });
   await mkdir(paths.check, { recursive: true });
 
-  return withHooks(script.hooks, loaded.dir, () => rehearse(loaded, opts), opts.warn);
+  return withServer(script.server, script.app.url, loaded.dir, () => withHooks(script.hooks, loaded.dir, () => rehearse(loaded, opts), opts.warn), opts.log);
 }
 
-async function rehearse(loaded: LoadedScript, opts: RunOptions): Promise<CheckReport> {
+async function rehearse(loaded: LoadedScript, opts: CheckOptions): Promise<CheckReport> {
   const { script } = loaded;
   const paths = workPaths(loaded);
   const report: CheckReport = { ok: true, steps: [], failure: null };
@@ -57,13 +67,19 @@ async function rehearse(loaded: LoadedScript, opts: RunOptions): Promise<CheckRe
     const cursor = await prepare(session, script);
     const ctx: StepContext = { page: session.page, mode: 'check', log: new EventLog(), net: session.net, cursor, baseUrl: script.app.url };
     let n = 0;
+    let done = false;
     for (const scene of script.scenes) {
+      if (done) break;
       for (const [index, step] of scene.steps.entries()) {
         await runStep(ctx, step, { sceneId: scene.id, index });
         const screenshot = path.join(paths.check, `${String(++n).padStart(2, '0')}-${scene.id}-${index + 1}-${step.do}.png`);
         await session.page.screenshot({ path: screenshot, scale: 'css' });
         report.steps.push({ sceneId: scene.id, index, action: describeStep(step), ok: true, screenshot });
         opts.log?.(`✓ ${scene.id} #${index + 1} ${describeStep(step)}`);
+        if (stepKey(scene.id, index) === opts.until) {
+          done = true;
+          break;
+        }
       }
     }
   } catch (err) {
