@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.8.0 — 2026-10-14
 
 - Network replay: `replay: { file, match }` records the answers of matching HTTP requests and
   WebSockets on the first run and serves them back after that, so rehearsals and takes stop
