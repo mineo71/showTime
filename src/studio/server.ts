@@ -513,9 +513,11 @@ export async function startStudio(scriptFile: string, opts: StudioOptions = {}):
     clearTimeout(timer);
     timer = setTimeout(() => {
       enqueue(async () => {
-        const text = await readFile(file, 'utf8').catch(() => null);
-        if (text !== lastText || configTouched) await rebuild();
+        // Taken before the rebuild: a brand file touched while it runs needs a rebuild of its own.
+        const touched = configTouched;
         configTouched = false;
+        const text = await readFile(file, 'utf8').catch(() => null);
+        if (text !== lastText || touched) await rebuild();
       }).catch(() => undefined);
     }, 150);
   };
