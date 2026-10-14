@@ -273,7 +273,8 @@ with the edited video playing, a timeline of the steps and an inspector:
 
 **Rather show the flow than describe it?** `showtime record-human http://localhost:3000 -o demo/flow.json`
 opens a browser. Click through the flow and close the window: you get a script of those steps with
-readable selectors, ready for captions and `showtime make`.
+readable selectors, ready for captions and `showtime make`. Double, right and modifier clicks, file
+picks (check the file paths: the recorder only knows their names) and popups come along.
 
 ## How it works
 
@@ -337,9 +338,13 @@ for readability and for naming the stills.
 | action   | fields                          | notes |
 |----------|---------------------------------|-------|
 | `goto`   | `url`                           | navigate and wait for `load` |
-| `click`  | `target`                        | cursor travels there, ripple on press |
+| `click`  | `target, button?, modifiers?`   | cursor travels there, ripple on press; `button`: `right` (context menus) or `middle`; `modifiers`: `["Shift"]`, `["ControlOrMeta"]`, … held during the click |
+| `dblclick` | `target, modifiers?`          | double click, drawn as two clicks |
+| `drag`   | `target`, `to` *or* `by`        | press on the target, carry it to `to` (a selector) or `by: { x, y }` px, release; HTML5 drag and drop and pointer-driven sliders and boards both work; both ends must be on screen |
+| `upload` | `target, files`                 | click what a person clicks to pick files (button, drop zone) and choose `files` (relative to the script); a hidden `<input type=file>` is filled directly |
 | `type`   | `target, text, pace?, clear?`   | `pace`: `human` (default), `fast` or ms per character |
-| `press`  | `key`                           | `Enter`, `Escape`, `Meta+K`, … |
+| `press`  | `key`                           | `Enter`, `Escape`, `Meta+K`, … (combos show as keycaps, see `style.keys`) |
+| `closeTab` |                               | close the tab or popup a step opened and go back to the page before it |
 | `hover`  | `target`                        | |
 | `select` | `target, value`                 | picks a `<select>` option by value |
 | `scroll` | `target` *or* `by`              | smooth-scroll an element into view, or by pixels |
@@ -348,6 +353,10 @@ for readability and for naming the stills.
 
 Targets are Playwright selectors: `role=button[name='Save']`, `text=Save`, `#id`,
 `[data-testid=x]`, CSS, and `>>` chains.
+
+A step that opens a new tab or popup (a `target=_blank` link, `window.open`) is followed: the next
+steps act in it and the video shows it. When it closes itself (an OAuth consent screen) or a
+`closeTab` step closes it, the page before it comes back.
 
 </details>
 
@@ -387,6 +396,7 @@ Targets are Playwright selectors: `role=button[name='Save']`, `text=Save`, `#id`
 | `autoSpeed`  | `true`             | speed up idle stretches longer than 0.8 s |
 | `maxZoom`    | `1.8`              | cap for auto-zoom |
 | `click`      | `ripple`           | click animation: `ripple`, `pulse`, `burst`, `ring`, `none` |
+| `keys`       | `combos`           | keys on screen as keycaps (⌘ ⇧ K): `combos` (presses with a modifier, modifier clicks), `all` (every press), `off` |
 | `spotlightDim` | `0.55`           | how dark a `dim` spotlight makes the rest |
 | `captionStyle` | `dark`           | `dark`, `light`, `accent`, `outline` or `bar` |
 | `captionFont`, `titleFont` | `font` | families for captions/subtitles and for the cards |
@@ -618,13 +628,13 @@ environment.
 changes, the cursor is wherever your hand was, and the spinner plays at full length. With
 showTime, edits are a re-render and a UI change is one command.
 
-**Does it run on Linux or Windows?** It is developed on macOS. Linux should work since it only
-needs Playwright and ffmpeg. Windows is untested.
+**Does it run on Linux or Windows?** It is developed on macOS, and the whole suite (recording,
+encoding and rendering) runs on Linux in CI before every release. Windows is untested.
 
 ## Roadmap
 
-- 🧑‍🎨 Studio: drag captions and holds on the timeline instead of editing them per step.
-- 🌍 One script, many languages: `--locales en,uk,de` with translated captions and narration.
+- 🖱️ An interactive HTML walkthrough from the same take: viewers click through the hotspots.
+- ✅ A GitHub Action that rehearses the demo on every pull request and re-renders it on release.
 - 🎞️ Deterministic frame-by-frame capture in virtual time, for a perfect 60 fps.
 - 🧩 An MCP server for Claude Desktop.
 - 📲 Mobile (iOS Simulator) and desktop-app drivers that produce the same `events.json`.

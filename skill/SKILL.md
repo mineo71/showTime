@@ -169,9 +169,12 @@ With `replay`, each locale records its own file (`demo.net.uk.json`).
 
 ## Reference
 
-- **Actions (`do`):** `goto {url}` · `click {target}` · `type {target, text, pace?: human|fast|ms, clear?}` ·
-  `press {key}` · `hover {target}` · `select {target, value}` · `scroll {target} | {by}` ·
-  `wait {for} | {ms}` · `pause {ms}`
+- **Actions (`do`):** `goto {url}` · `click {target, button?: right|middle, modifiers?: [Shift|Alt|Control|Meta|ControlOrMeta]}` ·
+  `dblclick {target, modifiers?}` · `drag {target, to} | {target, by: {x, y}}` (both ends on screen) ·
+  `upload {target, files}` (target = the button a person clicks to pick files; files relative to the
+  script) · `type {target, text, pace?: human|fast|ms, clear?}` · `press {key}` · `hover {target}` ·
+  `select {target, value}` · `scroll {target} | {by}` · `wait {for} | {ms}` · `pause {ms}` ·
+  `closeTab` (close a tab/popup a step opened; steps follow new tabs and popups by themselves)
 - **`show` (per step):** `zoom` (number, or `false`), `caption`, `spotlight` (`true`/`dim`, `ring`,
   `glow`), `highlight` (CSS colour), `click` (`ripple`, `pulse`, `burst`, `ring`, `none`), `hold`
   (ms, real time), `speed`, `say` (narration), `voice` (changes to `audio.voice` for this line),
@@ -184,7 +187,8 @@ With `replay`, each locale records its own file (`demo.net.uk.json`).
   (address-bar text), `padding`, `radius`, `shadow`, `font`, `accent`, `autoZoom`, `autoSpeed`, `maxZoom`,
   `click` (default click animation), `spotlightDim`, `captionStyle` (`dark`, `light`, `accent`,
   `outline`, `bar`), `captionFont`, `titleFont`, `captionSize`, `fonts` (`[{ family, file }]`, embedded),
-  `watermark` (`{ text?, image?, position?, opacity?, size? }`).
+  `watermark` (`{ text?, image?, position?, opacity?, size? }`), `keys` (keycaps for shortcuts:
+  `combos` default, `all`, `off`).
 - **`app`:** `url`, `viewport`, `deviceScaleFactor`, `storageState` (Playwright storage-state JSON,
   path relative to the script), `colorScheme`, `locale`, `timezoneId`, `mask` (CSS selectors to blur —
   plain CSS only, not `text=` / `role=`), `hide` (CSS selectors to hide: dev badges such as Next.js's
@@ -215,6 +219,9 @@ With `replay`, each locale records its own file (`demo.net.uk.json`).
 - After a payoff screen add `hold` (800–2000 ms) so viewers can read it; put `spotlight` on the one
   number that matters.
 - Never `pause` to wait for loading — use `wait {for}`; auto-speed compresses the loader.
+- Shortcuts sell speed: a `press` with a modifier (`ControlOrMeta+K`) shows as keycaps on screen.
+- Flows that open a popup or a new tab need nothing special: the next steps act in it; add
+  `closeTab` when a person would close it by hand.
 - Use `setup` for cookie banners and onboarding, `app.storageState` to start logged in, `app.mask`
   to blur personal data.
 - Mock APIs that are slow, random or need real accounts (`app.mock`), and pin the date

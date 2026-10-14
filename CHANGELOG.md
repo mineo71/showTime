@@ -1,5 +1,34 @@
 # Changelog
 
+## Unreleased
+
+- New actions: `dblclick`; `click` with `button` (`right` for context menus, `middle`) and
+  `modifiers` (`Shift`, `ControlOrMeta`, …); `drag` from a target to another (`to`) or by an offset
+  (`by`), for boards, sliders and resizers; `upload` through the button a person clicks, or straight
+  into a hidden file input; `closeTab`.
+- Tabs and popups: a step that opens one is followed, and the video shows it; when it closes (by
+  itself, like an OAuth window, or with `closeTab`) the page before it comes back.
+- Keys on screen: presses with a modifier (and modifier clicks) show as keycaps; `style.keys`
+  (`combos`, `all`, `off`). A `press` plays a key sound with `audio.sounds`.
+- `record-human` keeps double, right and modifier clicks, file picks and popups.
+- The integration suite (recording, encoding, rendering) runs on Linux in CI, and a release is
+  published only when it passes.
+- The studio's Record picks the network mode for scripts with `replay`.
+
+### Fixed
+
+- Ctrl+C stops a running hook and everything it started.
+- Replay globs without a scheme (`**/ws`) route WebSockets too.
+- Service workers are blocked when the script mocks or replays requests, so they can't answer in
+  the mocks' place.
+- `check --until` says it records nothing and marks its report (`until`); `--locales` errors name
+  `--locales` and are reported before anything runs.
+- Locale tags with three parts (`zh-Hant-TW`).
+- The replay file's temporary name is unique per run.
+- Studio: Freeze and Hold refuse text that isn't a whole number instead of clearing the value; a
+  page from an earlier session is told to reload; a brand file created after the start is picked
+  up; Record and Render refuse an invalid script instead of running the last good one.
+
 ## 0.8.0 — 2026-10-14
 
 - Network replay: `replay: { file, match }` records the answers of matching HTTP requests and
