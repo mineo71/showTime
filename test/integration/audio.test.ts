@@ -9,7 +9,7 @@ import { fixtureScript } from '../helpers/fixture';
 
 /** A command voice that ignores the text and writes a sine of `seconds`, counting its runs. */
 const sine = (seconds: number, counter: string) =>
-  `echo x >> '${counter}'; ffmpeg -v error -f lavfi -i sine=frequency=440:duration=${seconds} -f wav -y {out}`;
+  `echo x >> '${counter}'; ffmpeg -nostdin -v error -f lavfi -i sine=frequency=440:duration=${seconds} -f wav -y {out}`;
 
 describe('ensureVoices', () => {
   it('synthesizes each line once, normalised to mono 48 kHz, and reuses the cache', async () => {
@@ -37,7 +37,7 @@ describe('ensureVoices', () => {
     const loaded = await fixtureScript('http://127.0.0.1:1/', (raw) => {
       raw.scenes[1].steps[0].show.say = 'Both at once.';
     });
-    loaded.script.audio.voice = { engine: 'command', speed: 1, command: 'sleep 0.3; ffmpeg -v error -f lavfi -i sine=duration=0.5 -f wav -y {out}' };
+    loaded.script.audio.voice = { engine: 'command', speed: 1, command: 'sleep 0.3; ffmpeg -nostdin -v error -f lavfi -i sine=duration=0.5 -f wav -y {out}' };
     const [a, b] = await Promise.all([ensureVoices(loaded), ensureVoices(loaded)]);
     expect(a['export#1'].durationMs).toBeGreaterThan(400);
     expect(b['export#1'].file).toBe(a['export#1'].file);
@@ -60,9 +60,9 @@ describe('ensureVoices', () => {
   it('speaks a step with its own voice changes, cached apart', async () => {
     const loaded = await fixtureScript('http://127.0.0.1:1/', (raw) => {
       raw.scenes[0].steps[0].show.say = 'First narrator.';
-      raw.scenes[1].steps[0].show = { say: 'Second narrator.', voice: { command: 'ffmpeg -v error -f lavfi -i sine=duration=1.5 -f wav -y {out}' } };
+      raw.scenes[1].steps[0].show = { say: 'Second narrator.', voice: { command: 'ffmpeg -nostdin -v error -f lavfi -i sine=duration=1.5 -f wav -y {out}' } };
     });
-    loaded.script.audio.voice = { engine: 'command', speed: 1, command: 'ffmpeg -v error -f lavfi -i sine=duration=0.5 -f wav -y {out}' };
+    loaded.script.audio.voice = { engine: 'command', speed: 1, command: 'ffmpeg -nostdin -v error -f lavfi -i sine=duration=0.5 -f wav -y {out}' };
     const clips = await ensureVoices(loaded);
     expect(clips['report#1'].durationMs).toBeLessThan(700);
     expect(clips['export#1'].durationMs).toBeGreaterThan(1400);
