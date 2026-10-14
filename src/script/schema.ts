@@ -326,7 +326,7 @@ export const ScriptSchema = z
     hooks: HooksSchema.prefault({}),
     server: ServerSchema.optional().describe('Start the app for check and record (reused when it already answers)'),
     locales: z
-      .array(z.string().regex(/^[A-Za-z]{2,3}([-_][A-Za-z0-9]{2,8})?$/, 'a language code such as en, uk or pt-BR'))
+      .array(z.string().regex(/^[A-Za-z]{2,3}([-_][A-Za-z0-9]{2,8})*$/, 'a language code such as en, uk, pt-BR or zh-Hant-TW'))
       .min(1)
       .refine((l) => new Set(l).size === l.length, { message: 'locales must not repeat' })
       .optional()

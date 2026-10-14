@@ -1,5 +1,6 @@
 import { spawn } from 'node:child_process';
 import type { Hook } from '../script/schema';
+import { guardGroup } from './group';
 
 export const RUN_TIMEOUT_MS = 120_000;
 export const REQUEST_TIMEOUT_MS = 30_000;
@@ -26,6 +27,8 @@ function runCommand(command: string, cwd: string, timeoutMs: number): Promise<vo
   return new Promise((resolve, reject) => {
     // Own process group, so a timeout kills whatever the shell started too.
     const child = spawn(command, { cwd, shell: true, detached: true, stdio: ['ignore', 'pipe', 'pipe'] });
+    // Ctrl+C while it runs stops it too: its own group doesn't get the terminal's signal.
+    const unguard = guardGroup(child);
     let output = '';
     let settled = false;
     const keep = (chunk: Buffer) => {
@@ -37,6 +40,7 @@ function runCommand(command: string, cwd: string, timeoutMs: number): Promise<vo
       if (settled) return;
       settled = true;
       clearTimeout(timer);
+      unguard();
       // A background process the hook started (a dev server, say) may hold the pipes open: let go.
       child.stdout.destroy();
       child.stderr.destroy();

@@ -257,3 +257,12 @@ describe('0.8 fields', () => {
     expect(() => parseScript(withSteps([{ do: 'click', target: '#a', show: { freezeMs: -1 } }]))).toThrow(/freezeMs/);
   });
 });
+
+describe('0.9 fields', () => {
+  it('accepts locale tags with a script and a region, and still rejects non-tags', () => {
+    expect(parseScript({ ...minimal, locales: ['zh-Hant-TW', 'pt-BR', 'en'] }).locales).toEqual(['zh-Hant-TW', 'pt-BR', 'en']);
+    expect(() => parseScript({ ...minimal, locales: ['e'] })).toThrow(/locales/);
+    expect(() => parseScript({ ...minimal, locales: ['english language'] })).toThrow(/locales/);
+    expect(() => parseScript({ ...minimal, locales: ['en-'] })).toThrow(/locales/);
+  });
+});

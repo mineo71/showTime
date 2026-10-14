@@ -19,11 +19,11 @@ afterEach(() => server.close());
 const netFile = () => path.join(dir, 'lab.net.json');
 
 /** The lab script: counter API, echo API and a WebSocket session; `texts` pins what the page must show. */
-async function lab(texts: { count?: string; echo?: string; talk?: string } = {}, extra: object[] = []) {
+async function lab(texts: { count?: string; echo?: string; talk?: string } = {}, extra: object[] = [], match = ['**/api/**', 'ws://127.0.0.1:*/ws**']) {
   const raw = {
     version: 1,
     app: { url: server.url, viewport: { width: 800, height: 600 }, deviceScaleFactor: 1 },
-    replay: { file: 'lab.net.json', match: ['**/api/**', 'ws://127.0.0.1:*/ws**'] },
+    replay: { file: 'lab.net.json', match },
     scenes: [
       {
         id: 'lab',
@@ -60,6 +60,27 @@ describe('network replay', () => {
     expect(second.ok, second.failure?.error).toBe(true);
     expect(second.net).toMatchObject({ mode: 'replay', misses: 0 });
     expect(server.hits()).toBe(6);
+  });
+
+  it('routes WebSockets with a glob that has no scheme', async () => {
+    const match = ['**/api/**', '**/ws*'];
+    expect((await check(await lab(recorded, [], match))).ok).toBe(true);
+    expect(server.hits()).toBe(6);
+    const again = await check(await lab(recorded, [], match));
+    expect(again.ok, again.failure?.error).toBe(true);
+    expect(again.net?.misses).toBe(0);
+    expect(server.hits()).toBe(6);
+  });
+
+  it('says that a partial rehearsal records nothing, and marks the report partial', async () => {
+    const lines: string[] = [];
+    const report = await check(await lab(), { until: 'lab#2', log: (l) => lines.push(l) });
+    expect(report.ok).toBe(true);
+    expect(report.until).toBe('lab#2');
+    expect(lines.join('\n')).not.toMatch(/recording to/);
+    expect(lines.join('\n')).toMatch(/not saved: --until rehearses part of the script/);
+    expect(lines.at(-1)).toMatch(/Stopped after lab#2 \(--until\): 4 later steps not rehearsed/);
+    expect(existsSync(netFile())).toBe(false);
   });
 
   it('keeps credentials and request headers out of the file', async () => {

@@ -1,4 +1,4 @@
-import { execFile } from 'node:child_process';
+import { execFile, spawn } from 'node:child_process';
 import { existsSync, realpathSync } from 'node:fs';
 import { lstat, mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -69,6 +69,9 @@ describe('showtime CLI', () => {
       const net = await cli([cmd, loaded.scriptPath, '--net', 'offline']);
       expect(net.stderr).toMatch(/--net must be auto, live, record or replay \(got "offline"\)/);
     }
+    const locales = await cli(['render', path.join(FIXTURES, 'i18n.json'), '--locales', 'en,xx']);
+    expect(locales.code).toBe(1);
+    expect(locales.stderr).toMatch(/--locales: xx is not one of: en, uk/);
     const noReplay = await cli(['check', loaded.scriptPath, '--net', 'replay']);
     expect(noReplay.stderr).toMatch(/--net replay: the script has no "replay" section/);
   });
@@ -130,6 +133,42 @@ describe('showtime CLI', () => {
     // The child's cwd is the real path (/private/var/… on macOS).
     expect(file.startsWith(path.join(realpathSync(dir), '.showtime', 'voices'))).toBe(true);
     expect(existsSync(file)).toBe(true);
+  });
+
+  it('stops a running hook, and everything it started, on Ctrl+C', async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), 'showtime-sigint-'));
+    const pidFile = path.join(dir, 'pid.txt');
+    const file = path.join(dir, 'hang.json');
+    await writeFile(
+      file,
+      JSON.stringify({
+        version: 1,
+        app: { url: server.url },
+        hooks: { before: [{ run: 'sleep 30 & echo $! > pid.txt; wait' }] },
+        scenes: [{ id: 'a', steps: [{ do: 'pause', ms: 0 }] }],
+      }),
+    );
+    const child = spawn(process.execPath, [BIN, 'check', file], { cwd: dir, stdio: 'ignore' });
+    const exited = new Promise<number | null>((resolve) => child.on('exit', (code) => resolve(code)));
+    for (let i = 0; i < 100 && !existsSync(pidFile); i++) await new Promise((r) => setTimeout(r, 100));
+    let pid = 0;
+    for (let i = 0; i < 20 && !pid; i++) {
+      pid = Number((await readFile(pidFile, 'utf8')).trim());
+      if (!pid) await new Promise((r) => setTimeout(r, 50));
+    }
+    expect(pid).toBeGreaterThan(0);
+    child.kill('SIGINT');
+    expect(await exited).toBe(130);
+    const alive = () => {
+      try {
+        process.kill(pid, 0);
+        return true;
+      } catch {
+        return false;
+      }
+    };
+    for (let i = 0; i < 30 && alive(); i++) await new Promise((r) => setTimeout(r, 100));
+    expect(alive()).toBe(false);
   });
 
   it('fails clearly on an invalid script', async () => {

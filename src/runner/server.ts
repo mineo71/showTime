@@ -1,6 +1,7 @@
 import { spawn, type ChildProcess } from 'node:child_process';
 import { connect } from 'node:net';
 import type { Server } from '../script/schema';
+import { guardGroup, signalGroup } from './group';
 import { sleep } from './time';
 
 const POLL_MS = 500;
@@ -49,18 +50,6 @@ function groupAlive(pgid: number): boolean {
   }
 }
 
-function signalGroup(child: ChildProcess, sig: NodeJS.Signals) {
-  try {
-    process.kill(-child.pid!, sig);
-  } catch {
-    try {
-      child.kill(sig);
-    } catch {
-      // already gone
-    }
-  }
-}
-
 /**
  * Stop everything the command started: the whole process group, not just the shell, which may have
  * exited already (`npm run dev &`). SIGTERM first, SIGKILL for whatever is left after the grace period.
@@ -82,29 +71,6 @@ async function stop(child: ChildProcess): Promise<void> {
   // Orphans may have held the pipes open; let go so the CLI can exit.
   child.stdout?.destroy();
   child.stderr?.destroy();
-}
-
-/**
- * While the server runs, make sure it dies with showTime: on Ctrl+C, a SIGTERM, a closed terminal or
- * `process.exit` elsewhere (a `finally` doesn't run in those cases). Returns the cleanup that removes the guards.
- */
-function guard(child: ChildProcess): () => void {
-  const kill = () => signalGroup(child, 'SIGTERM');
-  const exitWith = (code: number) => () => {
-    kill();
-    process.exit(code);
-  };
-  const handlers: Array<[NodeJS.Signals, () => void]> = [
-    ['SIGINT', exitWith(130)],
-    ['SIGTERM', exitWith(143)],
-    ['SIGHUP', exitWith(129)],
-  ];
-  process.on('exit', kill);
-  for (const [sig, h] of handlers) process.on(sig, h);
-  return () => {
-    process.off('exit', kill);
-    for (const [sig, h] of handlers) process.off(sig, h);
-  };
 }
 
 /**
@@ -140,7 +106,7 @@ export async function withServer<T>(
   const what = `server (${server.run})`;
   log?.(`Starting ${what}…`);
   const child = spawn(server.run, { cwd, shell: true, detached: true, stdio: ['ignore', 'pipe', 'pipe'] });
-  const unguard = guard(child);
+  const unguard = guardGroup(child);
   let output = '';
   const keep = (d: Buffer) => {
     output = (output + d.toString()).slice(-KEEP_CHARS);

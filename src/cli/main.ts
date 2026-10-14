@@ -85,6 +85,8 @@ async function loadLocales(file: string, o: { locale?: string; locales?: string;
   if (!all) throw new Error(`--locales: ${first.scriptPath} has no "locales"`);
   const codes = o.locales === 'all' ? all : o.locales.split(',').map((s) => s.trim()).filter(Boolean);
   if (!codes.length) throw new Error('--locales needs all or a list such as en,uk');
+  const unknown = codes.find((c) => !all.includes(c));
+  if (unknown) throw new Error(`--locales: ${unknown} is not one of: ${all.join(', ')}`);
   return Promise.all(codes.map((locale) => loadScript(file, { locale })));
 }
 

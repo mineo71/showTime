@@ -99,6 +99,8 @@ export async function openSession(script: Script, opts: { headed?: boolean; net?
       locale: app.locale,
       timezoneId: app.timezoneId,
       reducedMotion: app.reducedMotion,
+      // A service worker could answer requests itself, out of reach of the mocks and the replay.
+      serviceWorkers: app.mock.length || script.replay ? 'block' : 'allow',
     });
     if (app.mask.length) await context.addInitScript({ content: maskScript(app.mask) });
     if (app.hide.length) await context.addInitScript({ content: hideScript(app.hide) });

@@ -1,6 +1,6 @@
 // Network record and replay (script.replay): Playwright routes that store the answers of matching
 // requests and WebSockets, or serve them back from the file.
-import { createHash } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import path from 'node:path';
@@ -32,7 +32,17 @@ interface NetFile {
   ws: WsRecording[];
 }
 
-const isWs = (glob: string) => /^wss?:\/\//i.test(glob);
+// What a glob routes: a `ws://`/`wss://` glob only WebSockets, an `http://`/`https://` one only HTTP,
+// and one without a scheme (`**/ws`) both, since it can match either.
+export function globKinds(glob: string): { http: boolean; ws: boolean } {
+  if (/^wss?:\/\//i.test(glob)) return { http: false, ws: true };
+  if (/^https?:\/\//i.test(glob)) return { http: true, ws: false };
+  return { http: true, ws: true };
+}
+
+/** A temporary name beside `file`, fresh per call, so two runs saving at once never share one. */
+export const tmpPath = (file: string) => `${file}.${process.pid}-${randomBytes(4).toString('hex')}.tmp`;
+
 /** Event streams never end: waiting for their whole body would stall them, so they stay live. */
 const isStream = (request: Request) => request.resourceType() === 'eventsource' || (request.headers().accept ?? '').includes('text/event-stream');
 const bodyHash = (body: Buffer | null) => (body?.length ? createHash('sha256').update(body).digest('hex').slice(0, 16) : '');
@@ -81,7 +91,8 @@ export async function attachNet(context: BrowserContext, script: Script, mode: N
     const queues = new Map<string, WsRecording[]>();
     for (const rec of saved.ws) queues.set(withoutQuery(rec.url), [...(queues.get(withoutQuery(rec.url)) ?? []), rec]);
     for (const glob of match) {
-      if (isWs(glob)) {
+      const kinds = globKinds(glob);
+      if (kinds.ws) {
         await context.routeWebSocket(glob, (ws) => {
           const rec = queues.get(withoutQuery(stripSecrets(ws.url())))?.shift();
           if (!rec) {
@@ -91,7 +102,8 @@ export async function attachNet(context: BrowserContext, script: Script, mode: N
           }
           players.push(playBack(ws, rec, timers));
         });
-      } else {
+      }
+      if (kinds.http) {
         await context.route(glob, async (route) => {
           const request = route.request();
           if (isStream(request)) return route.fallback();
@@ -111,8 +123,9 @@ export async function attachNet(context: BrowserContext, script: Script, mode: N
   const http: Array<HttpEntry | null> = [];
   const ws: WsRecording[] = [];
   for (const glob of match) {
-    if (isWs(glob)) await context.routeWebSocket(glob, (route) => ws.push(tap(route)));
-    else {
+    const kinds = globKinds(glob);
+    if (kinds.ws) await context.routeWebSocket(glob, (route) => ws.push(tap(route)));
+    if (kinds.http) {
       await context.route(glob, async (route) => {
         const request = route.request();
         if (isStream(request)) return route.fallback();
@@ -140,7 +153,7 @@ export async function attachNet(context: BrowserContext, script: Script, mode: N
     async save() {
       const data: NetFile = { version: 1, http: http.filter((e): e is HttpEntry => e !== null), ws };
       await mkdir(path.dirname(file), { recursive: true });
-      const tmp = `${file}.tmp`;
+      const tmp = tmpPath(file);
       await writeFile(tmp, `${JSON.stringify(data, null, 1)}\n`);
       await rename(tmp, file);
     },

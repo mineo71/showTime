@@ -1,0 +1,27 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Service worker</title>
+  </head>
+  <body>
+    <button id="count">Count</button>
+    <p id="out"></p>
+    <script>
+      // Ready once a service worker controls the page, or once registering failed (blocked).
+      const ready = () => document.body.setAttribute('data-ready', '1');
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker
+          .register('/sw.js')
+          .then(() => (navigator.serviceWorker.controller ? null : new Promise((r) => navigator.serviceWorker.addEventListener('controllerchange', r))))
+          .catch(() => undefined)
+          .finally(ready);
+        setTimeout(ready, 3000);
+      } else ready();
+      document.querySelector('#count').addEventListener('click', async () => {
+        const res = await fetch('/api/count');
+        document.querySelector('#out').textContent = `n=${(await res.json()).n}`;
+      });
+    </script>
+  </body>
+</html>

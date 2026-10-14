@@ -47,6 +47,8 @@ export interface CheckReport {
   failure: CheckFailure | null;
   /** recorded or replayed traffic, null when live */
   net: NetReport | null;
+  /** the step the rehearsal stopped after (--until); later steps were not rehearsed */
+  until?: string;
 }
 
 const ARIA_LIMIT = 8000;
@@ -69,7 +71,7 @@ async function rehearse(loaded: LoadedScript, opts: CheckOptions): Promise<Check
   const paths = workPaths(loaded);
   const report: CheckReport = { ok: true, steps: [], failure: null, net: null };
   const session = await openSession(script, opts);
-  announceNet(session.replay?.report(), opts);
+  announceNet(session.replay?.report(), opts, !!opts.until);
   try {
     const cursor = await prepare(session, script);
     const ctx: StepContext = { page: session.page, mode: 'check', log: new EventLog(), net: session.net, cursor, baseUrl: script.app.url };
@@ -85,6 +87,7 @@ async function rehearse(loaded: LoadedScript, opts: CheckOptions): Promise<Check
         opts.log?.(`✓ ${scene.id} #${index + 1} ${describeStep(step)}`);
         if (stepKey(scene.id, index) === opts.until) {
           done = true;
+          report.until = opts.until;
           break;
         }
       }
@@ -105,11 +108,20 @@ async function rehearse(loaded: LoadedScript, opts: CheckOptions): Promise<Check
   }
   report.net = session.replay?.report() ?? null;
   warnMisses(report.net, opts);
+  if (report.until) {
+    const total = script.scenes.reduce((n, s) => n + s.steps.length, 0);
+    const later = total - report.steps.length;
+    opts.log?.(`Stopped after ${report.until} (--until): ${later} later step${later === 1 ? '' : 's'} not rehearsed.`);
+  }
   return report;
 }
 
-export function announceNet(net: NetReport | undefined, opts: RunOptions): void {
-  if (net) opts.log?.(net.mode === 'replay' ? `Network: replaying ${net.file}` : `Network: recording to ${net.file}`);
+/** `partial`: a rehearsal that stops early (--until), whose recording is never saved. */
+export function announceNet(net: NetReport | undefined, opts: RunOptions, partial = false): void {
+  if (!net) return;
+  if (net.mode === 'replay') opts.log?.(`Network: replaying ${net.file}`);
+  else if (partial) opts.log?.(`Network: live, not saved: --until rehearses part of the script (${net.file} stays as it is)`);
+  else opts.log?.(`Network: recording to ${net.file}`);
 }
 
 export function warnMisses(net: NetReport | null, opts: RunOptions): void {
