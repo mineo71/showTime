@@ -11,8 +11,8 @@ import { contactSheet } from './sheet';
 import type { LoadedScript } from './script/load';
 import { loadTake } from './take';
 import { buildTimeline } from './timeline/build';
-import { introFrames, qaShots } from './timeline/frames';
-import { toSrt } from './timeline/narration';
+import { introFrames, qaShots, sceneRange } from './timeline/frames';
+import { cutCues, toSrt } from './timeline/narration';
 import type { Aspect, TakeEvents, Timeline } from './timeline/types';
 
 export interface TimelineOptions {
@@ -52,6 +52,10 @@ export interface RenderOptions extends TimelineOptions {
   format?: Format;
   /** GIF/WebP width in px */
   width?: number;
+  /** GIF/WebP frames per second */
+  fps?: number;
+  /** render only these scenes (from the first to the end of the last), cards left out */
+  scenes?: string[];
   onProgress?: (progress: number) => void;
   /** false: no soundtrack, even with narration, music or sounds */
   audio?: boolean;
@@ -67,20 +71,21 @@ export interface RenderResult {
 export async function renderDemo(loaded: LoadedScript, opts: RenderOptions = {}): Promise<RenderResult> {
   const aspect = opts.aspect ?? '16:9';
   const format = opts.format ?? formatOf(opts.out);
-  const out = path.resolve(opts.out ?? defaultOutput(loaded, aspect, format));
+  const out = path.resolve(opts.out ?? defaultOutput(loaded, aspect, format, opts.scenes));
   // A silent output (GIF, WebP, --no-audio) only needs the voices to time burned-in subtitles.
   const silent = format !== 'mp4' || opts.audio === false;
   const voices = !silent || loaded.script.audio.subtitles === 'burn';
-  const { timeline, clips } = await timelineFor(loaded, { ...opts, voices });
+  const { timeline, clips, events } = await timelineFor(loaded, { ...opts, voices });
   const paths = workPaths(loaded);
+  const range = opts.scenes?.length ? sceneRange(timeline, events.steps, opts.scenes) : undefined;
   await mkdir(path.dirname(out), { recursive: true });
 
   if (format !== 'mp4') {
     // GIF and WebP are cut from a silent MP4 render.
     const mp4 = path.join(paths.root, `render-${aspect.replace(':', 'x')}.mp4`);
-    await renderVideo(timeline, paths.root, mp4, opts.onProgress);
+    await renderVideo(timeline, paths.root, mp4, opts.onProgress, range);
     const width = opts.width ?? ANIMATION_WIDTH[aspect];
-    await (format === 'gif' ? toGif(mp4, out, width) : toWebp(mp4, out, width));
+    await (format === 'gif' ? toGif(mp4, out, width, opts.fps) : toWebp(mp4, out, width, opts.fps));
     return { video: out, durationMs: (await probeVideo(mp4)).durationMs, subtitles: null };
   }
 
@@ -91,11 +96,16 @@ export async function renderDemo(loaded: LoadedScript, opts: RenderOptions = {})
       await writeTimeline(loaded, timeline);
     }
   }
-  await renderVideo(timeline, paths.root, out, opts.onProgress);
+  await renderVideo(timeline, paths.root, out, opts.onProgress, range);
+  // Cues in file time: after the intro card, or relative to the start of a --scenes cut.
+  const frameMs = 1000 / timeline.fps;
+  const introMs = introFrames(timeline) * frameMs;
+  const fileCues = timeline.subtitles.map((c) => ({ ...c, startMs: c.startMs + introMs, endMs: c.endMs + introMs }));
+  const cues = range ? cutCues(fileCues, range.from * frameMs, (range.to + 1) * frameMs) : fileCues;
   let subtitles: string | null = null;
-  if (timeline.subtitles.length) {
+  if (cues.length) {
     subtitles = out.replace(/\.[^./\\]+$/, '') + '.srt';
-    await writeFile(subtitles, toSrt(timeline.subtitles, (introFrames(timeline) * 1000) / timeline.fps));
+    await writeFile(subtitles, toSrt(cues, 0));
   }
   return { video: out, durationMs: (await probeVideo(out)).durationMs, subtitles };
 }

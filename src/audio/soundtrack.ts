@@ -14,6 +14,8 @@ export const CLICK_GAIN = 0.5;
 export const KEY_GAIN = 0.2;
 /** Music is normalised to this loudness before its volume applies (voices sit at -16 LUFS). */
 const MUSIC_LUFS = -20;
+/** The app's own sounds sit a little under the narration. */
+const CLIP_LUFS = -18;
 
 /**
  * Mix narration, music and sounds into `out` (default `.showtime/<name>/audio/mix.wav`), as long as
@@ -27,7 +29,7 @@ export async function mixSoundtrack(
   out = workPaths(loaded).mix,
 ): Promise<string | null> {
   const music = loaded.script.audio.music;
-  if (!t.narration.length && !t.sounds.length && !music) return null;
+  if (!t.narration.length && !t.sounds.length && !music && !t.clips.length) return null;
   const frameMs = 1000 / t.fps;
   const introMs = introFrames(t) * frameMs;
   const voices = await Promise.all(
@@ -40,11 +42,19 @@ export async function mixSoundtrack(
       ? { samples: click, atMs: introMs + s.atMs, gain: CLICK_GAIN }
       : { samples: keys[i % KEY_VARIANTS], atMs: introMs + s.atMs, gain: KEY_GAIN },
   );
+  const appSounds = await Promise.all(
+    t.clips.map(async (c) => ({
+      channels: await musicSamples(loaded.script.audio.clips[c.index].file, CLIP_LUFS),
+      atMs: introMs + c.atMs,
+      gain: c.volume,
+    })),
+  );
   const track = mixTrack({
     rate: RATE,
     totalMs: totalFrames(t) * frameMs,
     voices,
     sounds,
+    clips: appSounds,
     music: music ? { channels: await musicSamples(music.file, MUSIC_LUFS), volume: music.volume } : undefined,
   });
   const paths = workPaths(loaded);

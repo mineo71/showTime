@@ -16,6 +16,8 @@ export interface MixPlan {
   /** one or two channels, looped */
   music?: { channels: Float32Array[]; volume: number };
   sounds: { samples: Float32Array; atMs: number; gain: number }[];
+  /** the app's own sounds (one or two channels); music ducks under them as under a voice */
+  clips?: { channels: Float32Array[]; atMs: number; gain: number }[];
 }
 
 const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
@@ -49,7 +51,10 @@ export function mixTrack(plan: MixPlan): Float32Array[] {
   if (plan.music && plan.music.channels[0]?.length) {
     const src = plan.music.channels;
     const len = src[0].length;
-    const spans = plan.voices.map((v) => ({ startMs: v.atMs, endMs: v.atMs + (v.samples.length / rate) * 1000 }));
+    const spans = [
+      ...plan.voices.map((v) => ({ startMs: v.atMs, endMs: v.atMs + (v.samples.length / rate) * 1000 })),
+      ...(plan.clips ?? []).map((c) => ({ startMs: c.atMs, endMs: c.atMs + ((c.channels[0]?.length ?? 0) / rate) * 1000 })),
+    ];
     // Gain per millisecond is plenty for ramps of hundreds of ms.
     const gains = Float32Array.from({ length: Math.ceil(plan.totalMs) + 1 }, (_, ms) => musicGain(ms, spans, plan.totalMs) * plan.music!.volume);
     for (let i = 0; i < n; i++) {
@@ -61,6 +66,15 @@ export function mixTrack(plan: MixPlan): Float32Array[] {
   }
   for (const v of plan.voices) addMono(out, v.samples, at(v.atMs), 1);
   for (const s of plan.sounds) addMono(out, s.samples, at(s.atMs), s.gain);
+  for (const c of plan.clips ?? []) {
+    const start = at(c.atMs);
+    const [left, right = left] = c.channels;
+    const end = Math.min(n, start + (left?.length ?? 0));
+    for (let i = Math.max(0, start); i < end; i++) {
+      out[0][i] += left[i - start] * c.gain;
+      out[1][i] += right[i - start] * c.gain;
+    }
+  }
 
   let peak = 0;
   for (const ch of out) for (let i = 0; i < n; i++) peak = Math.max(peak, Math.abs(ch[i]));

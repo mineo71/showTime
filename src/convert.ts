@@ -29,20 +29,21 @@ export function formatOf(out?: string, flag?: string): Format {
   throw new Error(`Cannot tell the format from "${out}": name it .mp4, .gif or .webp, or pass --format`);
 }
 
-/** `<name>.mp4`, `<name>-9x16.mp4`, `<name>-1x1.gif`… next to the script. */
-export function defaultOutput(loaded: { dir: string; name: string }, aspect: Aspect, format: Format): string {
-  const suffix = aspect === '16:9' ? '' : `-${aspect.replace(':', 'x')}`;
-  return path.join(loaded.dir, `${loaded.name}${suffix}.${format}`);
+/** `<name>.mp4`, `<name>-9x16.mp4`, `<name>-1x1.gif`, `<name>-quote.gif` (a --scenes cut)… next to the script. */
+export function defaultOutput(loaded: { dir: string; name: string }, aspect: Aspect, format: Format, scenes?: string[]): string {
+  const crop = aspect === '16:9' ? '' : `-${aspect.replace(':', 'x')}`;
+  const cut = scenes?.length ? `-${scenes.join('+')}` : '';
+  return path.join(loaded.dir, `${loaded.name}${crop}${cut}.${format}`);
 }
 
 /** An MP4 as a looping GIF with one palette for the whole clip. */
-export async function toGif(src: string, out: string, width: number): Promise<void> {
-  const vf = `fps=${GIF_FPS},scale=${width}:-1:flags=lanczos,split[a][b];[a]palettegen=stats_mode=diff[p];[b][p]paletteuse=dither=bayer:bayer_scale=5:diff_mode=rectangle`;
+export async function toGif(src: string, out: string, width: number, fps = GIF_FPS): Promise<void> {
+  const vf = `fps=${fps},scale=${width}:-1:flags=lanczos,split[a][b];[a]palettegen=stats_mode=diff[p];[b][p]paletteuse=dither=bayer:bayer_scale=5:diff_mode=rectangle`;
   await run('ffmpeg', ['-v', 'error', '-y', '-i', src, '-vf', vf, '-loop', '0', out]);
 }
 
 /** An MP4 as a looping animated WebP. */
-export async function toWebp(src: string, out: string, width: number): Promise<void> {
-  const vf = `fps=${WEBP_FPS},scale=${width}:-1:flags=lanczos`;
+export async function toWebp(src: string, out: string, width: number, fps = WEBP_FPS): Promise<void> {
+  const vf = `fps=${fps},scale=${width}:-1:flags=lanczos`;
   await run('ffmpeg', ['-v', 'error', '-y', '-i', src, '-vf', vf, '-c:v', 'libwebp_anim', '-quality', String(WEBP_QUALITY), '-loop', '0', out]);
 }

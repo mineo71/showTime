@@ -60,3 +60,14 @@ describe('mixTrack', () => {
     expect(l[25] / l[75]).toBeCloseTo(0.5);
   });
 });
+
+describe('mixTrack: clips', () => {
+  it('places a stereo clip at its offset with its gain, and ducks the music under it', () => {
+    const clip = { channels: [fill(200, 0.4), fill(200, -0.4)], atMs: 2000, gain: 0.5 };
+    const music = { channels: [fill(5000, 1)], volume: 0.5 };
+    const [l, r] = mixTrack({ rate: RATE, totalMs: 5000, music, voices: [], sounds: [], clips: [clip] });
+    expect(l[1000]).toBeCloseTo(0.5);
+    expect(l[2100]).toBeCloseTo(0.4 * 0.5 + 0.5 * DUCK);
+    expect(r[2100]).toBeCloseTo(-0.4 * 0.5 + 0.5 * DUCK);
+  });
+});

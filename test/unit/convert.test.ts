@@ -9,6 +9,8 @@ describe('output naming and formats', () => {
     expect(defaultOutput(loaded, '9:16', 'mp4')).toBe('/p/demo-9x16.mp4');
     expect(defaultOutput(loaded, '1:1', 'gif')).toBe('/p/demo-1x1.gif');
     expect(defaultOutput(loaded, '16:9', 'webp')).toBe('/p/demo.webp');
+    expect(defaultOutput(loaded, '16:9', 'gif', ['quote'])).toBe('/p/demo-quote.gif');
+    expect(defaultOutput(loaded, '9:16', 'mp4', ['catalog', 'quote'])).toBe('/p/demo-9x16-catalog+quote.mp4');
   });
 
   it('takes the format from the flag, else the extension, else mp4', () => {

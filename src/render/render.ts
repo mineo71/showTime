@@ -21,10 +21,13 @@ export async function renderVideo(
   publicDir: string,
   out: string,
   onProgress?: (progress: number) => void,
+  /** inclusive composition frames, for a --scenes cut */
+  range?: { from: number; to: number },
 ): Promise<void> {
   const r = await prepare(timeline, publicDir);
   await renderMedia({
     ...r,
+    frameRange: range ? [range.from, range.to] : null,
     codec: 'h264',
     crf: 18,
     outputLocation: out,

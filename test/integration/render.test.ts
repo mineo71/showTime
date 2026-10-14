@@ -1,3 +1,4 @@
+import { execFile } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
@@ -125,6 +126,38 @@ describe('render', () => {
     const { frames: files } = await renderQaFrames(await loadScript(loaded.scriptPath), { aspect: '1:1' });
     const png = await readFile(files[1]);
     expect([png.readUInt32BE(16), png.readUInt32BE(20)]).toEqual([1080, 1080]);
+  });
+
+  it('cuts a scene with its subtitles, honours GIF fps, and mixes app sound clips', async () => {
+    const full = await probeVideo(workPaths(loaded).video);
+    await new Promise<void>((resolve, reject) =>
+      execFile('ffmpeg', ['-v', 'error', '-f', 'lavfi', '-i', 'sine=frequency=880:duration=1', '-y', path.join(loaded.dir, 'ring.wav')], (err) =>
+        err ? reject(err) : resolve(),
+      ),
+    );
+    const edited = await editScript((raw) => {
+      raw.audio = { ...raw.audio, clips: [{ file: 'ring.wav', at: 'export#1', offsetMs: 200 }] };
+    });
+    const cut = await renderDemo(edited, { scenes: ['export'] });
+    expect(cut.video).toBe(path.join(loaded.dir, 'demo-export.mp4'));
+    expect(cut.durationMs).toBeLessThan(full.durationMs - 3000);
+    expect(await hasAudio(cut.video)).toBe(true);
+    const tl = JSON.parse(await readFile(workPaths(loaded).timeline, 'utf8')) as Timeline;
+    expect(tl.clips).toHaveLength(1);
+    const srt = await readFile(cut.subtitles!, 'utf8');
+    const first = /^1\n(\d\d):(\d\d):(\d\d),(\d{3})/.exec(srt)!;
+    expect(Number(first[3]) + Number(first[4]) / 1000).toBeLessThan(cut.durationMs / 1000);
+
+    const gif = await renderDemo(edited, { scenes: ['export'], format: 'gif', width: 160, fps: 8 });
+    const rate = await new Promise<string>((resolve, reject) =>
+      execFile('ffprobe', ['-v', 'error', '-select_streams', 'v:0', '-show_entries', 'stream=avg_frame_rate', '-of', 'csv=p=0', gif.video], (err, out) =>
+        err ? reject(err) : resolve(out.trim()),
+      ),
+    );
+    // GIF frame delays are whole centiseconds, so 8 fps comes out as 25/3.
+    const [num, den] = rate.split('/').map(Number);
+    expect(Math.abs(num / den - 8)).toBeLessThan(0.5);
+    await expect(renderDemo(edited, { scenes: ['nope'] })).rejects.toThrow(/--scenes: no scene "nope" \(scenes: report, export\)/);
   });
 
   it('needs no voice for silent outputs unless subtitles are burned in', async () => {

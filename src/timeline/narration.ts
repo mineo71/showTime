@@ -130,6 +130,13 @@ function wrap(text: string): string {
   return best < 0 ? text : `${text.slice(0, best)}\n${text.slice(best + 1)}`;
 }
 
+/** Cues that overlap [fromMs, toMs], clipped to it and shifted so the range starts at 0. */
+export function cutCues(cues: Cue[], fromMs: number, toMs: number): Cue[] {
+  return cues
+    .map((c) => ({ startMs: Math.max(c.startMs, fromMs) - fromMs, endMs: Math.min(c.endMs, toMs) - fromMs, text: c.text }))
+    .filter((c) => c.endMs > c.startMs);
+}
+
 /** SubRip text; `offsetMs` shifts video-relative cues to file time (the intro card). */
 export function toSrt(cues: Cue[], offsetMs: number): string {
   return cues.map((c, i) => `${i + 1}\n${stamp(c.startMs + offsetMs)} --> ${stamp(c.endMs + offsetMs)}\n${wrap(c.text)}\n`).join('\n');

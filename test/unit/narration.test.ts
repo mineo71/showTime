@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { NARRATION_GAP_MS, narrationHolds, soundEvents, stepKey, stillPoint, subtitleCues, toSrt } from '../../src/timeline/narration';
+import { cutCues, NARRATION_GAP_MS, narrationHolds, soundEvents, stepKey, stillPoint, subtitleCues, toSrt } from '../../src/timeline/narration';
 import { buildSegments } from '../../src/timeline/timemap';
 
 describe('narrationHolds', () => {
@@ -120,5 +120,19 @@ describe('soundEvents', () => {
   it('drops keys closer than 40 ms apart in output time', () => {
     const s = soundEvents({ clicks: [], keys: [6000, 6100, 6200, 6300] }, [], segs);
     expect(s.map((e) => e.atMs)).toEqual([5250, 5300]);
+  });
+});
+
+describe('cutCues', () => {
+  it('keeps the cues inside a range, clipped and shifted to start at 0', () => {
+    const cues = [
+      { startMs: 1000, endMs: 3000, text: 'before and into' },
+      { startMs: 5000, endMs: 6000, text: 'inside' },
+      { startMs: 9000, endMs: 9500, text: 'after' },
+    ];
+    expect(cutCues(cues, 2000, 8000)).toEqual([
+      { startMs: 0, endMs: 1000, text: 'before and into' },
+      { startMs: 3000, endMs: 4000, text: 'inside' },
+    ]);
   });
 });
