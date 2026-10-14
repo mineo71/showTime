@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "locales": ["en", "uk"],
+  "meta": { "title": { "en": "Hello", "uk": "Привіт" } },
+  "app": { "url": "http://127.0.0.1:4777/{locale}/", "viewport": { "width": 800, "height": 600 }, "deviceScaleFactor": 1 },
+  "scenes": [
+    {
+      "id": "hi",
+      "steps": [
+        {
+          "do": "click",
+          "target": { "en": "role=button[name='Say hello']", "uk": "role=button[name='Привітатися']" },
+          "show": { "caption": { "en": "One click", "uk": "Один клік" } }
+        },
+        { "do": "wait", "for": { "en": "text=Hello!", "uk": "text=Привіт!" } }
+      ]
+    }
+  ]
+}

@@ -65,6 +65,12 @@ describe('showtime CLI', () => {
     expect(fps.stderr).toMatch(/--fps must be a whole number from 5 to 30/);
     const scenes = await cli(['render', loaded.scriptPath, '--scenes', 'nope']);
     expect(scenes.stderr).toMatch(/--scenes: no scene "nope" \(scenes: report, export\)/);
+    for (const cmd of ['check', 'record', 'make']) {
+      const net = await cli([cmd, loaded.scriptPath, '--net', 'offline']);
+      expect(net.stderr).toMatch(/--net must be auto, live, record or replay \(got "offline"\)/);
+    }
+    const noReplay = await cli(['check', loaded.scriptPath, '--net', 'replay']);
+    expect(noReplay.stderr).toMatch(/--net replay: the script has no "replay" section/);
   });
 
   it('make starts the app once for both the rehearsal and the take', async () => {

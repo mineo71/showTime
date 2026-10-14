@@ -39,16 +39,22 @@ export async function loadScript(file: string, opts: LoadOptions = {}): Promise<
   return parseLoaded(raw, scriptPath, opts);
 }
 
+/** The script's declared locales (null without any) and the one to load: `locale`, else the first. */
+export function pickLocale(json: unknown, file: string, locale?: string): { locales: string[] | null; locale: string | null } {
+  const declared = (json as { locales?: unknown } | null)?.locales;
+  const locales = Array.isArray(declared) && declared.every((l) => typeof l === 'string') ? (declared as string[]) : null;
+  if (locale && !locales) throw new ScriptError(`--locale ${locale}: ${path.resolve(file)} has no "locales".`);
+  if (!locales) return { locales: null, locale: null };
+  if (locale && !locales.includes(locale)) throw new ScriptError(`--locale ${locale} is not one of: ${locales.join(', ')}`);
+  return { locales, locale: locale ?? locales[0] };
+}
+
 /** Validate a script's JSON as if it were read from `file`: brand file, relative paths, checks. */
 export async function parseLoaded(json: unknown, file: string, opts: LoadOptions = {}): Promise<LoadedScript> {
   const scriptPath = path.resolve(file);
   const dir = path.dirname(scriptPath);
   // A localized script is loaded for one locale; everything below sees plain values.
-  const declared = (json as { locales?: unknown } | null)?.locales;
-  const locales = Array.isArray(declared) && declared.every((l) => typeof l === 'string') ? (declared as string[]) : null;
-  if (opts.locale && !locales) throw new ScriptError(`--locale ${opts.locale}: ${scriptPath} has no "locales".`);
-  const locale = locales ? (opts.locale ?? locales[0]) : null;
-  if (locales && locale && !locales.includes(locale)) throw new ScriptError(`--locale ${locale} is not one of: ${locales.join(', ')}`);
+  const { locales, locale } = pickLocale(json, scriptPath, opts.locale);
   const prepare = (value: unknown) => (locales && locale ? localize(value, locales, locale) : value);
   let raw = prepare(structuredClone(json));
   const config = findConfig(dir);

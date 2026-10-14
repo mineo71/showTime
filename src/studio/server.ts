@@ -12,7 +12,7 @@ import { renderDemo, timelineFor } from '../pipeline';
 import { record } from '../runner/record';
 import { describeStep } from '../runner/steps';
 import { CONFIG_FILE } from '../script/config';
-import { parseLoaded, type LoadedScript } from '../script/load';
+import { parseLoaded, pickLocale, type LoadedScript } from '../script/load';
 import { loadTake } from '../take';
 import { stepFrames } from '../timeline/frames';
 import { stepKey } from '../timeline/narration';
@@ -28,6 +28,8 @@ type Json = Record<string, unknown>;
 export interface StudioOptions {
   port?: number;
   aspect?: Aspect;
+  /** one of the script's locales (default: the first) */
+  locale?: string;
   log?: (line: string) => void;
 }
 
@@ -179,7 +181,16 @@ function stream(from: NodeJS.ReadableStream, res: ServerResponse) {
 export async function startStudio(scriptFile: string, opts: StudioOptions = {}): Promise<Studio> {
   const file = path.resolve(scriptFile);
   const dir = path.dirname(file);
-  const name = path.basename(file).replace(/\.json$/i, '');
+  // The locale is settled once: its take and outputs are the ones this studio works on.
+  let first: unknown = null;
+  try {
+    first = JSON.parse(await readFile(file, 'utf8'));
+  } catch {
+    // an unreadable script is reported in the page
+  }
+  const locale = first === null ? opts.locale : (pickLocale(first, file, opts.locale).locale ?? undefined);
+  const base = path.basename(file).replace(/\.json$/i, '');
+  const name = locale ? `${base}.${locale}` : base;
   const root = path.join(dir, '.showtime', name);
   const token = randomBytes(18).toString('base64url');
   const client = await bundleClient();
@@ -252,7 +263,7 @@ export async function startStudio(scriptFile: string, opts: StudioOptions = {}):
       return changed();
     }
     try {
-      loaded = await parseLoaded(raw, file);
+      loaded = await parseLoaded(raw, file, { locale });
     } catch (err) {
       state.error = message(err);
       return changed();
@@ -303,8 +314,8 @@ export async function startStudio(scriptFile: string, opts: StudioOptions = {}):
       }
       let next: Json;
       try {
-        next = applyEdit(raw, change);
-        await parseLoaded(next, file);
+        next = applyEdit(raw, change, locale);
+        await parseLoaded(next, file, { locale });
       } catch (err) {
         throw new HttpError(err instanceof StaleStepError ? 409 : 400, message(err));
       }

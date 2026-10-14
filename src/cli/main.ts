@@ -63,6 +63,31 @@ function checkScenes(loaded: LoadedScript, scenes: string[] | undefined) {
   }
 }
 
+const NET_MODES = ['auto', 'live', 'record', 'replay'] as const;
+type Net = (typeof NET_MODES)[number];
+const NET_HELP = 'network for script.replay: auto (replay the file if it exists, else record it), live, record or replay';
+function netOf(value: string | undefined): Net | undefined {
+  if (value === undefined) return undefined;
+  if (!(NET_MODES as readonly string[]).includes(value)) throw new Error(`--net must be auto, live, record or replay (got "${value}")`);
+  return value as Net;
+}
+
+const LOCALE_HELP = 'one of the script\'s locales (default: the first)';
+const LOCALES_HELP = 'run several locales one after the other: all, or a list such as en,uk';
+
+/** --locale loads one; --locales (render, make) loads several, every one checked before anything runs. */
+async function loadLocales(file: string, o: { locale?: string; locales?: string; out?: string }): Promise<LoadedScript[]> {
+  if (o.locales === undefined) return [await loadScript(file, { locale: o.locale })];
+  if (o.locale) throw new Error('--locale and --locales: give one or the other');
+  if (o.out) throw new Error('--out cannot be used with --locales: each locale writes <name>.<locale>.<format> next to the script');
+  const first = await loadScript(file);
+  const all = first.script.locales;
+  if (!all) throw new Error(`--locales: ${first.scriptPath} has no "locales"`);
+  const codes = o.locales === 'all' ? all : o.locales.split(',').map((s) => s.trim()).filter(Boolean);
+  if (!codes.length) throw new Error('--locales needs all or a list such as en,uk');
+  return Promise.all(codes.map((locale) => loadScript(file, { locale })));
+}
+
 const withRenderFlags = (c: Command) =>
   c
     .option('-o, --out <file>', 'output file (default: <script-name>[-9x16|-1x1].<format> next to the script)')
@@ -121,10 +146,13 @@ program
   .option('--json', 'print the machine-readable report')
   .option('--headed', 'show the browser')
   .option('--until <step>', 'rehearse only up to and including this step (scene#n)')
-  .action(async (file: string, o: { json?: boolean; headed?: boolean; until?: string }) => {
-    const loaded = await loadScript(file);
+  .option('--net <mode>', NET_HELP)
+  .option('--locale <code>', LOCALE_HELP)
+  .action(async (file: string, o: { json?: boolean; headed?: boolean; until?: string; net?: string; locale?: string }) => {
+    const net = netOf(o.net);
+    const loaded = await loadScript(file, { locale: o.locale });
     const { check } = await import('../runner/check');
-    const report = await check(loaded, { headed: o.headed, until: o.until, log: o.json ? undefined : say });
+    const report = await check(loaded, { headed: o.headed, until: o.until, net, log: o.json ? undefined : say });
     if (o.json) emit(report);
     else say(formatCheck(report));
     if (!report.ok) process.exitCode = 1;
@@ -134,8 +162,9 @@ program
   .command('lint <script>')
   .description('flag script problems, and timing problems when a fresh take exists')
   .option('--json', 'print { issues, timing } as JSON')
-  .action(async (file: string, o: { json?: boolean }) => {
-    const loaded = await loadScript(file);
+  .option('--locale <code>', LOCALE_HELP)
+  .action(async (file: string, o: { json?: boolean; locale?: string }) => {
+    const loaded = await loadScript(file, { locale: o.locale });
     const { lintScript, lintTiming } = await import('../lint');
     const issues = lintScript(loaded.script);
     const { loadTake } = await import('../take');
@@ -157,10 +186,13 @@ program
   .option('--headed', 'show the browser')
   .option('--keep-frames', 'keep the captured JPEG frames')
   .option('--json', 'print { take, durationMs, steps } as JSON')
-  .action(async (file: string, o: { headed?: boolean; keepFrames?: boolean; json?: boolean }) => {
-    const loaded = await loadScript(file);
+  .option('--net <mode>', NET_HELP)
+  .option('--locale <code>', LOCALE_HELP)
+  .action(async (file: string, o: { headed?: boolean; keepFrames?: boolean; json?: boolean; net?: string; locale?: string }) => {
+    const net = netOf(o.net);
+    const loaded = await loadScript(file, { locale: o.locale });
     const { record } = await import('../runner/record');
-    const ev = await record(loaded, { headed: o.headed, keepFrames: o.keepFrames, log: o.json ? undefined : say });
+    const ev = await record(loaded, { headed: o.headed, keepFrames: o.keepFrames, net, log: o.json ? undefined : say });
     const take = takeSummary(loaded, ev);
     if (o.json) emit(take);
     else say(`✓ take: ${(take.durationMs / 1000).toFixed(1)} s, ${take.steps} steps → ${take.take}`);
@@ -169,13 +201,27 @@ program
 withRenderFlags(
   program.command('render <script>').description('render the polished video from the last take (no re-recording)'),
 )
-  .option('--json', 'print { video, durationMs, subtitles } as JSON')
-  .action(async (file: string, o: RenderFlags) => {
-    const loaded = await loadScript(file);
-    checkScenes(loaded, renderOptions(o).scenes);
-    const result = await render(loaded, o);
-    if (o.json) emit(result);
-    else sayRendered(result);
+  .option('--json', 'print { video, durationMs, subtitles } as JSON (with --locales: { runs: [{ locale, … }] })')
+  .option('--locale <code>', LOCALE_HELP)
+  .option('--locales <list>', LOCALES_HELP)
+  .action(async (file: string, o: RenderFlags & { locale?: string; locales?: string }) => {
+    const options = renderOptions(o);
+    const all = await loadLocales(file, o);
+    for (const loaded of all) checkScenes(loaded, options.scenes);
+    if (o.locales === undefined) {
+      const result = await render(all[0], o);
+      if (o.json) emit(result);
+      else sayRendered(result);
+      return;
+    }
+    const runs = [];
+    for (const loaded of all) {
+      if (!o.json) say(`── ${loaded.locale} ──`);
+      const result = await render(loaded, o);
+      runs.push({ locale: loaded.locale, ...result });
+      if (!o.json) sayRendered(result);
+    }
+    if (o.json) emit({ runs });
   });
 
 program
@@ -183,10 +229,12 @@ program
   .description('render QA stills (intro, one per step, outro) and a contact sheet of them')
   .option('--aspect <ratio>', '16:9, 9:16 or 1:1', '16:9')
   .option('--json', 'print { sheet, frames } as JSON')
-  .action(async (file: string, o: { aspect: string; json?: boolean }) => {
+  .option('--locale <code>', LOCALE_HELP)
+  .action(async (file: string, o: { aspect: string; json?: boolean; locale?: string }) => {
     const aspect = aspectOf(o.aspect);
+    const loaded = await loadScript(file, { locale: o.locale });
     const { renderQaFrames } = await import('../pipeline');
-    const { sheet, frames } = await renderQaFrames(await loadScript(file), { aspect, log: o.json ? undefined : say });
+    const { sheet, frames } = await renderQaFrames(loaded, { aspect, log: o.json ? undefined : say });
     if (o.json) return emit({ sheet, frames });
     say(`sheet: ${sheet}`);
     say(frames.join('\n'));
@@ -194,40 +242,69 @@ program
 
 withRenderFlags(program.command('make <script>').description('check → record → render'))
   .option('--headed', 'show the browser')
-  .option('--json', 'print { check, take, video } as JSON')
-  .action(async (file: string, o: RenderFlags & { headed?: boolean }) => {
+  .option('--json', 'print { check, take, video } as JSON (with --locales: { runs: [{ locale, … }] })')
+  .option('--net <mode>', NET_HELP)
+  .option('--locale <code>', LOCALE_HELP)
+  .option('--locales <list>', LOCALES_HELP)
+  .action(async (file: string, o: RenderFlags & { headed?: boolean; net?: string; locale?: string; locales?: string }) => {
     const options = renderOptions(o);
-    const loaded = await loadScript(file);
-    checkScenes(loaded, options.scenes);
-    const log = o.json ? undefined : say;
-    const { check } = await import('../runner/check');
-    const { record } = await import('../runner/record');
-    const { withServer } = await import('../runner/server');
-    // One server for the rehearsal and the take: check and record find it running and reuse it.
-    const shot = await withServer(
-      loaded.script.server,
-      loaded.script.app.url,
-      loaded.dir,
-      async () => {
-        const report = await check(loaded, { headed: o.headed });
-        if (!report.ok) return { report, take: null };
-        log?.(`✓ check passed (${report.steps.length} steps)`);
-        return { report, take: takeSummary(loaded, await record(loaded, { headed: o.headed, log })) };
-      },
-      log,
-    );
-    const { report, take } = shot;
-    if (!take) {
-      if (o.json) emit({ check: report });
-      else say(formatCheck(report));
-      process.exitCode = 1;
+    const net = netOf(o.net);
+    const all = await loadLocales(file, o);
+    for (const loaded of all) checkScenes(loaded, options.scenes);
+    if (o.locales === undefined) {
+      const run = await makeOne(all[0], o, net);
+      if (o.json) emit(run);
+      if (!run.video) process.exitCode = 1;
       return;
     }
-    log?.(`✓ take: ${(take.durationMs / 1000).toFixed(1)} s`);
-    const video = await render(loaded, o);
-    if (o.json) emit({ check: report, take, video });
-    else sayRendered(video);
+    // Every locale runs and is reported, even after one fails.
+    const runs = [];
+    for (const loaded of all) {
+      if (!o.json) say(`── ${loaded.locale} ──`);
+      try {
+        const run = await makeOne(loaded, o, net);
+        if (!run.video) process.exitCode = 1;
+        runs.push({ locale: loaded.locale, ...run });
+      } catch (err) {
+        process.exitCode = 1;
+        runs.push({ locale: loaded.locale, error: (err as Error).message });
+        if (!o.json) process.stderr.write(`✖ ${loaded.locale}: ${(err as Error).message}\n`);
+      }
+    }
+    if (o.json) emit({ runs });
   });
+
+/** check → record → render for one loaded script; prints progress unless --json. */
+async function makeOne(loaded: LoadedScript, o: RenderFlags & { headed?: boolean }, net: Net | undefined) {
+  const log = o.json ? undefined : say;
+  const { check } = await import('../runner/check');
+  const { record } = await import('../runner/record');
+  const { withServer } = await import('../runner/server');
+  // One server for the rehearsal and the take: check and record find it running and reuse it.
+  const shot = await withServer(
+    loaded.script.server,
+    loaded.script.app.url,
+    loaded.dir,
+    async () => {
+      const report = await check(loaded, { headed: o.headed, net });
+      if (!report.ok) return { report, take: null };
+      log?.(`✓ check passed (${report.steps.length} steps)`);
+      // The rehearsal recorded the traffic (or replayed it): the take replays the same answers.
+      const takeNet = net === 'record' ? 'replay' : net;
+      return { report, take: takeSummary(loaded, await record(loaded, { headed: o.headed, net: takeNet, log })) };
+    },
+    log,
+  );
+  const { report, take } = shot;
+  if (!take) {
+    if (!o.json) say(formatCheck(report));
+    return { check: report };
+  }
+  log?.(`✓ take: ${(take.durationMs / 1000).toFixed(1)} s`);
+  const video = await render(loaded, o);
+  if (!o.json) sayRendered(video);
+  return { check: report, take, video };
+}
 
 /** Open a URL in the default browser; best effort. */
 function openBrowser(url: string) {
@@ -286,13 +363,14 @@ program
   .option('--port <n>', 'port on 127.0.0.1', '4848')
   .option('--aspect <ratio>', 'preview 16:9, 9:16 or 1:1', '16:9')
   .option('--no-open', 'print the URL without opening the browser')
-  .action(async (file: string, o: { port: string; aspect: string; open: boolean }) => {
+  .option('--locale <code>', LOCALE_HELP)
+  .action(async (file: string, o: { port: string; aspect: string; open: boolean; locale?: string }) => {
     const port = Number(o.port);
     if (!Number.isInteger(port) || port < 0 || port > 65535) throw new Error(`--port must be a port number (got "${o.port}")`);
     const aspect = aspectOf(o.aspect);
     if (!existsSync(file)) throw new Error(`Cannot read script: ${path.resolve(file)}`);
     const { startStudio } = await import('../studio/server');
-    const studio = await startStudio(file, { port, aspect, log: say });
+    const studio = await startStudio(file, { port, aspect, locale: o.locale, log: say });
     say(`Studio: ${studio.url}  (Ctrl+C to stop)`);
     if (o.open) openBrowser(studio.url);
     await new Promise((resolve) => process.once('SIGINT', resolve));

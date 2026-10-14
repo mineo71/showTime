@@ -96,12 +96,31 @@ export function stepId(step: unknown): string {
   return canonical(action);
 }
 
-/** `section` with `changes` applied (null removes a key); undefined when nothing is left. */
-function merge(section: unknown, changes: Json): Json | undefined {
+/** The script's locales and the one the studio shows; null for a script without locales. */
+interface Lang {
+  all: string[];
+  open: string;
+}
+
+/** `{ "en": …, "uk": … }`: a value written per locale. */
+const perLocale = (v: unknown, lang: Lang | null): v is Json => {
+  if (!lang || !isObject(v)) return false;
+  const keys = Object.keys(v);
+  return keys.length > 0 && keys.every((k) => lang.all.includes(k));
+};
+
+/**
+ * `section` (at `at`) with `changes` applied (null removes a key); undefined when nothing is left. A
+ * value written per locale changes only in the open locale, and is never removed from the page.
+ */
+function merge(section: unknown, changes: Json, lang: Lang | null = null, at = ''): Json | undefined {
   const out: Json = isObject(section) ? { ...section } : {};
   for (const [k, v] of Object.entries(changes)) {
     if (v === undefined) continue;
-    if (v === null) delete out[k];
+    if (perLocale(out[k], lang)) {
+      if (v === null) throw new Error(`${at}${k} is written per locale (${Object.keys(out[k] as Json).join(', ')}); clear it in the file.`);
+      out[k] = { ...(out[k] as Json), [lang!.open]: v };
+    } else if (v === null) delete out[k];
     else out[k] = v;
   }
   return Object.keys(out).length ? out : undefined;
@@ -112,9 +131,14 @@ const setOrDelete = (obj: Json, key: string, value: Json | undefined) => {
   else obj[key] = value;
 };
 
-/** Apply an edit to the script as written (no defaults filled in). Returns a new object. */
-export function applyEdit<T extends Json>(raw: T, edit: Edit): T & Json {
+/**
+ * Apply an edit to the script as written (no defaults filled in). Returns a new object. `locale` is
+ * the one the studio shows (default: the script's first).
+ */
+export function applyEdit<T extends Json>(raw: T, edit: Edit, locale?: string): T & Json {
   const next = structuredClone(raw) as Json;
+  const all = Array.isArray(next.locales) ? (next.locales as unknown[]).filter((l): l is string => typeof l === 'string') : [];
+  const lang: Lang | null = all.length ? { all, open: locale ?? all[0] } : null;
   if ('where' in edit) {
     const [sceneId, n] = edit.where.split('#');
     const scenes = Array.isArray(next.scenes) ? next.scenes : [];
@@ -125,22 +149,22 @@ export function applyEdit<T extends Json>(raw: T, edit: Edit): T & Json {
     if (edit.step !== undefined && stepId(step) !== edit.step) {
       throw new StaleStepError(`The script changed on disk: ${edit.where} is a different step now. Check it and edit again.`);
     }
-    setOrDelete(step, 'show', merge(step.show, edit.show));
+    setOrDelete(step, 'show', merge(step.show, edit.show, lang, 'show.'));
   } else if ('style' in edit) {
     const { watermark, ...rest } = edit.style;
-    const style = merge(next.style, rest) ?? {};
+    const style = merge(next.style, rest, lang, 'style.') ?? {};
     // The watermark is edited field by field (its image stays); it goes when neither text nor image is left.
     if (watermark === null) delete style.watermark;
     else if (watermark !== undefined) {
-      const mark = merge(style.watermark, watermark);
+      const mark = merge(style.watermark, watermark, lang, 'style.watermark.');
       if (mark && (mark.text !== undefined || mark.image !== undefined)) style.watermark = mark;
       else delete style.watermark;
     }
     setOrDelete(next, 'style', Object.keys(style).length ? style : undefined);
   } else if ('meta' in edit) {
-    setOrDelete(next, 'meta', merge(next.meta, edit.meta));
+    setOrDelete(next, 'meta', merge(next.meta, edit.meta, lang, 'meta.'));
   } else {
-    setOrDelete(next, 'audio', merge(next.audio, edit.audio));
+    setOrDelete(next, 'audio', merge(next.audio, edit.audio, lang, 'audio.'));
   }
   return next as T & Json;
 }

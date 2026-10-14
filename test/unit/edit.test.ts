@@ -26,6 +26,19 @@ describe('applyEdit', () => {
     expect(applyEdit(before, { where: 'a#2', show: { spotlight: true } }).scenes[0].steps[1].show).toEqual({ spotlight: true });
   });
 
+  it('changes only the open locale of a value written per locale', () => {
+    const multi = {
+      ...raw(),
+      locales: ['en', 'uk'],
+      meta: { title: { en: 'Hello', uk: 'Привіт' } },
+      scenes: [{ id: 'a', steps: [{ do: 'click', target: '#a', show: { caption: { en: 'Hi', uk: 'Привіт' }, zoom: 2 } }] }],
+    };
+    const uk = applyEdit(multi, { where: 'a#1', show: { caption: 'Вітаю', zoom: 1.5 } }, 'uk');
+    expect(uk.scenes[0].steps[0].show).toEqual({ caption: { en: 'Hi', uk: 'Вітаю' }, zoom: 1.5 });
+    expect(applyEdit(multi, { meta: { title: 'Hey' } }).meta).toEqual({ title: { en: 'Hey', uk: 'Привіт' } });
+    expect(() => applyEdit(multi, { where: 'a#1', show: { caption: null } }, 'uk')).toThrow(/show\.caption is written per locale \(en, uk\)/);
+  });
+
   it('edits the watermark text without dropping its image or position', () => {
     const withMark = { ...raw(), style: { watermark: { text: 'acme.com', image: 'brand/mark.svg', position: 'top-left' } } };
     expect(applyEdit(withMark, { style: { watermark: { text: 'acme.io' } } }).style).toEqual({
