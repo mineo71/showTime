@@ -389,8 +389,80 @@
                     "minLength": 1
                   },
                   "spotlight": {
-                    "description": "Dim everything except the target",
-                    "type": "boolean"
+                    "description": "Point at the target: dim (everything else darkens, true), ring, or glow",
+                    "anyOf": [
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "string",
+                        "enum": [
+                          "dim",
+                          "ring",
+                          "glow"
+                        ]
+                      }
+                    ]
+                  },
+                  "highlight": {
+                    "description": "CSS colour for this step's click animation and spotlight",
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "click": {
+                    "description": "Click animation for this step",
+                    "type": "string",
+                    "enum": [
+                      "ripple",
+                      "pulse",
+                      "burst",
+                      "ring",
+                      "none"
+                    ]
+                  },
+                  "voice": {
+                    "description": "Changes to audio.voice for this step's line",
+                    "type": "object",
+                    "properties": {
+                      "engine": {
+                        "default": "system",
+                        "description": "system: macOS say / Linux espeak-ng; openai and elevenlabs read OPENAI_API_KEY / ELEVENLABS_API_KEY",
+                        "type": "string",
+                        "enum": [
+                          "system",
+                          "openai",
+                          "elevenlabs",
+                          "command"
+                        ]
+                      },
+                      "name": {
+                        "description": "Voice name (system, openai) or voice id (elevenlabs)",
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "speed": {
+                        "default": 1,
+                        "type": "number",
+                        "minimum": 0.5,
+                        "maximum": 2
+                      },
+                      "model": {
+                        "description": "openai: gpt-4o-mini-tts by default; elevenlabs: eleven_multilingual_v2",
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "instructions": {
+                        "description": "openai only: how to speak, e.g. \"warm and confident\"",
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "command": {
+                        "description": "command engine: shell command that reads the text on stdin and writes audio to {out}",
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    },
+                    "additionalProperties": false
                   },
                   "hold": {
                     "description": "Extra real-time ms after the step",
@@ -454,8 +526,80 @@
                     "minLength": 1
                   },
                   "spotlight": {
-                    "description": "Dim everything except the target",
-                    "type": "boolean"
+                    "description": "Point at the target: dim (everything else darkens, true), ring, or glow",
+                    "anyOf": [
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "string",
+                        "enum": [
+                          "dim",
+                          "ring",
+                          "glow"
+                        ]
+                      }
+                    ]
+                  },
+                  "highlight": {
+                    "description": "CSS colour for this step's click animation and spotlight",
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "click": {
+                    "description": "Click animation for this step",
+                    "type": "string",
+                    "enum": [
+                      "ripple",
+                      "pulse",
+                      "burst",
+                      "ring",
+                      "none"
+                    ]
+                  },
+                  "voice": {
+                    "description": "Changes to audio.voice for this step's line",
+                    "type": "object",
+                    "properties": {
+                      "engine": {
+                        "default": "system",
+                        "description": "system: macOS say / Linux espeak-ng; openai and elevenlabs read OPENAI_API_KEY / ELEVENLABS_API_KEY",
+                        "type": "string",
+                        "enum": [
+                          "system",
+                          "openai",
+                          "elevenlabs",
+                          "command"
+                        ]
+                      },
+                      "name": {
+                        "description": "Voice name (system, openai) or voice id (elevenlabs)",
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "speed": {
+                        "default": 1,
+                        "type": "number",
+                        "minimum": 0.5,
+                        "maximum": 2
+                      },
+                      "model": {
+                        "description": "openai: gpt-4o-mini-tts by default; elevenlabs: eleven_multilingual_v2",
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "instructions": {
+                        "description": "openai only: how to speak, e.g. \"warm and confident\"",
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "command": {
+                        "description": "command engine: shell command that reads the text on stdin and writes audio to {out}",
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    },
+                    "additionalProperties": false
                   },
                   "hold": {
                     "description": "Extra real-time ms after the step",
@@ -543,8 +687,80 @@
                     "minLength": 1
                   },
                   "spotlight": {
-                    "description": "Dim everything except the target",
-                    "type": "boolean"
+                    "description": "Point at the target: dim (everything else darkens, true), ring, or glow",
+                    "anyOf": [
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "string",
+                        "enum": [
+                          "dim",
+                          "ring",
+                          "glow"
+                        ]
+                      }
+                    ]
+                  },
+                  "highlight": {
+                    "description": "CSS colour for this step's click animation and spotlight",
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "click": {
+                    "description": "Click animation for this step",
+                    "type": "string",
+                    "enum": [
+                      "ripple",
+                      "pulse",
+                      "burst",
+                      "ring",
+                      "none"
+                    ]
+                  },
+                  "voice": {
+                    "description": "Changes to audio.voice for this step's line",
+                    "type": "object",
+                    "properties": {
+                      "engine": {
+                        "default": "system",
+                        "description": "system: macOS say / Linux espeak-ng; openai and elevenlabs read OPENAI_API_KEY / ELEVENLABS_API_KEY",
+                        "type": "string",
+                        "enum": [
+                          "system",
+                          "openai",
+                          "elevenlabs",
+                          "command"
+                        ]
+                      },
+                      "name": {
+                        "description": "Voice name (system, openai) or voice id (elevenlabs)",
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "speed": {
+                        "default": 1,
+                        "type": "number",
+                        "minimum": 0.5,
+                        "maximum": 2
+                      },
+                      "model": {
+                        "description": "openai: gpt-4o-mini-tts by default; elevenlabs: eleven_multilingual_v2",
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "instructions": {
+                        "description": "openai only: how to speak, e.g. \"warm and confident\"",
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "command": {
+                        "description": "command engine: shell command that reads the text on stdin and writes audio to {out}",
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    },
+                    "additionalProperties": false
                   },
                   "hold": {
                     "description": "Extra real-time ms after the step",
@@ -608,8 +824,80 @@
                     "minLength": 1
                   },
                   "spotlight": {
-                    "description": "Dim everything except the target",
-                    "type": "boolean"
+                    "description": "Point at the target: dim (everything else darkens, true), ring, or glow",
+                    "anyOf": [
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "string",
+                        "enum": [
+                          "dim",
+                          "ring",
+                          "glow"
+                        ]
+                      }
+                    ]
+                  },
+                  "highlight": {
+                    "description": "CSS colour for this step's click animation and spotlight",
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "click": {
+                    "description": "Click animation for this step",
+                    "type": "string",
+                    "enum": [
+                      "ripple",
+                      "pulse",
+                      "burst",
+                      "ring",
+                      "none"
+                    ]
+                  },
+                  "voice": {
+                    "description": "Changes to audio.voice for this step's line",
+                    "type": "object",
+                    "properties": {
+                      "engine": {
+                        "default": "system",
+                        "description": "system: macOS say / Linux espeak-ng; openai and elevenlabs read OPENAI_API_KEY / ELEVENLABS_API_KEY",
+                        "type": "string",
+                        "enum": [
+                          "system",
+                          "openai",
+                          "elevenlabs",
+                          "command"
+                        ]
+                      },
+                      "name": {
+                        "description": "Voice name (system, openai) or voice id (elevenlabs)",
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "speed": {
+                        "default": 1,
+                        "type": "number",
+                        "minimum": 0.5,
+                        "maximum": 2
+                      },
+                      "model": {
+                        "description": "openai: gpt-4o-mini-tts by default; elevenlabs: eleven_multilingual_v2",
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "instructions": {
+                        "description": "openai only: how to speak, e.g. \"warm and confident\"",
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "command": {
+                        "description": "command engine: shell command that reads the text on stdin and writes audio to {out}",
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    },
+                    "additionalProperties": false
                   },
                   "hold": {
                     "description": "Extra real-time ms after the step",
@@ -673,8 +961,80 @@
                     "minLength": 1
                   },
                   "spotlight": {
-                    "description": "Dim everything except the target",
-                    "type": "boolean"
+                    "description": "Point at the target: dim (everything else darkens, true), ring, or glow",
+                    "anyOf": [
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "string",
+                        "enum": [
+                          "dim",
+                          "ring",
+                          "glow"
+                        ]
+                      }
+                    ]
+                  },
+                  "highlight": {
+                    "description": "CSS colour for this step's click animation and spotlight",
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "click": {
+                    "description": "Click animation for this step",
+                    "type": "string",
+                    "enum": [
+                      "ripple",
+                      "pulse",
+                      "burst",
+                      "ring",
+                      "none"
+                    ]
+                  },
+                  "voice": {
+                    "description": "Changes to audio.voice for this step's line",
+                    "type": "object",
+                    "properties": {
+                      "engine": {
+                        "default": "system",
+                        "description": "system: macOS say / Linux espeak-ng; openai and elevenlabs read OPENAI_API_KEY / ELEVENLABS_API_KEY",
+                        "type": "string",
+                        "enum": [
+                          "system",
+                          "openai",
+                          "elevenlabs",
+                          "command"
+                        ]
+                      },
+                      "name": {
+                        "description": "Voice name (system, openai) or voice id (elevenlabs)",
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "speed": {
+                        "default": 1,
+                        "type": "number",
+                        "minimum": 0.5,
+                        "maximum": 2
+                      },
+                      "model": {
+                        "description": "openai: gpt-4o-mini-tts by default; elevenlabs: eleven_multilingual_v2",
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "instructions": {
+                        "description": "openai only: how to speak, e.g. \"warm and confident\"",
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "command": {
+                        "description": "command engine: shell command that reads the text on stdin and writes audio to {out}",
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    },
+                    "additionalProperties": false
                   },
                   "hold": {
                     "description": "Extra real-time ms after the step",
@@ -741,8 +1101,80 @@
                     "minLength": 1
                   },
                   "spotlight": {
-                    "description": "Dim everything except the target",
-                    "type": "boolean"
+                    "description": "Point at the target: dim (everything else darkens, true), ring, or glow",
+                    "anyOf": [
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "string",
+                        "enum": [
+                          "dim",
+                          "ring",
+                          "glow"
+                        ]
+                      }
+                    ]
+                  },
+                  "highlight": {
+                    "description": "CSS colour for this step's click animation and spotlight",
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "click": {
+                    "description": "Click animation for this step",
+                    "type": "string",
+                    "enum": [
+                      "ripple",
+                      "pulse",
+                      "burst",
+                      "ring",
+                      "none"
+                    ]
+                  },
+                  "voice": {
+                    "description": "Changes to audio.voice for this step's line",
+                    "type": "object",
+                    "properties": {
+                      "engine": {
+                        "default": "system",
+                        "description": "system: macOS say / Linux espeak-ng; openai and elevenlabs read OPENAI_API_KEY / ELEVENLABS_API_KEY",
+                        "type": "string",
+                        "enum": [
+                          "system",
+                          "openai",
+                          "elevenlabs",
+                          "command"
+                        ]
+                      },
+                      "name": {
+                        "description": "Voice name (system, openai) or voice id (elevenlabs)",
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "speed": {
+                        "default": 1,
+                        "type": "number",
+                        "minimum": 0.5,
+                        "maximum": 2
+                      },
+                      "model": {
+                        "description": "openai: gpt-4o-mini-tts by default; elevenlabs: eleven_multilingual_v2",
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "instructions": {
+                        "description": "openai only: how to speak, e.g. \"warm and confident\"",
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "command": {
+                        "description": "command engine: shell command that reads the text on stdin and writes audio to {out}",
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    },
+                    "additionalProperties": false
                   },
                   "hold": {
                     "description": "Extra real-time ms after the step",
@@ -812,8 +1244,80 @@
                     "minLength": 1
                   },
                   "spotlight": {
-                    "description": "Dim everything except the target",
-                    "type": "boolean"
+                    "description": "Point at the target: dim (everything else darkens, true), ring, or glow",
+                    "anyOf": [
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "string",
+                        "enum": [
+                          "dim",
+                          "ring",
+                          "glow"
+                        ]
+                      }
+                    ]
+                  },
+                  "highlight": {
+                    "description": "CSS colour for this step's click animation and spotlight",
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "click": {
+                    "description": "Click animation for this step",
+                    "type": "string",
+                    "enum": [
+                      "ripple",
+                      "pulse",
+                      "burst",
+                      "ring",
+                      "none"
+                    ]
+                  },
+                  "voice": {
+                    "description": "Changes to audio.voice for this step's line",
+                    "type": "object",
+                    "properties": {
+                      "engine": {
+                        "default": "system",
+                        "description": "system: macOS say / Linux espeak-ng; openai and elevenlabs read OPENAI_API_KEY / ELEVENLABS_API_KEY",
+                        "type": "string",
+                        "enum": [
+                          "system",
+                          "openai",
+                          "elevenlabs",
+                          "command"
+                        ]
+                      },
+                      "name": {
+                        "description": "Voice name (system, openai) or voice id (elevenlabs)",
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "speed": {
+                        "default": 1,
+                        "type": "number",
+                        "minimum": 0.5,
+                        "maximum": 2
+                      },
+                      "model": {
+                        "description": "openai: gpt-4o-mini-tts by default; elevenlabs: eleven_multilingual_v2",
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "instructions": {
+                        "description": "openai only: how to speak, e.g. \"warm and confident\"",
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "command": {
+                        "description": "command engine: shell command that reads the text on stdin and writes audio to {out}",
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    },
+                    "additionalProperties": false
                   },
                   "hold": {
                     "description": "Extra real-time ms after the step",
@@ -887,8 +1391,80 @@
                     "minLength": 1
                   },
                   "spotlight": {
-                    "description": "Dim everything except the target",
-                    "type": "boolean"
+                    "description": "Point at the target: dim (everything else darkens, true), ring, or glow",
+                    "anyOf": [
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "string",
+                        "enum": [
+                          "dim",
+                          "ring",
+                          "glow"
+                        ]
+                      }
+                    ]
+                  },
+                  "highlight": {
+                    "description": "CSS colour for this step's click animation and spotlight",
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "click": {
+                    "description": "Click animation for this step",
+                    "type": "string",
+                    "enum": [
+                      "ripple",
+                      "pulse",
+                      "burst",
+                      "ring",
+                      "none"
+                    ]
+                  },
+                  "voice": {
+                    "description": "Changes to audio.voice for this step's line",
+                    "type": "object",
+                    "properties": {
+                      "engine": {
+                        "default": "system",
+                        "description": "system: macOS say / Linux espeak-ng; openai and elevenlabs read OPENAI_API_KEY / ELEVENLABS_API_KEY",
+                        "type": "string",
+                        "enum": [
+                          "system",
+                          "openai",
+                          "elevenlabs",
+                          "command"
+                        ]
+                      },
+                      "name": {
+                        "description": "Voice name (system, openai) or voice id (elevenlabs)",
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "speed": {
+                        "default": 1,
+                        "type": "number",
+                        "minimum": 0.5,
+                        "maximum": 2
+                      },
+                      "model": {
+                        "description": "openai: gpt-4o-mini-tts by default; elevenlabs: eleven_multilingual_v2",
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "instructions": {
+                        "description": "openai only: how to speak, e.g. \"warm and confident\"",
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "command": {
+                        "description": "command engine: shell command that reads the text on stdin and writes audio to {out}",
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    },
+                    "additionalProperties": false
                   },
                   "hold": {
                     "description": "Extra real-time ms after the step",
@@ -951,8 +1527,80 @@
                     "minLength": 1
                   },
                   "spotlight": {
-                    "description": "Dim everything except the target",
-                    "type": "boolean"
+                    "description": "Point at the target: dim (everything else darkens, true), ring, or glow",
+                    "anyOf": [
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "string",
+                        "enum": [
+                          "dim",
+                          "ring",
+                          "glow"
+                        ]
+                      }
+                    ]
+                  },
+                  "highlight": {
+                    "description": "CSS colour for this step's click animation and spotlight",
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "click": {
+                    "description": "Click animation for this step",
+                    "type": "string",
+                    "enum": [
+                      "ripple",
+                      "pulse",
+                      "burst",
+                      "ring",
+                      "none"
+                    ]
+                  },
+                  "voice": {
+                    "description": "Changes to audio.voice for this step's line",
+                    "type": "object",
+                    "properties": {
+                      "engine": {
+                        "default": "system",
+                        "description": "system: macOS say / Linux espeak-ng; openai and elevenlabs read OPENAI_API_KEY / ELEVENLABS_API_KEY",
+                        "type": "string",
+                        "enum": [
+                          "system",
+                          "openai",
+                          "elevenlabs",
+                          "command"
+                        ]
+                      },
+                      "name": {
+                        "description": "Voice name (system, openai) or voice id (elevenlabs)",
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "speed": {
+                        "default": 1,
+                        "type": "number",
+                        "minimum": 0.5,
+                        "maximum": 2
+                      },
+                      "model": {
+                        "description": "openai: gpt-4o-mini-tts by default; elevenlabs: eleven_multilingual_v2",
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "instructions": {
+                        "description": "openai only: how to speak, e.g. \"warm and confident\"",
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "command": {
+                        "description": "command engine: shell command that reads the text on stdin and writes audio to {out}",
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    },
+                    "additionalProperties": false
                   },
                   "hold": {
                     "description": "Extra real-time ms after the step",
@@ -1042,6 +1690,133 @@
         "address": {
           "description": "Address-bar text; defaults to the app URL without its scheme",
           "type": "string"
+        },
+        "click": {
+          "default": "ripple",
+          "description": "Click animation",
+          "type": "string",
+          "enum": [
+            "ripple",
+            "pulse",
+            "burst",
+            "ring",
+            "none"
+          ]
+        },
+        "spotlightDim": {
+          "default": 0.55,
+          "description": "How dark a dim spotlight makes the rest",
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "captionStyle": {
+          "default": "dark",
+          "type": "string",
+          "enum": [
+            "dark",
+            "light",
+            "accent",
+            "outline",
+            "bar"
+          ]
+        },
+        "captionFont": {
+          "description": "Font family of captions and subtitles (default: font)",
+          "type": "string",
+          "minLength": 1
+        },
+        "titleFont": {
+          "description": "Font family of the intro and outro cards (default: font)",
+          "type": "string",
+          "minLength": 1
+        },
+        "captionSize": {
+          "description": "Caption text size in px at 1080p",
+          "type": "integer",
+          "minimum": 20,
+          "maximum": 80
+        },
+        "fonts": {
+          "default": [],
+          "description": "Font files embedded into the video",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "family": {
+                "type": "string",
+                "minLength": 1
+              },
+              "file": {
+                "type": "string",
+                "minLength": 1,
+                "description": "woff2/woff/ttf/otf, relative to the file that names it"
+              },
+              "weight": {
+                "anyOf": [
+                  {
+                    "type": "integer",
+                    "minimum": 100,
+                    "maximum": 900
+                  },
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                ]
+              },
+              "style": {
+                "type": "string",
+                "enum": [
+                  "normal",
+                  "italic"
+                ]
+              }
+            },
+            "required": [
+              "family",
+              "file"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "watermark": {
+          "type": "object",
+          "properties": {
+            "text": {
+              "type": "string",
+              "minLength": 1
+            },
+            "image": {
+              "description": "SVG/PNG/JPEG/WebP, relative to the file that names it",
+              "type": "string",
+              "minLength": 1
+            },
+            "position": {
+              "default": "bottom-right",
+              "type": "string",
+              "enum": [
+                "top-left",
+                "top-right",
+                "bottom-left",
+                "bottom-right"
+              ]
+            },
+            "opacity": {
+              "default": 0.6,
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "size": {
+              "default": 28,
+              "type": "integer",
+              "minimum": 12,
+              "maximum": 200
+            }
+          },
+          "additionalProperties": false
         }
       },
       "additionalProperties": false
@@ -1118,8 +1893,55 @@
         },
         "sounds": {
           "default": false,
-          "description": "Click and keystroke sounds",
-          "type": "boolean"
+          "description": "Click and keystroke sounds: true (soft), a pack name, or { pack, click?, key?, volume? }",
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "string",
+              "enum": [
+                "soft",
+                "mechanical",
+                "pop",
+                "tap",
+                "typewriter"
+              ]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "pack": {
+                  "default": "soft",
+                  "type": "string",
+                  "enum": [
+                    "soft",
+                    "mechanical",
+                    "pop",
+                    "tap",
+                    "typewriter"
+                  ]
+                },
+                "click": {
+                  "description": "Audio file for clicks, relative to the file that names it",
+                  "type": "string",
+                  "minLength": 1
+                },
+                "key": {
+                  "description": "Audio file for keystrokes",
+                  "type": "string",
+                  "minLength": 1
+                },
+                "volume": {
+                  "default": 1,
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                }
+              },
+              "additionalProperties": false
+            }
+          ]
         },
         "clips": {
           "default": [],
@@ -1220,8 +2042,80 @@
                           "minLength": 1
                         },
                         "spotlight": {
-                          "description": "Dim everything except the target",
-                          "type": "boolean"
+                          "description": "Point at the target: dim (everything else darkens, true), ring, or glow",
+                          "anyOf": [
+                            {
+                              "type": "boolean"
+                            },
+                            {
+                              "type": "string",
+                              "enum": [
+                                "dim",
+                                "ring",
+                                "glow"
+                              ]
+                            }
+                          ]
+                        },
+                        "highlight": {
+                          "description": "CSS colour for this step's click animation and spotlight",
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "click": {
+                          "description": "Click animation for this step",
+                          "type": "string",
+                          "enum": [
+                            "ripple",
+                            "pulse",
+                            "burst",
+                            "ring",
+                            "none"
+                          ]
+                        },
+                        "voice": {
+                          "description": "Changes to audio.voice for this step's line",
+                          "type": "object",
+                          "properties": {
+                            "engine": {
+                              "default": "system",
+                              "description": "system: macOS say / Linux espeak-ng; openai and elevenlabs read OPENAI_API_KEY / ELEVENLABS_API_KEY",
+                              "type": "string",
+                              "enum": [
+                                "system",
+                                "openai",
+                                "elevenlabs",
+                                "command"
+                              ]
+                            },
+                            "name": {
+                              "description": "Voice name (system, openai) or voice id (elevenlabs)",
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "speed": {
+                              "default": 1,
+                              "type": "number",
+                              "minimum": 0.5,
+                              "maximum": 2
+                            },
+                            "model": {
+                              "description": "openai: gpt-4o-mini-tts by default; elevenlabs: eleven_multilingual_v2",
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "instructions": {
+                              "description": "openai only: how to speak, e.g. \"warm and confident\"",
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "command": {
+                              "description": "command engine: shell command that reads the text on stdin and writes audio to {out}",
+                              "type": "string",
+                              "minLength": 1
+                            }
+                          },
+                          "additionalProperties": false
                         },
                         "hold": {
                           "description": "Extra real-time ms after the step",
@@ -1285,8 +2179,80 @@
                           "minLength": 1
                         },
                         "spotlight": {
-                          "description": "Dim everything except the target",
-                          "type": "boolean"
+                          "description": "Point at the target: dim (everything else darkens, true), ring, or glow",
+                          "anyOf": [
+                            {
+                              "type": "boolean"
+                            },
+                            {
+                              "type": "string",
+                              "enum": [
+                                "dim",
+                                "ring",
+                                "glow"
+                              ]
+                            }
+                          ]
+                        },
+                        "highlight": {
+                          "description": "CSS colour for this step's click animation and spotlight",
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "click": {
+                          "description": "Click animation for this step",
+                          "type": "string",
+                          "enum": [
+                            "ripple",
+                            "pulse",
+                            "burst",
+                            "ring",
+                            "none"
+                          ]
+                        },
+                        "voice": {
+                          "description": "Changes to audio.voice for this step's line",
+                          "type": "object",
+                          "properties": {
+                            "engine": {
+                              "default": "system",
+                              "description": "system: macOS say / Linux espeak-ng; openai and elevenlabs read OPENAI_API_KEY / ELEVENLABS_API_KEY",
+                              "type": "string",
+                              "enum": [
+                                "system",
+                                "openai",
+                                "elevenlabs",
+                                "command"
+                              ]
+                            },
+                            "name": {
+                              "description": "Voice name (system, openai) or voice id (elevenlabs)",
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "speed": {
+                              "default": 1,
+                              "type": "number",
+                              "minimum": 0.5,
+                              "maximum": 2
+                            },
+                            "model": {
+                              "description": "openai: gpt-4o-mini-tts by default; elevenlabs: eleven_multilingual_v2",
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "instructions": {
+                              "description": "openai only: how to speak, e.g. \"warm and confident\"",
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "command": {
+                              "description": "command engine: shell command that reads the text on stdin and writes audio to {out}",
+                              "type": "string",
+                              "minLength": 1
+                            }
+                          },
+                          "additionalProperties": false
                         },
                         "hold": {
                           "description": "Extra real-time ms after the step",
@@ -1374,8 +2340,80 @@
                           "minLength": 1
                         },
                         "spotlight": {
-                          "description": "Dim everything except the target",
-                          "type": "boolean"
+                          "description": "Point at the target: dim (everything else darkens, true), ring, or glow",
+                          "anyOf": [
+                            {
+                              "type": "boolean"
+                            },
+                            {
+                              "type": "string",
+                              "enum": [
+                                "dim",
+                                "ring",
+                                "glow"
+                              ]
+                            }
+                          ]
+                        },
+                        "highlight": {
+                          "description": "CSS colour for this step's click animation and spotlight",
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "click": {
+                          "description": "Click animation for this step",
+                          "type": "string",
+                          "enum": [
+                            "ripple",
+                            "pulse",
+                            "burst",
+                            "ring",
+                            "none"
+                          ]
+                        },
+                        "voice": {
+                          "description": "Changes to audio.voice for this step's line",
+                          "type": "object",
+                          "properties": {
+                            "engine": {
+                              "default": "system",
+                              "description": "system: macOS say / Linux espeak-ng; openai and elevenlabs read OPENAI_API_KEY / ELEVENLABS_API_KEY",
+                              "type": "string",
+                              "enum": [
+                                "system",
+                                "openai",
+                                "elevenlabs",
+                                "command"
+                              ]
+                            },
+                            "name": {
+                              "description": "Voice name (system, openai) or voice id (elevenlabs)",
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "speed": {
+                              "default": 1,
+                              "type": "number",
+                              "minimum": 0.5,
+                              "maximum": 2
+                            },
+                            "model": {
+                              "description": "openai: gpt-4o-mini-tts by default; elevenlabs: eleven_multilingual_v2",
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "instructions": {
+                              "description": "openai only: how to speak, e.g. \"warm and confident\"",
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "command": {
+                              "description": "command engine: shell command that reads the text on stdin and writes audio to {out}",
+                              "type": "string",
+                              "minLength": 1
+                            }
+                          },
+                          "additionalProperties": false
                         },
                         "hold": {
                           "description": "Extra real-time ms after the step",
@@ -1439,8 +2477,80 @@
                           "minLength": 1
                         },
                         "spotlight": {
-                          "description": "Dim everything except the target",
-                          "type": "boolean"
+                          "description": "Point at the target: dim (everything else darkens, true), ring, or glow",
+                          "anyOf": [
+                            {
+                              "type": "boolean"
+                            },
+                            {
+                              "type": "string",
+                              "enum": [
+                                "dim",
+                                "ring",
+                                "glow"
+                              ]
+                            }
+                          ]
+                        },
+                        "highlight": {
+                          "description": "CSS colour for this step's click animation and spotlight",
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "click": {
+                          "description": "Click animation for this step",
+                          "type": "string",
+                          "enum": [
+                            "ripple",
+                            "pulse",
+                            "burst",
+                            "ring",
+                            "none"
+                          ]
+                        },
+                        "voice": {
+                          "description": "Changes to audio.voice for this step's line",
+                          "type": "object",
+                          "properties": {
+                            "engine": {
+                              "default": "system",
+                              "description": "system: macOS say / Linux espeak-ng; openai and elevenlabs read OPENAI_API_KEY / ELEVENLABS_API_KEY",
+                              "type": "string",
+                              "enum": [
+                                "system",
+                                "openai",
+                                "elevenlabs",
+                                "command"
+                              ]
+                            },
+                            "name": {
+                              "description": "Voice name (system, openai) or voice id (elevenlabs)",
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "speed": {
+                              "default": 1,
+                              "type": "number",
+                              "minimum": 0.5,
+                              "maximum": 2
+                            },
+                            "model": {
+                              "description": "openai: gpt-4o-mini-tts by default; elevenlabs: eleven_multilingual_v2",
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "instructions": {
+                              "description": "openai only: how to speak, e.g. \"warm and confident\"",
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "command": {
+                              "description": "command engine: shell command that reads the text on stdin and writes audio to {out}",
+                              "type": "string",
+                              "minLength": 1
+                            }
+                          },
+                          "additionalProperties": false
                         },
                         "hold": {
                           "description": "Extra real-time ms after the step",
@@ -1504,8 +2614,80 @@
                           "minLength": 1
                         },
                         "spotlight": {
-                          "description": "Dim everything except the target",
-                          "type": "boolean"
+                          "description": "Point at the target: dim (everything else darkens, true), ring, or glow",
+                          "anyOf": [
+                            {
+                              "type": "boolean"
+                            },
+                            {
+                              "type": "string",
+                              "enum": [
+                                "dim",
+                                "ring",
+                                "glow"
+                              ]
+                            }
+                          ]
+                        },
+                        "highlight": {
+                          "description": "CSS colour for this step's click animation and spotlight",
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "click": {
+                          "description": "Click animation for this step",
+                          "type": "string",
+                          "enum": [
+                            "ripple",
+                            "pulse",
+                            "burst",
+                            "ring",
+                            "none"
+                          ]
+                        },
+                        "voice": {
+                          "description": "Changes to audio.voice for this step's line",
+                          "type": "object",
+                          "properties": {
+                            "engine": {
+                              "default": "system",
+                              "description": "system: macOS say / Linux espeak-ng; openai and elevenlabs read OPENAI_API_KEY / ELEVENLABS_API_KEY",
+                              "type": "string",
+                              "enum": [
+                                "system",
+                                "openai",
+                                "elevenlabs",
+                                "command"
+                              ]
+                            },
+                            "name": {
+                              "description": "Voice name (system, openai) or voice id (elevenlabs)",
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "speed": {
+                              "default": 1,
+                              "type": "number",
+                              "minimum": 0.5,
+                              "maximum": 2
+                            },
+                            "model": {
+                              "description": "openai: gpt-4o-mini-tts by default; elevenlabs: eleven_multilingual_v2",
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "instructions": {
+                              "description": "openai only: how to speak, e.g. \"warm and confident\"",
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "command": {
+                              "description": "command engine: shell command that reads the text on stdin and writes audio to {out}",
+                              "type": "string",
+                              "minLength": 1
+                            }
+                          },
+                          "additionalProperties": false
                         },
                         "hold": {
                           "description": "Extra real-time ms after the step",
@@ -1572,8 +2754,80 @@
                           "minLength": 1
                         },
                         "spotlight": {
-                          "description": "Dim everything except the target",
-                          "type": "boolean"
+                          "description": "Point at the target: dim (everything else darkens, true), ring, or glow",
+                          "anyOf": [
+                            {
+                              "type": "boolean"
+                            },
+                            {
+                              "type": "string",
+                              "enum": [
+                                "dim",
+                                "ring",
+                                "glow"
+                              ]
+                            }
+                          ]
+                        },
+                        "highlight": {
+                          "description": "CSS colour for this step's click animation and spotlight",
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "click": {
+                          "description": "Click animation for this step",
+                          "type": "string",
+                          "enum": [
+                            "ripple",
+                            "pulse",
+                            "burst",
+                            "ring",
+                            "none"
+                          ]
+                        },
+                        "voice": {
+                          "description": "Changes to audio.voice for this step's line",
+                          "type": "object",
+                          "properties": {
+                            "engine": {
+                              "default": "system",
+                              "description": "system: macOS say / Linux espeak-ng; openai and elevenlabs read OPENAI_API_KEY / ELEVENLABS_API_KEY",
+                              "type": "string",
+                              "enum": [
+                                "system",
+                                "openai",
+                                "elevenlabs",
+                                "command"
+                              ]
+                            },
+                            "name": {
+                              "description": "Voice name (system, openai) or voice id (elevenlabs)",
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "speed": {
+                              "default": 1,
+                              "type": "number",
+                              "minimum": 0.5,
+                              "maximum": 2
+                            },
+                            "model": {
+                              "description": "openai: gpt-4o-mini-tts by default; elevenlabs: eleven_multilingual_v2",
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "instructions": {
+                              "description": "openai only: how to speak, e.g. \"warm and confident\"",
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "command": {
+                              "description": "command engine: shell command that reads the text on stdin and writes audio to {out}",
+                              "type": "string",
+                              "minLength": 1
+                            }
+                          },
+                          "additionalProperties": false
                         },
                         "hold": {
                           "description": "Extra real-time ms after the step",
@@ -1643,8 +2897,80 @@
                           "minLength": 1
                         },
                         "spotlight": {
-                          "description": "Dim everything except the target",
-                          "type": "boolean"
+                          "description": "Point at the target: dim (everything else darkens, true), ring, or glow",
+                          "anyOf": [
+                            {
+                              "type": "boolean"
+                            },
+                            {
+                              "type": "string",
+                              "enum": [
+                                "dim",
+                                "ring",
+                                "glow"
+                              ]
+                            }
+                          ]
+                        },
+                        "highlight": {
+                          "description": "CSS colour for this step's click animation and spotlight",
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "click": {
+                          "description": "Click animation for this step",
+                          "type": "string",
+                          "enum": [
+                            "ripple",
+                            "pulse",
+                            "burst",
+                            "ring",
+                            "none"
+                          ]
+                        },
+                        "voice": {
+                          "description": "Changes to audio.voice for this step's line",
+                          "type": "object",
+                          "properties": {
+                            "engine": {
+                              "default": "system",
+                              "description": "system: macOS say / Linux espeak-ng; openai and elevenlabs read OPENAI_API_KEY / ELEVENLABS_API_KEY",
+                              "type": "string",
+                              "enum": [
+                                "system",
+                                "openai",
+                                "elevenlabs",
+                                "command"
+                              ]
+                            },
+                            "name": {
+                              "description": "Voice name (system, openai) or voice id (elevenlabs)",
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "speed": {
+                              "default": 1,
+                              "type": "number",
+                              "minimum": 0.5,
+                              "maximum": 2
+                            },
+                            "model": {
+                              "description": "openai: gpt-4o-mini-tts by default; elevenlabs: eleven_multilingual_v2",
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "instructions": {
+                              "description": "openai only: how to speak, e.g. \"warm and confident\"",
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "command": {
+                              "description": "command engine: shell command that reads the text on stdin and writes audio to {out}",
+                              "type": "string",
+                              "minLength": 1
+                            }
+                          },
+                          "additionalProperties": false
                         },
                         "hold": {
                           "description": "Extra real-time ms after the step",
@@ -1718,8 +3044,80 @@
                           "minLength": 1
                         },
                         "spotlight": {
-                          "description": "Dim everything except the target",
-                          "type": "boolean"
+                          "description": "Point at the target: dim (everything else darkens, true), ring, or glow",
+                          "anyOf": [
+                            {
+                              "type": "boolean"
+                            },
+                            {
+                              "type": "string",
+                              "enum": [
+                                "dim",
+                                "ring",
+                                "glow"
+                              ]
+                            }
+                          ]
+                        },
+                        "highlight": {
+                          "description": "CSS colour for this step's click animation and spotlight",
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "click": {
+                          "description": "Click animation for this step",
+                          "type": "string",
+                          "enum": [
+                            "ripple",
+                            "pulse",
+                            "burst",
+                            "ring",
+                            "none"
+                          ]
+                        },
+                        "voice": {
+                          "description": "Changes to audio.voice for this step's line",
+                          "type": "object",
+                          "properties": {
+                            "engine": {
+                              "default": "system",
+                              "description": "system: macOS say / Linux espeak-ng; openai and elevenlabs read OPENAI_API_KEY / ELEVENLABS_API_KEY",
+                              "type": "string",
+                              "enum": [
+                                "system",
+                                "openai",
+                                "elevenlabs",
+                                "command"
+                              ]
+                            },
+                            "name": {
+                              "description": "Voice name (system, openai) or voice id (elevenlabs)",
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "speed": {
+                              "default": 1,
+                              "type": "number",
+                              "minimum": 0.5,
+                              "maximum": 2
+                            },
+                            "model": {
+                              "description": "openai: gpt-4o-mini-tts by default; elevenlabs: eleven_multilingual_v2",
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "instructions": {
+                              "description": "openai only: how to speak, e.g. \"warm and confident\"",
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "command": {
+                              "description": "command engine: shell command that reads the text on stdin and writes audio to {out}",
+                              "type": "string",
+                              "minLength": 1
+                            }
+                          },
+                          "additionalProperties": false
                         },
                         "hold": {
                           "description": "Extra real-time ms after the step",
@@ -1782,8 +3180,80 @@
                           "minLength": 1
                         },
                         "spotlight": {
-                          "description": "Dim everything except the target",
-                          "type": "boolean"
+                          "description": "Point at the target: dim (everything else darkens, true), ring, or glow",
+                          "anyOf": [
+                            {
+                              "type": "boolean"
+                            },
+                            {
+                              "type": "string",
+                              "enum": [
+                                "dim",
+                                "ring",
+                                "glow"
+                              ]
+                            }
+                          ]
+                        },
+                        "highlight": {
+                          "description": "CSS colour for this step's click animation and spotlight",
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "click": {
+                          "description": "Click animation for this step",
+                          "type": "string",
+                          "enum": [
+                            "ripple",
+                            "pulse",
+                            "burst",
+                            "ring",
+                            "none"
+                          ]
+                        },
+                        "voice": {
+                          "description": "Changes to audio.voice for this step's line",
+                          "type": "object",
+                          "properties": {
+                            "engine": {
+                              "default": "system",
+                              "description": "system: macOS say / Linux espeak-ng; openai and elevenlabs read OPENAI_API_KEY / ELEVENLABS_API_KEY",
+                              "type": "string",
+                              "enum": [
+                                "system",
+                                "openai",
+                                "elevenlabs",
+                                "command"
+                              ]
+                            },
+                            "name": {
+                              "description": "Voice name (system, openai) or voice id (elevenlabs)",
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "speed": {
+                              "default": 1,
+                              "type": "number",
+                              "minimum": 0.5,
+                              "maximum": 2
+                            },
+                            "model": {
+                              "description": "openai: gpt-4o-mini-tts by default; elevenlabs: eleven_multilingual_v2",
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "instructions": {
+                              "description": "openai only: how to speak, e.g. \"warm and confident\"",
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "command": {
+                              "description": "command engine: shell command that reads the text on stdin and writes audio to {out}",
+                              "type": "string",
+                              "minLength": 1
+                            }
+                          },
+                          "additionalProperties": false
                         },
                         "hold": {
                           "description": "Extra real-time ms after the step",

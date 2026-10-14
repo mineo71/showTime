@@ -34,6 +34,15 @@ describe('actionHash', () => {
     expect(actionHash(infra)).toBe(actionHash(plain));
   });
 
+  it('ignores every 0.7 look-and-sound field', () => {
+    const plain = make({ do: 'click', target: 'text=Go' });
+    const styled = make(
+      { do: 'click', target: 'text=Go', show: { highlight: '#f00', spotlight: 'glow', click: 'burst', voice: { name: 'Daniel' } } },
+      { style: { click: 'pulse', captionStyle: 'bar', watermark: { text: 'x' } }, audio: { sounds: 'pop' } },
+    );
+    expect(actionHash(styled)).toBe(actionHash(plain));
+  });
+
   it('changes when an action changes', () => {
     expect(actionHash(make({ do: 'click', target: 'text=Stop' }))).not.toBe(actionHash(base));
   });

@@ -45,7 +45,7 @@ export async function readConfig(file: string): Promise<BrandConfig> {
   if (!parsed.success) throw new ScriptError(`Invalid ${file}:\n${formatIssues(parsed.error.issues)}`);
   const { style, meta, audio } = raw as BrandConfig;
   const dir = path.dirname(file);
-  return { style, meta: withLogoFrom(meta, dir), audio: withMusicFrom(audio, dir) };
+  return { style: withStyleFrom(style, dir), meta: withLogoFrom(meta, dir), audio: withMusicFrom(audio, dir) };
 }
 
 /** meta with `logo` made absolute against `dir` (when it is a string). */
@@ -54,10 +54,30 @@ export function withLogoFrom(meta: Json | undefined, dir: string): Json | undefi
   return { ...meta, logo: path.resolve(dir, meta.logo) };
 }
 
-/** audio with `music.file` and every `clips[].file` made absolute against `dir` (where they are strings). */
+/** style with font files and the watermark image made absolute against `dir`. */
+export function withStyleFrom(style: Json | undefined, dir: string): Json | undefined {
+  if (!style) return style;
+  const out: Json = { ...style };
+  if (Array.isArray(style.fonts)) {
+    out.fonts = style.fonts.map((f) => (isObject(f) && typeof f.file === 'string' ? { ...f, file: path.resolve(dir, f.file) } : f));
+  }
+  const wm = style.watermark;
+  if (isObject(wm) && typeof wm.image === 'string') out.watermark = { ...wm, image: path.resolve(dir, wm.image) };
+  return out;
+}
+
+/** audio with `music.file`, `clips[].file` and sound files made absolute against `dir` (where they are strings). */
 export function withMusicFrom(audio: Json | undefined, dir: string): Json | undefined {
   if (!audio) return audio;
   const out: Json = { ...audio };
+  const sounds = audio.sounds;
+  if (isObject(sounds)) {
+    out.sounds = {
+      ...sounds,
+      ...(typeof sounds.click === 'string' ? { click: path.resolve(dir, sounds.click) } : {}),
+      ...(typeof sounds.key === 'string' ? { key: path.resolve(dir, sounds.key) } : {}),
+    };
+  }
   const music = audio.music;
   if (isObject(music) && typeof music.file === 'string') out.music = { ...music, file: path.resolve(dir, music.file) };
   if (Array.isArray(audio.clips)) {

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { formatIssues } from '../script/schema';
+import { CLICK_KINDS, formatIssues, SOUND_PACKS } from '../script/schema';
 
 type Json = Record<string, unknown>;
 
@@ -11,9 +11,11 @@ const ShowEdit = z
     caption: nullable(z.string()),
     say: nullable(z.string()),
     zoom: nullable(z.union([z.number(), z.literal(false)])),
-    spotlight: nullable(z.boolean()),
+    spotlight: nullable(z.union([z.boolean(), z.enum(['dim', 'ring', 'glow'])])),
     speed: nullable(z.number()),
     hold: nullable(z.number().int()),
+    highlight: nullable(z.string()),
+    click: nullable(z.enum(CLICK_KINDS)),
   })
   .strict();
 
@@ -24,8 +26,25 @@ const StyleEdit = z
     chrome: nullable(z.enum(['browser', 'none'])),
     autoZoom: nullable(z.boolean()),
     autoSpeed: nullable(z.boolean()),
+    click: nullable(z.enum(CLICK_KINDS)),
+    captionStyle: nullable(z.enum(['dark', 'light', 'accent', 'outline', 'bar'])),
+    captionFont: nullable(z.string()),
+    titleFont: nullable(z.string()),
+    // Text only from the page: image paths stay in the file.
+    watermark: nullable(
+      z
+        .object({
+          text: z.string(),
+          position: z.enum(['top-left', 'top-right', 'bottom-left', 'bottom-right']).optional(),
+          opacity: z.number().optional(),
+          size: z.number().optional(),
+        })
+        .strict(),
+    ),
   })
   .strict();
+
+const AudioEdit = z.object({ sounds: nullable(z.union([z.boolean(), z.enum(SOUND_PACKS)])) }).strict();
 
 const MetaEdit = z.object({ title: nullable(z.string()), subtitle: nullable(z.string()) }).strict();
 
@@ -40,6 +59,7 @@ export const EditSchema = z.union([
     .strict(),
   z.object({ style: StyleEdit }).strict(),
   z.object({ meta: MetaEdit }).strict(),
+  z.object({ audio: AudioEdit }).strict(),
 ]);
 
 export type Edit = z.output<typeof EditSchema>;
@@ -106,8 +126,10 @@ export function applyEdit<T extends Json>(raw: T, edit: Edit): T & Json {
     setOrDelete(step, 'show', merge(step.show, edit.show));
   } else if ('style' in edit) {
     setOrDelete(next, 'style', merge(next.style, edit.style));
-  } else {
+  } else if ('meta' in edit) {
     setOrDelete(next, 'meta', merge(next.meta, edit.meta));
+  } else {
+    setOrDelete(next, 'audio', merge(next.audio, edit.audio));
   }
   return next as T & Json;
 }

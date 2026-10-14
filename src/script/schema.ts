@@ -5,6 +5,39 @@ const target = z
   .min(1)
   .describe("Playwright selector, e.g. role=button[name='Save'], text=Save, #id, [data-testid=x], CSS");
 
+export const CLICK_KINDS = ['ripple', 'pulse', 'burst', 'ring', 'none'] as const;
+export const SOUND_PACKS = ['soft', 'mechanical', 'pop', 'tap', 'typewriter'] as const;
+
+const VoiceFields = z
+  .object({
+    engine: z
+      .enum(['system', 'openai', 'elevenlabs', 'command'])
+      .default('system')
+      .describe('system: macOS say / Linux espeak-ng; openai and elevenlabs read OPENAI_API_KEY / ELEVENLABS_API_KEY'),
+    name: z.string().min(1).optional().describe('Voice name (system, openai) or voice id (elevenlabs)'),
+    speed: z.number().min(0.5).max(2).default(1),
+    model: z.string().min(1).optional().describe('openai: gpt-4o-mini-tts by default; elevenlabs: eleven_multilingual_v2'),
+    instructions: z.string().min(1).optional().describe('openai only: how to speak, e.g. "warm and confident"'),
+    command: z
+      .string()
+      .min(1)
+      .optional()
+      .describe('command engine: shell command that reads the text on stdin and writes audio to {out}'),
+  })
+  .strict();
+
+/** What a voice needs beyond its fields: an id for elevenlabs, a command for command. */
+export function voiceProblems(v: { engine?: string; name?: string; command?: string }): { path: string; message: string }[] {
+  const out: { path: string; message: string }[] = [];
+  if (v.engine === 'elevenlabs' && !v.name) out.push({ path: 'name', message: 'elevenlabs needs a voice id in "name"' });
+  if (v.engine === 'command' && !v.command) out.push({ path: 'command', message: 'the command engine needs "command"' });
+  return out;
+}
+
+export const VoiceSchema = VoiceFields.superRefine((v, ctx) => {
+  for (const p of voiceProblems(v)) ctx.addIssue({ code: 'custom', path: [p.path], message: p.message });
+});
+
 export const ShowSchema = z
   .object({
     zoom: z
@@ -12,7 +45,13 @@ export const ShowSchema = z
       .optional()
       .describe('Zoom depth for this step, or false to disable auto-zoom'),
     caption: z.string().min(1).optional().describe('Caption shown while this step plays'),
-    spotlight: z.boolean().optional().describe('Dim everything except the target'),
+    spotlight: z
+      .union([z.boolean(), z.enum(['dim', 'ring', 'glow'])])
+      .optional()
+      .describe('Point at the target: dim (everything else darkens, true), ring, or glow'),
+    highlight: z.string().min(1).optional().describe("CSS colour for this step's click animation and spotlight"),
+    click: z.enum(CLICK_KINDS).optional().describe('Click animation for this step'),
+    voice: VoiceFields.partial().optional().describe('Changes to audio.voice for this step\'s line'),
     hold: z.number().int().min(0).max(30_000).optional().describe('Extra real-time ms after the step'),
     speed: z.number().min(0.25).max(16).optional().describe('Playback speed for this step'),
     say: z
@@ -84,6 +123,36 @@ export const StyleSchema = z
       .default('browser')
       .describe('Frame the recording in a browser window with an address bar, or show the bare viewport'),
     address: z.string().optional().describe('Address-bar text; defaults to the app URL without its scheme'),
+    click: z.enum(CLICK_KINDS).default('ripple').describe('Click animation'),
+    spotlightDim: z.number().min(0).max(1).default(0.55).describe('How dark a dim spotlight makes the rest'),
+    captionStyle: z.enum(['dark', 'light', 'accent', 'outline', 'bar']).default('dark'),
+    captionFont: z.string().min(1).optional().describe('Font family of captions and subtitles (default: font)'),
+    titleFont: z.string().min(1).optional().describe('Font family of the intro and outro cards (default: font)'),
+    captionSize: z.number().int().min(20).max(80).optional().describe('Caption text size in px at 1080p'),
+    fonts: z
+      .array(
+        z
+          .object({
+            family: z.string().min(1),
+            file: z.string().min(1).describe('woff2/woff/ttf/otf, relative to the file that names it'),
+            weight: z.union([z.number().int().min(100).max(900), z.string().min(1)]).optional(),
+            style: z.enum(['normal', 'italic']).optional(),
+          })
+          .strict(),
+      )
+      .default([])
+      .describe('Font files embedded into the video'),
+    watermark: z
+      .object({
+        text: z.string().min(1).optional(),
+        image: z.string().min(1).optional().describe('SVG/PNG/JPEG/WebP, relative to the file that names it'),
+        position: z.enum(['top-left', 'top-right', 'bottom-left', 'bottom-right']).default('bottom-right'),
+        opacity: z.number().min(0).max(1).default(0.6),
+        size: z.number().int().min(12).max(200).default(28),
+      })
+      .strict()
+      .refine((w) => w.text !== undefined || w.image !== undefined, { message: 'watermark needs text or an image' })
+      .optional(),
   })
   .strict();
 
@@ -172,32 +241,6 @@ export const MetaSchema = z
   })
   .strict();
 
-export const VoiceSchema = z
-  .object({
-    engine: z
-      .enum(['system', 'openai', 'elevenlabs', 'command'])
-      .default('system')
-      .describe('system: macOS say / Linux espeak-ng; openai and elevenlabs read OPENAI_API_KEY / ELEVENLABS_API_KEY'),
-    name: z.string().min(1).optional().describe('Voice name (system, openai) or voice id (elevenlabs)'),
-    speed: z.number().min(0.5).max(2).default(1),
-    model: z.string().min(1).optional().describe('openai: gpt-4o-mini-tts by default; elevenlabs: eleven_multilingual_v2'),
-    instructions: z.string().min(1).optional().describe('openai only: how to speak, e.g. "warm and confident"'),
-    command: z
-      .string()
-      .min(1)
-      .optional()
-      .describe('command engine: shell command that reads the text on stdin and writes audio to {out}'),
-  })
-  .strict()
-  .superRefine((v, ctx) => {
-    if (v.engine === 'elevenlabs' && !v.name) {
-      ctx.addIssue({ code: 'custom', path: ['name'], message: 'elevenlabs needs a voice id in "name"' });
-    }
-    if (v.engine === 'command' && !v.command) {
-      ctx.addIssue({ code: 'custom', path: ['command'], message: 'the command engine needs "command"' });
-    }
-  });
-
 export const AudioSchema = z
   .object({
     voice: VoiceSchema.prefault({}).describe('Text-to-speech for show.say'),
@@ -209,7 +252,21 @@ export const AudioSchema = z
       .strict()
       .optional()
       .describe('Music bed under the whole video; ducks while the voice speaks'),
-    sounds: z.boolean().default(false).describe('Click and keystroke sounds'),
+    sounds: z
+      .union([
+        z.boolean(),
+        z.enum(SOUND_PACKS),
+        z
+          .object({
+            pack: z.enum(SOUND_PACKS).default('soft'),
+            click: z.string().min(1).optional().describe('Audio file for clicks, relative to the file that names it'),
+            key: z.string().min(1).optional().describe('Audio file for keystrokes'),
+            volume: z.number().min(0).max(1).default(1),
+          })
+          .strict(),
+      ])
+      .default(false)
+      .describe('Click and keystroke sounds: true (soft), a pack name, or { pack, click?, key?, volume? }'),
     clips: z
       .array(
         z
@@ -281,6 +338,8 @@ export type Hook = z.output<typeof HookSchema>;
 export type Mock = z.output<typeof MockSchema>;
 export type Audio = z.output<typeof AudioSchema>;
 export type Voice = z.output<typeof VoiceSchema>;
+export type ClickKind = (typeof CLICK_KINDS)[number];
+export type SoundPack = (typeof SOUND_PACKS)[number];
 export type Server = z.output<typeof ServerSchema>;
 
 export class ScriptError extends Error {

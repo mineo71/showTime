@@ -152,6 +152,30 @@ describe('audio paths and brand audio', () => {
     await expect(loadScript(file)).rejects.toThrow(/audio\.clips\[0\]\.at: no step b#7/);
   });
 
+  it('resolves font, watermark and sound files against the file that names them, and reports missing ones', async () => {
+    const root = await project();
+    await writeFile(join(root, 'brand', 'mark.png'), 'x');
+    await writeFile(join(root, 'brand', 'brand.woff2'), 'x');
+    await writeFile(join(root, 'showtime.config.json'), JSON.stringify({ style: { watermark: { image: 'brand/mark.png' }, fonts: [{ family: 'B', file: 'brand/brand.woff2' }] } }));
+    const file = join(root, 'demos', 'a.json');
+    await writeFile(file, JSON.stringify({ ...base, audio: { sounds: { pack: 'pop', click: 'own.mp3' } } }));
+    const { script } = await loadScript(file);
+    expect(script.style.watermark?.image).toBe(join(root, 'brand', 'mark.png'));
+    expect(script.style.fonts[0].file).toBe(join(root, 'brand', 'brand.woff2'));
+    expect(script.audio.sounds).toMatchObject({ click: join(root, 'demos', 'own.mp3') });
+    await writeFile(file, JSON.stringify({ ...base, style: { fonts: [{ family: 'X', file: 'gone.ttf' }] } }));
+    await expect(loadScript(file)).rejects.toThrow(/style\.fonts\[0\]\.file not found: .*gone\.ttf/);
+    await writeFile(file, JSON.stringify({ ...base, audio: { sounds: { key: 'gone.wav' } } }));
+    await expect(loadScript(file)).rejects.toThrow(/audio\.sounds\.key not found: .*gone\.wav/);
+  });
+
+  it('checks a step voice merged over audio.voice, naming the step', async () => {
+    const { file } = await scriptIn(
+      JSON.stringify({ ...base, scenes: [{ id: 'a', steps: [{ do: 'click', target: '#a', show: { say: 'Hi', voice: { engine: 'elevenlabs' } } }] }] }),
+    );
+    await expect(loadScript(file)).rejects.toThrow(/a#1 show\.voice: elevenlabs needs a voice id/);
+  });
+
   it('reports a missing music file', async () => {
     const root = await project();
     const file = join(root, 'demos', 'a.json');

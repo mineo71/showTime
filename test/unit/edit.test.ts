@@ -26,6 +26,10 @@ describe('applyEdit', () => {
     expect(applyEdit(before, { where: 'a#2', show: { spotlight: true } }).scenes[0].steps[1].show).toEqual({ spotlight: true });
   });
 
+  it('edits the sound pack', () => {
+    expect(applyEdit(raw(), { audio: { sounds: 'mechanical' } }).audio).toEqual({ sounds: 'mechanical' });
+  });
+
   it('edits the look and the cards, removing emptied sections', () => {
     const styled = applyEdit(raw(), { style: { accent: '#ef4444', chrome: 'none' } });
     expect(styled.style).toEqual({ accent: '#ef4444', chrome: 'none' });
@@ -56,6 +60,11 @@ describe('parseEdit', () => {
     expect(() => parseEdit({ style: { maxZoom: 'big' } })).toThrow(/Invalid edit/);
     expect(() => parseEdit({ meta: { logo: '/etc/passwd' } })).toThrow(/Invalid edit/);
     expect(() => parseEdit({ app: { url: 'http://evil' } })).toThrow(/Invalid edit/);
+    expect(parseEdit({ where: 'a#1', show: { highlight: '#f00', spotlight: 'ring', click: 'burst' } })).toBeTruthy();
+    expect(parseEdit({ style: { click: 'pulse', captionStyle: 'bar', captionFont: 'Georgia', watermark: { text: 'acme.com' } } })).toBeTruthy();
+    expect(parseEdit({ audio: { sounds: 'pop' } })).toEqual({ audio: { sounds: 'pop' } });
+    expect(() => parseEdit({ style: { watermark: { image: '/etc/passwd' } } })).toThrow(/Invalid edit/);
+    expect(() => parseEdit({ audio: { music: { file: '/x.mp3' } } })).toThrow(/Invalid edit/);
   });
 });
 

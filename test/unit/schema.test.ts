@@ -175,3 +175,54 @@ describe('0.6 fields', () => {
     expect(() => parseScript({ ...minimal, app: { url: 'http://x', reducedMotion: 'off' } })).toThrow(/app\.reducedMotion/);
   });
 });
+
+describe('0.7 look and sound', () => {
+  it('defaults to the 0.6 look', () => {
+    const s = parseScript(minimal);
+    expect(s.style).toMatchObject({ click: 'ripple', spotlightDim: 0.55, captionStyle: 'dark', fonts: [] });
+    expect(s.style.watermark).toBeUndefined();
+    expect(s.style.captionFont).toBeUndefined();
+    expect(s.audio.sounds).toBe(false);
+  });
+
+  it('accepts highlight colours, spotlight styles, click animations and voice changes per step', () => {
+    const s = parseScript(
+      withSteps([
+        { do: 'click', target: '#a', show: { highlight: '#f59e0b', spotlight: 'glow', click: 'burst', voice: { name: 'Daniel' } } },
+        { do: 'click', target: '#b', show: { spotlight: true } },
+      ]),
+    );
+    expect(s.scenes[0].steps[0].show).toMatchObject({ highlight: '#f59e0b', spotlight: 'glow', click: 'burst', voice: { name: 'Daniel' } });
+    expect(() => parseScript(withSteps([{ do: 'click', target: '#a', show: { click: 'explode' } }]))).toThrow(/show\.click/);
+    expect(() => parseScript(withSteps([{ do: 'click', target: '#a', show: { spotlight: 'neon' } }]))).toThrow(/show\.spotlight/);
+    expect(() => parseScript(withSteps([{ do: 'click', target: '#a', show: { voice: { engine: 'robot' } } }]))).toThrow(/show\.voice\.engine/);
+  });
+
+  it('accepts a watermark with text or an image, and caption styles and fonts', () => {
+    const s = parseScript({
+      ...minimal,
+      style: {
+        click: 'pulse',
+        captionStyle: 'outline',
+        captionFont: 'Brand Sans',
+        titleFont: 'Georgia',
+        captionSize: 42,
+        fonts: [{ family: 'Brand Sans', file: 'brand.woff2', weight: 700 }],
+        watermark: { text: 'acme.com' },
+      },
+    });
+    expect(s.style.watermark).toEqual({ text: 'acme.com', position: 'bottom-right', opacity: 0.6, size: 28 });
+    expect(s.style.fonts).toEqual([{ family: 'Brand Sans', file: 'brand.woff2', weight: 700 }]);
+    expect(() => parseScript({ ...minimal, style: { watermark: { position: 'top-left' } } })).toThrow(/watermark needs text or an image/);
+    expect(() => parseScript({ ...minimal, style: { captionStyle: 'neon' } })).toThrow(/style\.captionStyle/);
+    expect(() => parseScript({ ...minimal, style: { captionSize: 200 } })).toThrow(/style\.captionSize/);
+  });
+
+  it('takes sound packs by name or as an object with files and volume', () => {
+    expect(parseScript({ ...minimal, audio: { sounds: true } }).audio.sounds).toBe(true);
+    expect(parseScript({ ...minimal, audio: { sounds: 'mechanical' } }).audio.sounds).toBe('mechanical');
+    expect(parseScript({ ...minimal, audio: { sounds: { pack: 'pop', volume: 0.5 } } }).audio.sounds).toEqual({ pack: 'pop', volume: 0.5 });
+    expect(parseScript({ ...minimal, audio: { sounds: { click: 'c.wav' } } }).audio.sounds).toEqual({ pack: 'soft', click: 'c.wav', volume: 1 });
+    expect(() => parseScript({ ...minimal, audio: { sounds: 'loud' } })).toThrow(/audio\.sounds/);
+  });
+});
