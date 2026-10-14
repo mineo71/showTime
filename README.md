@@ -162,20 +162,26 @@ again.
 
 And under the hood:
 
+- 🔎 **Knows the page before writing.** `showtime inspect <url>` lists every button, link and field
+  with a ready target (and how many elements it matches) plus a screenshot.
 - ✅ **Rehearsal mode.** `showtime check` runs the script at full speed and screenshots every step.
   When a step fails it prints an ARIA snapshot of the page, so Claude can fix its own selectors.
+  `--until scene#n` stops before an expensive part, such as a burst of paid AI calls.
+- 🚀 **Starts your app.** `server` runs your dev command, waits until the app answers, and stops it
+  after the take; a server that is already running is reused.
 - 🔁 **Stale-take detection.** The take stores a hash of the actions. Edit a caption and `render`
   reuses the take. Edit a click and `render` tells you to `record` again.
 - 🧹 **Clean state for every take.** `hooks` run a reset command or call an endpoint before and
   after each rehearsal and take, so a flow that creates data works twice in a row.
 - 🎭 **Deterministic pages.** `app.mock` answers flaky or slow APIs with canned JSON, `app.clock`
-  pins the date, and `app.dialogs` answers `confirm()` the way the demo needs.
+  pins the date, and `app.dialogs` answers `confirm()` the way the demo needs. `app.hide` removes
+  dev badges and chat widgets; `app.reducedMotion` shows scroll-reveal sections at once.
 - 🎨 **One brand file.** `showtime.config.json` holds your colours, logo and outro; every script
   below it inherits them.
 - 🛟 **Safe re-takes.** A take that fails halfway leaves the last good one untouched.
 - 🤖 **JSON everywhere.** Every command takes `--json`, so agents read results instead of parsing
-  prose. Captions also move to the top on their own when the action happens at the bottom of the
-  screen.
+  prose. Captions stay up long enough to read and move to the top when the action happens at the
+  bottom of the screen.
 - 📐 **Typed scripts.** Point `"$schema"` at [`docs/script.schema.json`](docs/script.schema.json)
   for autocomplete and validation in your editor.
 - 🖥️ **Crisp at 1080p.** The app is captured at 2× device scale, so zoomed shots stay sharp.
@@ -205,8 +211,8 @@ ask a person:
 
 The agent takes it from there:
 
-1. **Explores** the app (with the Playwright MCP if it has one) and picks the 2–4 moments that
-   sell it.
+1. **Explores** the app with `showtime inspect` (or the Playwright MCP) and picks the 2–4 moments
+   that sell it.
 2. **Writes** `demo/checkout.json`.
 3. **Rehearses** with `showtime check` until every step passes, fixing selectors from the ARIA
    snapshot.
@@ -306,7 +312,7 @@ for readability and for naming the stills.
 | `hover`  | `target`                        | |
 | `select` | `target, value`                 | picks a `<select>` option by value |
 | `scroll` | `target` *or* `by`              | smooth-scroll an element into view, or by pixels |
-| `wait`   | `for` *or* `ms`                 | prefer `for` (a selector): the wait is sped up automatically |
+| `wait`   | `for` *or* `ms`, `timeoutMs?`   | prefer `for` (a selector): the wait is sped up automatically; `timeoutMs` (default 15 s, up to 300 s) for slow backends |
 | `pause`  | `ms`                            | a deliberate beat, always at 1× |
 
 Targets are Playwright selectors: `role=button[name='Save']`, `text=Save`, `#id`,
@@ -359,6 +365,8 @@ Targets are Playwright selectors: `role=button[name='Save']`, `text=Save`, `#id`
 | `colorScheme`       | none       | `light` or `dark`; also picks the browser-bar theme |
 | `locale`, `timezoneId` | none    | passed to the browser context |
 | `mask`              | `[]`       | CSS selectors to blur (plain CSS, not `text=`) |
+| `hide`              | `[]`       | CSS selectors to hide without moving the layout: dev badges (`nextjs-portal`), chat widgets |
+| `reducedMotion`     | none       | `reduce` makes sites that honour it show scroll-reveal content at once |
 | `mock`              | `[]`       | `[{ url, method?, status?, json? \| body?, headers?, delayMs? }]`: answer matching requests (`url` is a glob like `**/api/stats*`; the first match wins) |
 | `clock`             | none       | start the page clock at this ISO date-time; it then runs normally |
 | `dialogs`           | `accept`   | answer `alert`/`confirm`/`prompt` with `accept` or `dismiss` |
@@ -387,6 +395,7 @@ Targets are Playwright selectors: `role=button[name='Save']`, `text=Save`, `#id`
 | `voice.command`      | none       | `command` only: a shell command that reads the text on stdin and writes audio to `{out}` (inserted already quoted, so write it bare; also in `$SHOWTIME_OUT`), e.g. `piper -m en_US.onnx -f {out}` |
 | `music`              | none       | `{ file, volume? }`: a bed under the whole video, looped and ducked under the voice |
 | `sounds`             | `false`    | click and keystroke sounds |
+| `clips`              | `[]`       | `[{ file, at: "scene#n", offsetMs?, volume? }]`: the app's own sounds (a ringing phone, a caller), placed at a step; music ducks under them |
 | `subtitles`          | `file`     | `file`: an `.srt` next to the video; `burn`: also on the video (captions move up); `off` |
 
 `openai` and `elevenlabs` read `OPENAI_API_KEY` / `ELEVENLABS_API_KEY` from the environment
@@ -425,6 +434,20 @@ command in the script's folder (120 s timeout); `request` is an HTTP call that m
 </details>
 
 <details>
+<summary><b>Server</b> (<code>server</code>)</summary>
+
+```json
+"server": { "run": "npm run dev -- --port 3001", "url": "http://localhost:3001/", "timeoutMs": 90000 }
+```
+
+Before `check` and `record`, showTime requests `url` (default `app.url`). If something answers, it
+is used as is. Otherwise `run` starts in the script's folder, showTime waits until the URL answers
+(`timeoutMs`, default 60 s) and stops the command and everything it started when the work ends.
+Hooks run inside: server up → `before` → work → `after` → server down.
+
+</details>
+
+<details>
 <summary><b>Brand file</b> (<code>showtime.config.json</code>)</summary>
 
 Put it next to your scripts or in any folder above them; the nearest one applies. Its `style`,
@@ -445,9 +468,10 @@ Put it next to your scripts or in any folder above them; the nearest one applies
 |---|---|
 | `showtime setup [--agent claude\|codex\|all] [--no-browsers]` | download the browsers, link the skill |
 | `showtime make <script> [render options]` | check → record → render |
-| `showtime check <script> [--json] [--headed]` | rehearse; a screenshot per step; the first failure with an ARIA snapshot |
+| `showtime inspect <url> [--viewport 1440x900]` | every named control on the page with a ready target, and a screenshot |
+| `showtime check <script> [--json] [--headed] [--until scene#n]` | rehearse; a screenshot per step; the first failure with an ARIA snapshot |
 | `showtime record <script> [--headed] [--keep-frames]` | record a take into `.showtime/<name>/take` |
-| `showtime render <script> [-o out] [--aspect 16:9\|9:16\|1:1] [--format mp4\|gif\|webp] [--width px] [--no-audio]` | render from the last take, without re-recording |
+| `showtime render <script> [-o out] [--aspect 16:9\|9:16\|1:1] [--format mp4\|gif\|webp] [--width px] [--fps n] [--scenes a,b] [--no-audio]` | render from the last take, without re-recording; `--scenes` cuts a short clip |
 | `showtime frames <script> [--aspect …]` | QA stills (intro, one per step, outro) and a contact sheet of them |
 | `showtime studio <script> [--port 4848] [--aspect …] [--no-open]` | live preview, step timeline and inspector that save to the script |
 | `showtime record-human <url> [-o demo.json] [--viewport 1440x900] [--force]` | click through the app yourself; closing the window writes a script |
@@ -467,7 +491,10 @@ the script (`demo/pitch.json` → `demo/pitch.mp4`, `demo/pitch-9x16.mp4`, `demo
   `spotlight` on the one number that sells it.
 - **Never `pause` for loading.** Use `wait` with a selector and auto-speed compresses the spinner.
 - **Start clean.** Use `setup` for cookie banners, `app.storageState` to skip the login, `app.mask`
-  for anything personal, and `hooks` to reset the data between `check` and `record`.
+  for anything personal, `app.hide` for dev badges (Next.js: `nextjs-portal`), and `hooks` to reset
+  the data between `check` and `record`.
+- **A short loop for the README.** `showtime render demo.json --scenes quote --format gif --fps 12`
+  cuts just that scene.
 - **Pin the world.** Mock slow or random APIs with `app.mock` and pin the date with `app.clock`,
   so every take looks the same.
 - **Narrate the why, not the clicks.** One short sentence per moment. If `showtime lint` says a

@@ -24,16 +24,18 @@ showtime setup    # downloads the browsers it records with
 1. **Story first.** Settle the audience, target length (30–120 s), the 2–4 moments that sell the
    product, and the URL of a running app (a local dev server is best). Read the pitch, PRD or
    routes if they exist. Plan one scene per moment.
-2. **Explore the app** with a browser tool if you have one (e.g. the Playwright MCP:
-   `browser_navigate`, `browser_snapshot`) to learn the flow and pick selectors from the
-   accessibility snapshot. Without one, read the routes and templates and let `showtime check`
-   show you the page (it prints an ARIA snapshot when a step fails). Prefer
-   `role=button[name='Save']`, `text=…`, `#id`, `[data-testid=…]` over long CSS chains.
+2. **Explore the app:** `showtime inspect <url>` lists every named control on a page with a ready
+   target (and how many elements it matches) and saves a screenshot to look at. Run it on each
+   page of the flow. A browser tool (e.g. the Playwright MCP) helps for flows behind clicks. Prefer
+   the role targets it prints, `text=…`, `#id`, `[data-testid=…]` over long CSS chains. If the app
+   isn't running, add `server` to the script (`{ "run": "npm run dev", "url": "…" }`): showTime
+   starts it for `check` and `record` and stops it afterwards.
 3. **Write the script** in the project, e.g. `demo/pitch.json`. Run `showtime schema` for the
    complete format.
 4. **Rehearse:** `showtime check demo/pitch.json`. On failure read the error, the ARIA snapshot it
    prints and `.showtime/<name>/check/failure.png`; fix the selector or add a `wait`, repeat until
-   green.
+   green. When a later part is expensive (paid AI calls, real sends), rehearse up to the step before
+   it with `--until scene#n`.
 5. **Lint:** `showtime lint demo/pitch.json` and fix every warning (long captions, pauses that
    should be waits, zoom or spotlight on steps without a target).
 6. **Record:** `showtime record demo/pitch.json` (runs in real time).
@@ -145,21 +147,27 @@ ask the user for one rather than guessing.
   `speed`, `say` (narration).
 - **`audio`:** `voice` (`{ engine: system | openai | elevenlabs | command, name?, speed?, model?,
   instructions?, command? }`), `music` (`{ file, volume? }`), `sounds` (clicks and keystrokes),
-  `subtitles` (`file` | `burn` | `off`).
+  `subtitles` (`file` | `burn` | `off`), `clips` (`[{ file, at: "scene#n", offsetMs?, volume? }]`:
+  the app's own sounds, which the capture can't hear).
 - **`style`:** `background` (any CSS background), `chrome` (`browser` window frame | `none`), `address`
   (address-bar text), `padding`, `radius`, `shadow`, `font`, `accent`, `autoZoom`, `autoSpeed`, `maxZoom`.
 - **`app`:** `url`, `viewport`, `deviceScaleFactor`, `storageState` (Playwright storage-state JSON,
   path relative to the script), `colorScheme`, `locale`, `timezoneId`, `mask` (CSS selectors to blur —
-  plain CSS only, not `text=` / `role=`), `mock` (`[{ url: "**/api/x*", json | body, status?,
+  plain CSS only, not `text=` / `role=`), `hide` (CSS selectors to hide: dev badges such as Next.js's
+  `nextjs-portal`, chat widgets), `reducedMotion` (`reduce` for sites with scroll-reveal animations), `mock` (`[{ url: "**/api/x*", json | body, status?,
   method?, delayMs? }]`), `clock` (ISO date-time the page clock starts at; first matching mock wins), `dialogs` (`accept` | `dismiss`).
   Relative `goto` URLs resolve against `app.url`.
 - **`meta`:** `title`, `subtitle` (intro card), `logo` (SVG/PNG/JPEG/WebP), `outro`
   (`{ title, subtitle?, url? }`, closing card).
 - **`hooks`:** `before` / `after` lists of `{ run }` or `{ request }`.
+- **`server`:** `{ run, url?, timeoutMs? }`: start the app for `check`/`record` (an app already
+  answering at the URL is reused).
+- **`wait`** takes `timeoutMs` (default 15000, up to 300000) for pages waiting on slow backends.
 - **Brand file:** `showtime.config.json` in the script's folder or above holds default `style`,
   `meta` (logo, outro) and `audio` for every script; the script's own fields win.
 - **Render options** (`render`, `make`): `-o <file>`, `--aspect 16:9|9:16|1:1`,
-  `--format mp4|gif|webp`, `--width <px>`, `--no-audio`. `frames --aspect` reviews a crop.
+  `--format mp4|gif|webp`, `--width <px>`, `--fps <n>`, `--scenes a,b` (a short cut, no cards),
+  `--no-audio`. `frames --aspect` reviews a crop.
 - Output lands next to the script; working files in `.showtime/<script-name>/`.
 
 ## Direction tips

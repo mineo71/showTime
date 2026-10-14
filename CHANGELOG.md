@@ -1,5 +1,21 @@
 # Changelog
 
+## Unreleased
+
+- `showtime inspect <url>`: every named control on a page with a ready target and how many
+  elements it matches, plus a full-page screenshot.
+- `server`: showTime starts the app for `check` and `record` (and the studio's Record), waits until
+  it answers and stops it afterwards; a server that already answers is reused.
+- `app.hide` (hide dev badges, chat widgets) and `app.reducedMotion` (scroll-reveal content shows at
+  once).
+- `wait.timeoutMs` for slow backends; `check --until scene#n` rehearses part of a script.
+- Captions stay on screen until they can be read (`max(1.5 s, 0.5 s + 0.25 s × words)` of output
+  time) unless the next caption starts.
+- Burned subtitles get a band of their own under the window in 16:9 and 1:1 instead of covering
+  the app; captions keep their usual place.
+- `audio.clips`: the app's own sounds, placed at a step; music ducks under them.
+- `render --scenes a,b` cuts a short clip (subtitles cut to match); `--fps` for GIF and WebP.
+
 ## 0.5.0 — 2026-10-13
 
 - `showtime studio <script>`: a local page with a live preview (the same components the renderer
