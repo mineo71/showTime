@@ -143,10 +143,13 @@ export function toSteps(actions: RecordedAction[], appUrl: string): { steps: Hum
  * can replay: a newer page is followed into (the runner does that by itself), and going back to an
  * older page closes the newer ones with closeTab, except those that closed themselves.
  */
-export function followPages(entries: Array<{ page: number; action: RecordedAction }>, selfClosed: ReadonlySet<number>): RecordedAction[] {
+export function followPages(
+  entries: Array<{ page: number; action: RecordedAction; opens?: number }>,
+  selfClosed: ReadonlySet<number>,
+): RecordedAction[] {
   const stack = [0];
   const out: RecordedAction[] = [];
-  for (const { page, action } of entries) {
+  entries.forEach(({ page, action, opens }, i) => {
     if (stack.includes(page)) {
       while (stack[stack.length - 1] !== page) {
         const closed = stack.pop()!;
@@ -154,6 +157,9 @@ export function followPages(entries: Array<{ page: number; action: RecordedActio
       }
     } else stack.push(page);
     out.push(action);
-  }
+    // A page this action opened and nothing used (a docs tab looked at, a background tab): the runner
+    // follows it, so it is closed again at once.
+    if (opens !== undefined && !selfClosed.has(opens) && !entries.slice(i + 1).some((e) => e.page === opens)) out.push({ name: 'closeTab' });
+  });
   return out;
 }

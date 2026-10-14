@@ -74,7 +74,7 @@ export async function recordHuman(url: string, opts: RecordHumanOptions): Promis
   const viewport = opts.viewport ?? { width: 1440, height: 900 };
   // Playwright would close the browser and exit on Ctrl+C itself; showTime handles it, so the script gets written.
   const browser = await chromium.launch({ headless: opts.headless ?? false, handleSIGINT: false });
-  const entries: Array<{ page: number; action: RecordedAction }> = [];
+  const entries: Array<{ page: number; action: RecordedAction; opens?: number; opensGuid?: string }> = [];
   // Pages that closed themselves (an OAuth popup): they will again when the script runs, so no closeTab.
   const selfClosed = new Set<number>();
   let title = '';
@@ -127,11 +127,28 @@ export async function recordHuman(url: string, opts: RecordHumanOptions): Promis
             }
           }
         },
-        signalAdded: () => undefined,
+        // The action that opened a page: it gets a closeTab when nothing in that page is used.
+        signalAdded: (from, signal) => {
+          const s = signal as { name?: string; popupPageGuid?: string };
+          if (s.name !== 'popup' || !s.popupPageGuid) return;
+          const n = indexOf(from);
+          for (let i = entries.length - 1; i >= 0; i--) {
+            if (entries[i].page === n) {
+              entries[i].opensGuid = s.popupPageGuid;
+              break;
+            }
+          }
+        },
       },
     );
     await orInterrupt(opts.drive ? opts.drive(page) : untilClosed(context));
     await context._stopRecording?.().catch(() => undefined);
+    // Signals name pages by Playwright's internal guid.
+    const guidOf = (p: unknown) => (p as { _guid?: string })._guid;
+    for (const e of entries) {
+      const opened = e.opensGuid ? pages.findIndex((p) => guidOf(p) === e.opensGuid) : -1;
+      if (opened > 0) e.opens = opened;
+    }
   } finally {
     await browser.close().catch(() => undefined);
   }

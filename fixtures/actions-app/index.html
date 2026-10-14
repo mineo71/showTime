@@ -15,6 +15,7 @@
       #track { position: relative; height: 8px; background: #e2e8f0; border-radius: 4px; margin: 24px 0; width: 300px; }
       #thumb { position: absolute; left: 0; top: -8px; width: 24px; height: 24px; border-radius: 50%; background: #6366f1; touch-action: none; }
       #far { position: absolute; top: 2600px; left: 16px; width: 200px; height: 60px; border: 2px dashed #94a3b8; }
+      #cover { position: absolute; left: 12px; right: 12px; bottom: 8px; height: 70px; background: rgba(15, 23, 42, 0.85); color: #fff; z-index: 5; }
       #palette { display: none; position: fixed; top: 80px; left: 50%; transform: translateX(-50%); background: #0f172a; color: #fff; padding: 16px 24px; border-radius: 10px; }
     </style>
   </head>
@@ -39,6 +40,8 @@
         <p id="done-count">done: 0</p>
         <div id="track"><div id="thumb"></div></div>
         <p id="value">value: 0</p>
+        <div class="column" id="covered">Covered drop</div>
+        <div id="cover">A banner on top</div>
       </section>
       <section>
         <h3>Upload</h3>
@@ -50,6 +53,9 @@
         <button id="open-popup">Open popup</button>
         <a id="new-tab" href="/tab.html" target="_blank">Docs in a new tab</a>
         <button id="oauth">Sign in with Example</button>
+        <button id="oauth-slow">Sign in, slowly</button>
+        <a id="download-tab" href="/report.csv" target="_blank">Download report</a>
+        <a id="pending-tab" href="/pending.html" target="_blank">Gallery</a>
         <p id="status">signed out</p>
       </section>
     </main>
@@ -109,6 +115,7 @@
 
       $('#open-popup').addEventListener('click', () => window.open('/popup.html', 'popup', 'width=600,height=400'));
       $('#oauth').addEventListener('click', () => window.open('/oauth.html', 'oauth', 'width=500,height=500'));
+      $('#oauth-slow').addEventListener('click', () => window.open('/oauth-slow.html', 'oauth', 'width=500,height=500'));
       window.addEventListener('message', (e) => ($('#status').textContent = String(e.data)));
 
       document.addEventListener('keydown', (e) => {

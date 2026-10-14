@@ -27,10 +27,23 @@ export interface Session {
 /** Event streams never finish; counting them would hold every step for the full settle cap. */
 const isStream = (r: Request) => r.resourceType() === 'eventsource' || (r.headers().accept ?? '').includes('text/event-stream');
 
-/** Requests of every page in the context: a popup's requests count too. */
+/** The page a request belongs to; null for one without a frame (a service worker's). */
+function pageOf(r: Request): Page | null {
+  try {
+    return r.frame().page();
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Requests of every page in the context: a popup's requests count too. A closed page never reports
+ * its unfinished requests, so they are let go when it closes.
+ */
 export function trackNetwork(page: Pick<BrowserContext, 'on'>): NetworkTracker {
   let inflight = 0;
   const counted = new Set<Request>();
+  const byPage = new Map<Page, Set<Request>>();
   let lastChange = Date.now();
   const up = () => {
     inflight++;
@@ -40,14 +53,31 @@ export function trackNetwork(page: Pick<BrowserContext, 'on'>): NetworkTracker {
     inflight = Math.max(0, inflight - 1);
     lastChange = Date.now();
   };
+  const done = (r: Request) => {
+    if (!counted.delete(r)) return;
+    const owner = pageOf(r);
+    if (owner) byPage.get(owner)?.delete(r);
+    down();
+  };
   page.on('request', (r) => {
     if (isStream(r)) return;
     counted.add(r);
+    const owner = pageOf(r);
+    if (owner) {
+      let mine = byPage.get(owner);
+      if (!mine) {
+        const set = new Set<Request>();
+        mine = set;
+        byPage.set(owner, set);
+        owner.once('close', () => {
+          for (const left of set) done(left);
+          byPage.delete(owner);
+        });
+      }
+      mine.add(r);
+    }
     up();
   });
-  const done = (r: Request) => {
-    if (counted.delete(r)) down();
-  };
   page.on('requestfinished', done);
   page.on('requestfailed', done);
   return {

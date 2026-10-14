@@ -33,6 +33,18 @@ export async function serveDir(dir: string, port = 0): Promise<Served> {
       req.on('end', () => res.writeHead(200, { 'content-type': 'application/json' }).end(JSON.stringify({ got: JSON.parse(body || '{}'), n: ++counter })));
       return;
     }
+    if (rel === '/slow') {
+      // A page that takes a while to answer, like a popup on a slow backend.
+      setTimeout(() => res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' }).end('<!doctype html><title>Slow</title><h1 id="slow-title">Slow page</h1>'), 2000);
+      return;
+    }
+    if (rel === '/report.csv') {
+      return void res.writeHead(200, { 'content-type': 'text/csv', 'content-disposition': 'attachment; filename="report.csv"' }).end('a,b\n1,2\n');
+    }
+    if (rel === '/pending.png') {
+      // An image that never finishes loading: a request still in flight when its page closes.
+      return;
+    }
     if (rel === '/sse') {
       // A never-ending event stream, like a live dashboard.
       res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-cache', connection: 'keep-alive' });

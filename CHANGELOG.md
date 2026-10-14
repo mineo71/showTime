@@ -15,6 +15,12 @@
   published only when it passes.
 - The studio's Record picks the network mode for scripts with `replay`.
 
+### Changed
+
+- Steps after one that opens a tab or popup now act in that page (0.8 stayed on the first page).
+  Scripts that relied on that: add `closeTab` after the opening step. A link that downloads a file
+  in a new tab is not followed.
+
 ### Fixed
 
 - Ctrl+C stops a running hook and everything it started.

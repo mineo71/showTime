@@ -153,4 +153,17 @@ describe('followPages', () => {
     );
     expect(out.map((x) => x.selector ?? x.name)).toEqual(['#a', '#b', '#c', 'closeTab', 'closeTab', '#d']);
   });
+
+  it('closes a tab that was opened but never used, unless it closed itself', () => {
+    const opened = { page: 0, action: a('#docs'), opens: 1 };
+    expect(followPages([opened, { page: 0, action: a('#next') }], new Set()).map((x) => x.selector ?? x.name)).toEqual(['#docs', 'closeTab', '#next']);
+    expect(followPages([opened, { page: 0, action: a('#next') }], new Set([1])).map((x) => x.selector ?? x.name)).toEqual(['#docs', '#next']);
+    // used later: followed as usual
+    expect(followPages([opened, { page: 1, action: a('#in') }, { page: 0, action: a('#next') }], new Set()).map((x) => x.selector ?? x.name)).toEqual([
+      '#docs',
+      '#in',
+      'closeTab',
+      '#next',
+    ]);
+  });
 });

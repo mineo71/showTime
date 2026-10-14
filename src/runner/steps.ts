@@ -68,7 +68,15 @@ export function describeStep(step: Step): string {
 
 export async function runStep(ctx: StepContext, step: Step, where: StepWhere): Promise<void> {
   try {
-    await perform(ctx, step, where);
+    try {
+      await perform(ctx, step, where);
+    } catch (err) {
+      // Its page closed under the step (a popup closing itself a moment late): run it again in the
+      // page the flow went back to.
+      if (!ctx.tabs || !ctx.page.isClosed()) throw err;
+      await follow(ctx);
+      await perform(ctx, step, where);
+    }
   } catch (err) {
     if (err instanceof StepError) throw err;
     const message = (err as Error).message.split('\n').filter(Boolean).slice(0, 4).join('\n');
@@ -100,8 +108,9 @@ async function reach(ctx: StepContext, selector: string) {
 }
 
 async function perform(ctx: StepContext, step: Step, where: StepWhere): Promise<void> {
-  // A popup may have closed itself since the last step.
-  if (ctx.page.isClosed()) await follow(ctx);
+  // A page may have opened late, or a popup closed itself, since the last step.
+  await follow(ctx);
+  if (step.do !== 'closeTab') ctx.tabs?.forgetGone();
   const { page, log } = ctx;
   const startMs = log.now();
   let actionMs = startMs;
@@ -145,14 +154,18 @@ async function perform(ctx: StepContext, step: Step, where: StepWhere): Promise<
         await to.waitFor({ state: 'visible', timeout: STEP_TIMEOUT_MS });
         toBox = await stableBox(to);
         end = centre(toBox);
-        const view = page.viewportSize();
-        if (view && (end.x < 0 || end.y < 0 || end.x > view.width || end.y > view.height)) {
+        if (offScreen(page, end)) {
           throw new Error(`${step.to} is off screen; both ends of a drag must be on screen together (scroll first, or drag "by" an offset)`);
         }
+        const over = await coveredBy(to, end);
+        if (over) throw new Error(`${step.to} is covered at its centre by ${over}; the drop would land there instead`);
       } else {
         end = { x: r.point.x + step.by!.x, y: r.point.y + step.by!.y };
         toBox = { x: r.box.x + step.by!.x, y: r.box.y + step.by!.y, width: r.box.width, height: r.box.height };
+        if (offScreen(page, end)) throw new Error(`the drag would end off screen (${end.x}, ${end.y}); both ends must be on screen`);
       }
+      const grabbed = await coveredBy(r.loc, r.point);
+      if (grabbed) throw new Error(`${step.target} is covered at its centre by ${grabbed}; the drag would pick that up instead`);
       target = union(r.box, toBox);
       actionMs = log.now();
       log.clicks.push({ tMs: actionMs, ...r.point });
@@ -308,12 +321,25 @@ async function wheel(ctx: StepContext, by: number): Promise<void> {
   }
 }
 
+const offScreen = (page: Page, p: Pt) => {
+  const view = page.viewportSize();
+  return !!view && (p.x < 0 || p.y < 0 || p.x >= view.width || p.y >= view.height);
+};
+
+/** What sits on top of `loc` at `p` when it is something else (e.g. "div#banner.sticky"), or null. */
+const coveredBy = (loc: Locator, p: Pt) =>
+  loc.evaluate((el, at) => {
+    const top = document.elementFromPoint(at.x, at.y);
+    if (!top || top === el || el.contains(top)) return null;
+    return top.tagName.toLowerCase() + (top.id ? `#${top.id}` : '') + (top.classList.length ? `.${Array.from(top.classList).join('.')}` : '');
+  }, p);
+
 const closedIsFine = (page: Page) => (err: unknown) => {
   if (!page.isClosed()) throw err;
 };
 
 /** Move to the page the run should act in now: a tab or popup the step opened, or the one before a closed one. */
-async function follow(ctx: StepContext): Promise<void> {
+export async function follow(ctx: StepContext): Promise<void> {
   const next = await ctx.tabs?.settle();
   if (!next) return;
   ctx.page = next;

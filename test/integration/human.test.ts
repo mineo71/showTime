@@ -94,6 +94,25 @@ describe('record-human on real-world labels, popups and Ctrl+C', () => {
     expect(report.ok).toBe(true);
   });
 
+  it('closes a tab the person only looked at, so the script goes on in the first page', async () => {
+    const out = path.join(await mkdtemp(path.join(tmpdir(), 'showtime-human-')), 'flow.json');
+    const result = await recordHuman(app.url, {
+      out,
+      headless: true,
+      drive: async (page) => {
+        const [popup] = await Promise.all([page.waitForEvent('popup'), page.getByText('Open the popup').click()]);
+        await popup.waitForLoadState();
+        await page.waitForTimeout(800);
+        await popup.close();
+        await page.locator('#long').click();
+        await page.waitForTimeout(300);
+      },
+    });
+    expect(result.steps.map((s) => s.do)).toEqual(['click', 'closeTab', 'click']);
+    const report = await check(await loadScript(out));
+    expect(report.failure ?? null).toBeNull();
+  });
+
   it('writes the script when stopped with Ctrl+C', async () => {
     const out = path.join(await mkdtemp(path.join(tmpdir(), 'showtime-human-')), 'flow.json');
     const child = spawn(process.execPath, ['--import', 'tsx', path.join(FIXTURES, '..', 'test', 'helpers', 'human-child.ts'), app.url, out], {

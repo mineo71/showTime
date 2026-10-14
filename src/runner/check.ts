@@ -8,7 +8,7 @@ import { EventLog } from './events';
 import { withHooks } from './hooks';
 import { withServer } from './server';
 import { netMode, type NetMode, type NetReport } from './replay';
-import { describeStep, runStep, StepError, type StepContext } from './steps';
+import { describeStep, follow, runStep, StepError, type StepContext } from './steps';
 
 export interface RunOptions {
   headed?: boolean;
@@ -81,8 +81,10 @@ async function rehearse(loaded: LoadedScript, opts: CheckOptions): Promise<Check
       if (done) break;
       for (const [index, step] of scene.steps.entries()) {
         await runStep(ctx, step, { sceneId: scene.id, index });
+        // A popup may have closed itself just now: the screenshot is of the page the flow is on.
+        if (ctx.page.isClosed()) await follow(ctx);
         const screenshot = path.join(paths.check, `${String(++n).padStart(2, '0')}-${scene.id}-${index + 1}-${step.do}.png`);
-        await session.page.screenshot({ path: screenshot, scale: 'css' });
+        await ctx.page.screenshot({ path: screenshot, scale: 'css' });
         report.steps.push({ sceneId: scene.id, index, action: describeStep(step), ok: true, screenshot });
         opts.log?.(`✓ ${scene.id} #${index + 1} ${describeStep(step)}`);
         if (stepKey(scene.id, index) === opts.until) {

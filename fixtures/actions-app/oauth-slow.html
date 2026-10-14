@@ -1,0 +1,17 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Sign in</title>
+  </head>
+  <body style="margin: 0; background: #e0f2fe">
+    <button id="allow-slow" style="margin: 40px; font-size: 20px">Allow</button>
+    <script>
+      // Like an OAuth flow that redirects to a callback first: the window closes a moment later.
+      document.querySelector('#allow-slow').addEventListener('click', () => {
+        window.opener.postMessage('allowed', '*');
+        setTimeout(() => window.close(), 1200);
+      });
+    </script>
+  </body>
+</html>

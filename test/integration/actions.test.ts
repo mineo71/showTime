@@ -38,8 +38,8 @@ async function actionsScript(steps: object[]) {
   return loaded;
 }
 
-/** Run steps in record mode and return the event log. */
-async function recordSteps(steps: Step[]) {
+/** Run steps (record mode by default) and return the event log. */
+async function recordSteps(steps: Step[], mode: 'record' | 'check' = 'record') {
   const script = parseScript({
     version: 1,
     app: { url: server.url, viewport: { width: 1280, height: 800 }, deviceScaleFactor: 1 },
@@ -49,7 +49,7 @@ async function recordSteps(steps: Step[]) {
   try {
     const cursor = await prepare(session, script);
     const log = new EventLog();
-    const ctx: StepContext = { page: session.page, mode: 'record', log, net: session.net, cursor, dir: APP };
+    const ctx: StepContext = { page: session.page, mode, log, net: session.net, cursor, dir: APP, tabs: session.tabs };
     for (const [index, step] of steps.entries()) await runStep(ctx, step, { sceneId: 'a', index });
     return { log, page: session.page, close: () => session.close() };
   } catch (err) {
@@ -86,6 +86,14 @@ describe('new actions (check)', () => {
     const report = await rehearse([{ do: 'drag', target: '#card', to: '#far' }]);
     expect(report.ok).toBe(false);
     expect(report.failure?.error).toMatch(/#far is off screen/);
+    const far = await rehearse([{ do: 'drag', target: '#thumb', by: { x: 5000, y: 0 } }]);
+    expect(far.failure?.error).toMatch(/off screen/);
+  });
+
+  it('refuses a drag onto a target something else covers, naming what covers it', async () => {
+    const report = await rehearse([{ do: 'drag', target: '#card', to: '#covered' }]);
+    expect(report.ok).toBe(false);
+    expect(report.failure?.error).toMatch(/#covered is covered .*div#cover/);
   });
 
   it('uploads through the button a person clicks, and straight into a hidden input', async () => {
@@ -172,6 +180,55 @@ describe('tabs and popups', () => {
       { do: 'click', target: '#oauth' },
       { do: 'click', target: '#allow' },
       { do: 'wait', for: '#status:has-text("allowed")', timeoutMs: 3000 },
+    ]);
+    expect(report.ok, report.failure?.error).toBe(true);
+  });
+
+  it('stays on the page when a link downloads a file in a new tab', async () => {
+    const started = Date.now();
+    const report = await rehearse([
+      { do: 'click', target: '#download-tab' },
+      { do: 'click', target: 'text=Row 1' },
+      { do: 'wait', for: '#rows li.selected', timeoutMs: 2000 },
+    ]);
+    expect(report.ok, report.failure?.error).toBe(true);
+    expect(Date.now() - started).toBeLessThan(10_000);
+  });
+
+  it('forgets the requests of a tab closeTab closed, so later steps settle at once', async () => {
+    const run = await recordSteps(
+      [
+        { do: 'click', target: '#pending-tab' },
+        { do: 'wait', for: '#gallery' },
+        { do: 'closeTab' },
+        { do: 'click', target: 'text=Row 1' },
+      ] as Step[],
+      'check',
+    );
+    try {
+      const after = run.log.steps[3];
+      expect(after.settledMs - after.endMs).toBeLessThan(2000);
+    } finally {
+      await run.close();
+    }
+  });
+
+  it('goes back to the page by itself when a popup closes a moment after its step', async () => {
+    const report = await rehearse([
+      { do: 'click', target: '#oauth-slow' },
+      { do: 'click', target: '#allow-slow' },
+      { do: 'click', target: 'text=Row 1' },
+      { do: 'wait', for: '#status:has-text("allowed")', timeoutMs: 3000 },
+    ]);
+    expect(report.ok, report.failure?.error).toBe(true);
+  });
+
+  it('lets closeTab pass when the popup already closed itself', async () => {
+    const report = await rehearse([
+      { do: 'click', target: '#oauth' },
+      { do: 'click', target: '#allow' },
+      { do: 'closeTab' },
+      { do: 'click', target: 'text=Row 1' },
     ]);
     expect(report.ok, report.failure?.error).toBe(true);
   });
