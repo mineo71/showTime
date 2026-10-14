@@ -21,8 +21,8 @@ function canonical(value: unknown): string {
 
 /** `app` without fields that sit at their defaults, so adding a field never invalidates older takes. */
 function appOf(app: Script['app']): Record<string, unknown> {
-  const { mock, dialogs, ...rest } = app;
-  return { ...rest, ...(mock.length ? { mock } : {}), ...(dialogs !== 'accept' ? { dialogs } : {}) };
+  const { mock, dialogs, hide, ...rest } = app;
+  return { ...rest, ...(mock.length ? { mock } : {}), ...(dialogs !== 'accept' ? { dialogs } : {}), ...(hide.length ? { hide } : {}) };
 }
 
 export function actionHash(script: Script): string {

@@ -119,7 +119,7 @@ describe('narration and audio', () => {
   it('accepts show.say and defaults the audio section', () => {
     const s = parseScript(withSteps([{ do: 'click', target: '#a', show: { say: 'Create an invoice in seconds.' } }]));
     expect(s.scenes[0].steps[0].show?.say).toBe('Create an invoice in seconds.');
-    expect(s.audio).toEqual({ voice: { engine: 'system', speed: 1 }, sounds: false, subtitles: 'file' });
+    expect(s.audio).toEqual({ voice: { engine: 'system', speed: 1 }, sounds: false, subtitles: 'file', clips: [] });
   });
 
   it('defaults the music volume and accepts every engine setting', () => {
@@ -142,5 +142,36 @@ describe('narration and audio', () => {
     expect(() => parseScript({ ...minimal, audio: { voice: { engine: 'command' } } })).toThrow(/audio\.voice\.command/);
     expect(() => parseScript({ ...minimal, audio: { voice: { speed: 3 } } })).toThrow(/audio\.voice\.speed/);
     expect(() => parseScript({ ...minimal, audio: { subtitles: 'yes' } })).toThrow(/audio\.subtitles/);
+  });
+});
+
+describe('0.6 fields', () => {
+  it('defaults hide and clips to empty, and leaves server and reduced motion unset', () => {
+    const s = parseScript(minimal);
+    expect(s.app.hide).toEqual([]);
+    expect(s.app.reducedMotion).toBeUndefined();
+    expect(s.server).toBeUndefined();
+    expect(s.audio.clips).toEqual([]);
+  });
+
+  it('accepts a server, defaulting its timeout, and needs its command', () => {
+    expect(parseScript({ ...minimal, server: { run: 'npm run dev' } }).server).toEqual({ run: 'npm run dev', timeoutMs: 60_000 });
+    expect(() => parseScript({ ...minimal, server: { url: 'http://x' } })).toThrow(/server\.run/);
+    expect(() => parseScript({ ...minimal, server: { run: 'x', timeoutMs: 999_999 } })).toThrow(/server\.timeoutMs/);
+  });
+
+  it('accepts a wait timeout only with "for", within 1–300 s', () => {
+    const s = parseScript(withSteps([{ do: 'wait', for: '#done', timeoutMs: 60_000 }]));
+    expect(s.scenes[0].steps[0]).toMatchObject({ timeoutMs: 60_000 });
+    expect(() => parseScript(withSteps([{ do: 'wait', for: '#x', timeoutMs: 500 }]))).toThrow(/timeoutMs/);
+    expect(() => parseScript(withSteps([{ do: 'wait', ms: 100, timeoutMs: 5000 }]))).toThrow(/timeoutMs goes with "for"/);
+  });
+
+  it('checks clips: a scene#n step, a non-negative offset, a volume of 0–1', () => {
+    const s = parseScript({ ...minimal, audio: { clips: [{ file: 'ring.wav', at: 'a#1' }] } });
+    expect(s.audio.clips).toEqual([{ file: 'ring.wav', at: 'a#1', offsetMs: 0, volume: 1 }]);
+    expect(() => parseScript({ ...minimal, audio: { clips: [{ file: 'x.wav', at: 'a' }] } })).toThrow(/audio\.clips\.0\.at/);
+    expect(() => parseScript({ ...minimal, audio: { clips: [{ file: 'x.wav', at: 'a#1', offsetMs: -1 }] } })).toThrow(/offsetMs/);
+    expect(() => parseScript({ ...minimal, app: { url: 'http://x', reducedMotion: 'off' } })).toThrow(/app\.reducedMotion/);
   });
 });

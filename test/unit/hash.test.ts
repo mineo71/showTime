@@ -24,6 +24,16 @@ describe('actionHash', () => {
     expect(actionHash(voiced)).toBe(actionHash(base));
   });
 
+  it('counts hide, reduced motion and wait timeouts only when set; never server or clips', () => {
+    const plain = make({ do: 'wait', for: '#done' });
+    expect(actionHash(make({ do: 'wait', for: '#done' }, { app: { url: 'http://x', hide: [] } }))).toBe(actionHash(plain));
+    expect(actionHash(make({ do: 'wait', for: '#done' }, { app: { url: 'http://x', hide: ['nextjs-portal'] } }))).not.toBe(actionHash(plain));
+    expect(actionHash(make({ do: 'wait', for: '#done' }, { app: { url: 'http://x', reducedMotion: 'reduce' } }))).not.toBe(actionHash(plain));
+    expect(actionHash(make({ do: 'wait', for: '#done', timeoutMs: 60_000 }))).not.toBe(actionHash(plain));
+    const infra = make({ do: 'wait', for: '#done' }, { server: { run: 'npm run dev' }, audio: { clips: [{ file: 'a.wav', at: 'a#1' }] } });
+    expect(actionHash(infra)).toBe(actionHash(plain));
+  });
+
   it('changes when an action changes', () => {
     expect(actionHash(make({ do: 'click', target: 'text=Stop' }))).not.toBe(actionHash(base));
   });

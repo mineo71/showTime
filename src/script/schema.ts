@@ -49,9 +49,22 @@ export const StepSchema = z.discriminatedUnion('do', [
     .strict()
     .refine(exactlyOne('target', 'by'), { message: 'scroll needs exactly one of "target" or "by"' }),
   z
-    .object({ do: z.literal('wait'), for: target.optional(), ms: z.number().int().min(0).max(60_000).optional(), show })
+    .object({
+      do: z.literal('wait'),
+      for: target.optional(),
+      ms: z.number().int().min(0).max(60_000).optional(),
+      timeoutMs: z
+        .number()
+        .int()
+        .min(1000)
+        .max(300_000)
+        .optional()
+        .describe('How long to wait "for" the target (default 15000), for slow backends'),
+      show,
+    })
     .strict()
-    .refine(exactlyOne('for', 'ms'), { message: 'wait needs exactly one of "for" or "ms"' }),
+    .refine(exactlyOne('for', 'ms'), { message: 'wait needs exactly one of "for" or "ms"' })
+    .refine((s) => s.timeoutMs === undefined || s.for !== undefined, { message: 'timeoutMs goes with "for"', path: ['timeoutMs'] }),
   z.object({ do: z.literal('pause'), ms: z.number().int().min(0).max(60_000), show }).strict(),
 ]);
 
@@ -105,6 +118,14 @@ export const AppSchema = z
       .array(z.string().min(1))
       .default([])
       .describe('CSS selectors (not Playwright selectors) of elements to blur in the recording'),
+    hide: z
+      .array(z.string().min(1))
+      .default([])
+      .describe('CSS selectors of elements to hide in every take (dev badges, chat widgets, banners)'),
+    reducedMotion: z
+      .enum(['reduce', 'no-preference'])
+      .optional()
+      .describe('prefers-reduced-motion for the page: "reduce" shows scroll-reveal content at once'),
     mock: z.array(MockSchema).default([]).describe('Answer matching network requests with canned responses; the first match wins'),
     clock: z
       .string()
@@ -189,10 +210,34 @@ export const AudioSchema = z
       .optional()
       .describe('Music bed under the whole video; ducks while the voice speaks'),
     sounds: z.boolean().default(false).describe('Click and keystroke sounds'),
+    clips: z
+      .array(
+        z
+          .object({
+            file: z.string().min(1).describe('Audio file, relative to the file that names it'),
+            at: z
+              .string()
+              .regex(/^[A-Za-z0-9_-]+#\d+$/, 'must name a scene step, e.g. "surge#3"')
+              .describe('The step whose start the clip plays from (scene#n)'),
+            offsetMs: z.number().int().min(0).max(600_000).default(0),
+            volume: z.number().min(0).max(1).default(1),
+          })
+          .strict(),
+      )
+      .default([])
+      .describe("The app's own sounds, which the screen capture can't hear (a ringing phone, a caller)"),
     subtitles: z
       .enum(['off', 'file', 'burn'])
       .default('file')
       .describe('Narration subtitles: an .srt next to the video (file), also drawn on the video (burn), or none'),
+  })
+  .strict();
+
+export const ServerSchema = z
+  .object({
+    run: z.string().min(1).describe('Shell command that starts the app, run in the script folder'),
+    url: z.string().min(1).optional().describe('Polled until it answers (default: app.url)'),
+    timeoutMs: z.number().int().min(1000).max(600_000).default(60_000),
   })
   .strict();
 
@@ -210,6 +255,7 @@ export const ScriptSchema = z
     meta: MetaSchema.default({}),
     app: AppSchema,
     hooks: HooksSchema.prefault({}),
+    server: ServerSchema.optional().describe('Start the app for check and record (reused when it already answers)'),
     setup: z.array(StepSchema).default([]),
     style: StyleSchema.prefault({}),
     audio: AudioSchema.prefault({}),
@@ -235,6 +281,7 @@ export type Hook = z.output<typeof HookSchema>;
 export type Mock = z.output<typeof MockSchema>;
 export type Audio = z.output<typeof AudioSchema>;
 export type Voice = z.output<typeof VoiceSchema>;
+export type Server = z.output<typeof ServerSchema>;
 
 export class ScriptError extends Error {
   constructor(message: string) {

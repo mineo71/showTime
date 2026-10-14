@@ -54,11 +54,16 @@ export function withLogoFrom(meta: Json | undefined, dir: string): Json | undefi
   return { ...meta, logo: path.resolve(dir, meta.logo) };
 }
 
-/** audio with `music.file` made absolute against `dir` (when it is a string). */
+/** audio with `music.file` and every `clips[].file` made absolute against `dir` (where they are strings). */
 export function withMusicFrom(audio: Json | undefined, dir: string): Json | undefined {
-  const music = audio?.music;
-  if (!isObject(music) || typeof music.file !== 'string') return audio;
-  return { ...audio, music: { ...music, file: path.resolve(dir, music.file) } };
+  if (!audio) return audio;
+  const out: Json = { ...audio };
+  const music = audio.music;
+  if (isObject(music) && typeof music.file === 'string') out.music = { ...music, file: path.resolve(dir, music.file) };
+  if (Array.isArray(audio.clips)) {
+    out.clips = audio.clips.map((c) => (isObject(c) && typeof c.file === 'string' ? { ...c, file: path.resolve(dir, c.file) } : c));
+  }
+  return out;
 }
 
 const isObject = (v: unknown): v is Json => typeof v === 'object' && v !== null && !Array.isArray(v);

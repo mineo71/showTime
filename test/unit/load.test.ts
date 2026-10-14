@@ -137,7 +137,17 @@ describe('audio paths and brand audio', () => {
       music: { file: join(root, 'brand', 'bed.mp3'), volume: 0.1 },
       sounds: true,
       subtitles: 'burn',
+      clips: [],
     });
+  });
+
+  it('resolves clip files like music, and reports a missing one by index', async () => {
+    const root = await project();
+    const file = join(root, 'demos', 'a.json');
+    await writeFile(file, JSON.stringify({ ...base, audio: { clips: [{ file: 'own.mp3', at: 'a#1' }] } }));
+    expect((await loadScript(file)).script.audio.clips[0].file).toBe(join(root, 'demos', 'own.mp3'));
+    await writeFile(file, JSON.stringify({ ...base, audio: { clips: [{ file: 'own.mp3', at: 'a#1' }, { file: 'gone.wav', at: 'a#1' }] } }));
+    await expect(loadScript(file)).rejects.toThrow(/audio\.clips\[1\]\.file not found: .*gone\.wav/);
   });
 
   it('reports a missing music file', async () => {

@@ -46,6 +46,9 @@ export async function parseLoaded(json: unknown, file: string): Promise<LoadedSc
   if (script.meta.logo && !existsSync(script.meta.logo)) throw new ScriptError(`meta.logo not found: ${script.meta.logo}`);
   const music = script.audio.music?.file;
   if (music && !existsSync(music)) throw new ScriptError(`audio.music.file not found: ${music}`);
+  script.audio.clips.forEach((clip, i) => {
+    if (!existsSync(clip.file)) throw new ScriptError(`audio.clips[${i}].file not found: ${clip.file}`);
+  });
   if (script.app.storageState) {
     script.app.storageState = path.resolve(dir, script.app.storageState);
     if (!existsSync(script.app.storageState)) {

@@ -109,6 +109,23 @@
             "minLength": 1
           }
         },
+        "hide": {
+          "default": [],
+          "description": "CSS selectors of elements to hide in every take (dev badges, chat widgets, banners)",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "reducedMotion": {
+          "description": "prefers-reduced-motion for the page: \"reduce\" shows scroll-reveal content at once",
+          "type": "string",
+          "enum": [
+            "reduce",
+            "no-preference"
+          ]
+        },
         "mock": {
           "default": [],
           "description": "Answer matching network requests with canned responses; the first match wins",
@@ -305,6 +322,32 @@
           }
         }
       },
+      "additionalProperties": false
+    },
+    "server": {
+      "description": "Start the app for check and record (reused when it already answers)",
+      "type": "object",
+      "properties": {
+        "run": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Shell command that starts the app, run in the script folder"
+        },
+        "url": {
+          "description": "Polled until it answers (default: app.url)",
+          "type": "string",
+          "minLength": 1
+        },
+        "timeoutMs": {
+          "default": 60000,
+          "type": "integer",
+          "minimum": 1000,
+          "maximum": 600000
+        }
+      },
+      "required": [
+        "run"
+      ],
       "additionalProperties": false
     },
     "setup": {
@@ -815,6 +858,12 @@
                 "minimum": 0,
                 "maximum": 60000
               },
+              "timeoutMs": {
+                "description": "How long to wait \"for\" the target (default 15000), for slow backends",
+                "type": "integer",
+                "minimum": 1000,
+                "maximum": 300000
+              },
               "show": {
                 "type": "object",
                 "properties": {
@@ -1071,6 +1120,43 @@
           "default": false,
           "description": "Click and keystroke sounds",
           "type": "boolean"
+        },
+        "clips": {
+          "default": [],
+          "description": "The app's own sounds, which the screen capture can't hear (a ringing phone, a caller)",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "file": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Audio file, relative to the file that names it"
+              },
+              "at": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9_-]+#\\d+$",
+                "description": "The step whose start the clip plays from (scene#n)"
+              },
+              "offsetMs": {
+                "default": 0,
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 600000
+              },
+              "volume": {
+                "default": 1,
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              }
+            },
+            "required": [
+              "file",
+              "at"
+            ],
+            "additionalProperties": false
+          }
         },
         "subtitles": {
           "default": "file",
@@ -1602,6 +1688,12 @@
                       "type": "integer",
                       "minimum": 0,
                       "maximum": 60000
+                    },
+                    "timeoutMs": {
+                      "description": "How long to wait \"for\" the target (default 15000), for slow backends",
+                      "type": "integer",
+                      "minimum": 1000,
+                      "maximum": 300000
                     },
                     "show": {
                       "type": "object",
