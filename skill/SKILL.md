@@ -114,6 +114,29 @@ A hook is `{ "run": "<shell command, run in the script folder>" }` or
 `{ "request": { "url": "…", "method": "POST", "json": {…} } }`. If the project has no reset command,
 ask the user for one rather than guessing.
 
+## Paid or rate-limited APIs
+
+When the app calls paid AI or other metered APIs (speech, LLMs, maps), every `check` and `record`
+spends quota and the answers differ run to run. Record them once and replay them:
+
+```
+"replay": { "file": "pitch.net.json", "match": ["**/api/**", "wss://api.example.com/**"] }
+```
+
+`match` are URL globs (`ws://`/`wss://` ones are WebSockets). The first green `check` records the
+answers; every later run replays them without touching the network, and `make` reuses them for the
+take. Use `--net record` to refresh them after the app changes, `--net live` to bypass the file.
+A warning counts requests the file didn't hold. Tell the user the file contains the API's answers
+(credentials are stripped) before they commit it.
+
+## Other languages
+
+For a video per language, add `"locales": ["en", "uk"]` and write the values that differ as
+`{ "en": …, "uk": … }`: captions, `say`, voices, targets with translated names, URLs. `{locale}`
+in any text becomes the code (`"url": "http://localhost:3000/{locale}"`). Rehearse each one
+(`showtime check demo.json --locale uk`), then `showtime make demo.json --locales all` writes
+`demo.en.mp4`, `demo.uk.mp4`, … Pick a voice that speaks the language (`showtime voices --lang uk`).
+
 ## Example
 
 ```json
@@ -150,7 +173,8 @@ ask the user for one rather than guessing.
   `wait {for} | {ms}` · `pause {ms}`
 - **`show` (per step):** `zoom` (number, or `false`), `caption`, `spotlight` (`true`/`dim`, `ring`,
   `glow`), `highlight` (CSS colour), `click` (`ripple`, `pulse`, `burst`, `ring`, `none`), `hold`
-  (ms, real time), `speed`, `say` (narration), `voice` (changes to `audio.voice` for this line).
+  (ms, real time), `speed`, `say` (narration), `voice` (changes to `audio.voice` for this line),
+  `captionMs` (how long the caption stays, output ms), `freezeMs` (a still at the step's end, output ms).
 - **`audio`:** `voice` (`{ engine: system | openai | elevenlabs | command, name?, speed?, model?,
   instructions?, command? }`), `music` (`{ file, volume? }`), `sounds` (clicks and keystrokes),
   `subtitles` (`file` | `burn` | `off`), `clips` (`[{ file, at: "scene#n", offsetMs?, volume? }]`:
@@ -172,6 +196,10 @@ ask the user for one rather than guessing.
 - **`server`:** `{ run, url?, timeoutMs? }`: start the app for `check`/`record` (an app already
   answering at the URL is reused).
 - **`wait`** takes `timeoutMs` (default 15000, up to 300000) for pages waiting on slow backends.
+- **`replay`:** `{ file, match: [globs] }`: record matching HTTP and WebSocket traffic once, replay it
+  after (`--net auto|live|record|replay` on `check`, `record`, `make`).
+- **`locales`:** `["en", "uk"]`; any value may be `{ "<locale>": … }`; `{locale}` in strings;
+  `--locale <code>` on every command, `--locales all|en,uk` on `make` and `render`.
 - **Brand file:** `showtime.config.json` in the script's folder or above holds default `style`,
   `meta` (logo, outro) and `audio` for every script; the script's own fields win.
 - **Render options** (`render`, `make`): `-o <file>`, `--aspect 16:9|9:16|1:1`,

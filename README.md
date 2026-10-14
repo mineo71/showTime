@@ -197,6 +197,12 @@ And under the hood:
 - 🎭 **Deterministic pages.** `app.mock` answers flaky or slow APIs with canned JSON, `app.clock`
   pins the date, and `app.dialogs` answers `confirm()` the way the demo needs. `app.hide` removes
   dev badges and chat widgets; `app.reducedMotion` shows scroll-reveal sections at once.
+- 📼 **Pay for an API once.** `replay` records the answers of the calls you name (HTTP and
+  WebSockets) on the first run and serves them back after that: rehearsals and takes stop spending
+  quota, work offline and come out the same every time.
+- 🌍 **One script, many languages.** List `locales`, write any value as `{ "en": …, "uk": … }`, and
+  `make --locales all` films `demo.en.mp4`, `demo.uk.mp4`, … each with its own captions, voice,
+  URLs and targets.
 - 🎨 **One brand file.** `showtime.config.json` holds your colours, logo and outro; every script
   below it inherits them.
 - 🛟 **Safe re-takes.** A take that fails halfway leaves the last good one untouched.
@@ -255,6 +261,9 @@ with the edited video playing, a timeline of the steps and an inspector:
 - Pick a step and change its caption, narration line, zoom, spotlight or speed; the preview updates
   in about a second and the change is saved to the JSON. The studio writes the file with one step
   per line, so the first save may reformat it; after that each edit is a one-line diff.
+- Drag a step's right edge on the timeline to speed it up or slow it down (0.25–16×), and a
+  caption's right edge to keep it up longer or shorter. A freeze (a still frame at the end of a
+  step) is set in the inspector and shows striped on the timeline. None of these need a new take.
 - Switch the preview between 16:9, 9:16 and 1:1, and render MP4, GIF or WebP from the page.
 - The page reloads on its own when the file changes on disk, so you can keep it open while your
   agent edits the script.
@@ -354,6 +363,8 @@ Targets are Playwright selectors: `role=button[name='Save']`, `text=Save`, `#id`
 | `voice`     | `{ name?, engine?, speed?, … }` | changes to `audio.voice` for this step's `say` |
 | `hold`      | ms             | extra real time after the step (changes the take) |
 | `speed`     | 0.25–16        | playback speed for this step |
+| `captionMs` | ms             | how long the caption stays up (output time) instead of its reading time; the next caption still ends it |
+| `freezeMs`  | ms             | a still frame this long at the end of the step (no new take) |
 | `say`       | string         | narration spoken from the start of the step; the next narrated step waits for it |
 
 </details>
@@ -482,6 +493,57 @@ reach.
 </details>
 
 <details>
+<summary><b>Network replay</b> (<code>replay</code>)</summary>
+
+```json
+"replay": { "file": "pitch.net.json", "match": ["**/api/**", "wss://api.cartesia.ai/**"] }
+```
+
+`match` are URL globs: `ws://` and `wss://` ones route WebSockets, the rest HTTP. The first run
+records what those requests answered into `file` (relative to the script); later runs serve the
+answers from it, after the latency they had, without touching the network. `--net` on `check`,
+`record` and `make` picks the mode:
+
+| `--net` | |
+|---|---|
+| `auto` (default) | replay when the file exists, else go live and record it |
+| `live` | ignore the file |
+| `record` | go live and rewrite the file (in `make`, the take then replays what the rehearsal recorded) |
+| `replay` | the file must exist; requests it doesn't hold go to the network and are counted in a warning |
+
+The file is written only when the run succeeds (`check --until` writes none). HTTP answers are
+matched by method, URL and request body, in the order they were recorded. A WebSocket is played
+back without its server: each recorded server message is sent once the page has sent as many
+messages as it had then, and a text command such as `finalize` releases the answers that followed
+it. No request headers are stored, and credential-like query values (`token`, `key`, `api_key`,
+`sig`, `secret`, …) become `…`. The file still holds the API's answers: review it before you commit
+it.
+
+</details>
+
+<details>
+<summary><b>Languages</b> (<code>locales</code>)</summary>
+
+```json
+"locales": ["en", "uk"],
+"app": { "url": "http://localhost:3000/{locale}" },
+"audio": { "voice": { "name": { "en": "Samantha", "uk": "Lesya" } } },
+"scenes": [{ "id": "quote", "steps": [
+  { "do": "click", "target": { "en": "role=button[name='Get a quote']", "uk": "role=button[name='Отримати ціну']" },
+    "show": { "caption": { "en": "A quote in one form", "uk": "Ціна в одній формі" } } }
+]}]
+```
+
+Any value in the script or the brand file may be an object whose keys are all locales; each locale
+uses its own value, and a missing one is an error that names the place. `{locale}` in any text
+becomes the code. Each locale is its own script with its own take and outputs (`pitch.en.mp4`,
+`.showtime/pitch.uk/`). `--locale uk` picks one on every command (default: the first);
+`make --locales all` (or `en,uk`) and `render --locales …` run them one after the other. In the
+studio, editing a value written per locale changes only the open locale.
+
+</details>
+
+<details>
 <summary><b>Brand file</b> (<code>showtime.config.json</code>)</summary>
 
 Put it next to your scripts or in any folder above them; the nearest one applies. Its `style`,
@@ -501,19 +563,20 @@ Put it next to your scripts or in any folder above them; the nearest one applies
 | command | what it does |
 |---|---|
 | `showtime setup [--agent claude\|codex\|all] [--no-browsers]` | download the browsers, link the skill |
-| `showtime make <script> [render options]` | check → record → render |
+| `showtime make <script> [render options] [--net …] [--locale uk \| --locales all]` | check → record → render |
 | `showtime inspect <url> [--viewport 1440x900]` | every named control on the page with a ready target, and a screenshot |
 | `showtime voices [--engine …] [--lang uk] [--try "text" --voice name] [--play]` | list an engine's voices, or try one |
-| `showtime check <script> [--json] [--headed] [--until scene#n]` | rehearse; a screenshot per step; the first failure with an ARIA snapshot |
-| `showtime record <script> [--headed] [--keep-frames]` | record a take into `.showtime/<name>/take` |
-| `showtime render <script> [-o out] [--aspect 16:9\|9:16\|1:1] [--format mp4\|gif\|webp] [--width px] [--fps n] [--scenes a,b] [--no-audio]` | render from the last take, without re-recording; `--scenes` cuts a short clip |
+| `showtime check <script> [--json] [--headed] [--until scene#n] [--net auto\|live\|record\|replay]` | rehearse; a screenshot per step; the first failure with an ARIA snapshot |
+| `showtime record <script> [--headed] [--keep-frames] [--net …]` | record a take into `.showtime/<name>/take` |
+| `showtime render <script> [-o out] [--aspect 16:9\|9:16\|1:1] [--format mp4\|gif\|webp] [--width px] [--fps n] [--scenes a,b] [--no-audio] [--locales …]` | render from the last take, without re-recording; `--scenes` cuts a short clip |
 | `showtime frames <script> [--aspect …]` | QA stills (intro, one per step, outro) and a contact sheet of them |
-| `showtime studio <script> [--port 4848] [--aspect …] [--no-open]` | live preview, step timeline and inspector that save to the script |
+| `showtime studio <script> [--port 4848] [--aspect …] [--no-open] [--locale uk]` | live preview, step timeline and inspector that save to the script |
 | `showtime record-human <url> [-o demo.json] [--viewport 1440x900] [--force]` | click through the app yourself; closing the window writes a script |
 | `showtime lint <script>` | warnings about captions, pauses and length; timing checks need a take |
 | `showtime schema` | print the script's JSON Schema |
 
-Every command takes `--json` and then prints exactly one JSON document. The video lands next to
+Every command that reads a script takes `--locale <code>` for scripts with `locales`. Every
+command takes `--json` and then prints exactly one JSON document. The video lands next to
 the script (`demo/pitch.json` → `demo/pitch.mp4`, `demo/pitch-9x16.mp4`, `demo/pitch.gif`), with
 `demo/pitch.srt` when it is narrated. Working files live in
 `.showtime/<name>/`, which is worth adding to your `.gitignore`.

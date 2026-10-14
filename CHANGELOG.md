@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased
+
+- Network replay: `replay: { file, match }` records the answers of matching HTTP requests and
+  WebSockets on the first run and serves them back after that, so rehearsals and takes stop
+  spending API quota and come out the same every time. `--net auto|live|record|replay` on `check`,
+  `record` and `make`. No request headers are stored; credential-like query values are stripped.
+- Locales: `locales: ["en", "uk"]`, any value written as `{ "en": …, "uk": … }`, `{locale}` in
+  strings. `--locale` on every command; `make --locales all|en,uk` and `render --locales …` write
+  `<name>.<locale>.mp4` for each. The studio opens one locale (`--locale`) and edits only its values.
+- Timing by hand in the studio: drag a step's right edge to set its speed, drag a caption's right
+  edge to set how long it stays (`show.captionMs`), and freeze a step's last frame
+  (`show.freezeMs`). All three are presentation only: no new take.
+
 ## 0.7.0 — 2026-10-14
 
 - Sound packs: `audio.sounds` takes `soft` (what `true` means), `mechanical`, `pop`, `tap` or
