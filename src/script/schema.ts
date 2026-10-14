@@ -8,14 +8,14 @@ const target = z
 export const CLICK_KINDS = ['ripple', 'pulse', 'burst', 'ring', 'none'] as const;
 export const SOUND_PACKS = ['soft', 'mechanical', 'pop', 'tap', 'typewriter'] as const;
 
+// Without defaults: a step's `show.voice` lists only what it changes (zod keeps defaults under .partial()).
 const VoiceFields = z
   .object({
     engine: z
       .enum(['system', 'openai', 'elevenlabs', 'command'])
-      .default('system')
       .describe('system: macOS say / Linux espeak-ng; openai and elevenlabs read OPENAI_API_KEY / ELEVENLABS_API_KEY'),
     name: z.string().min(1).optional().describe('Voice name (system, openai) or voice id (elevenlabs)'),
-    speed: z.number().min(0.5).max(2).default(1),
+    speed: z.number().min(0.5).max(2),
     model: z.string().min(1).optional().describe('openai: gpt-4o-mini-tts by default; elevenlabs: eleven_multilingual_v2'),
     instructions: z.string().min(1).optional().describe('openai only: how to speak, e.g. "warm and confident"'),
     command: z
@@ -34,7 +34,7 @@ export function voiceProblems(v: { engine?: string; name?: string; command?: str
   return out;
 }
 
-export const VoiceSchema = VoiceFields.superRefine((v, ctx) => {
+export const VoiceSchema = VoiceFields.extend({ engine: VoiceFields.shape.engine.default('system'), speed: VoiceFields.shape.speed.default(1) }).superRefine((v, ctx) => {
   for (const p of voiceProblems(v)) ctx.addIssue({ code: 'custom', path: [p.path], message: p.message });
 });
 

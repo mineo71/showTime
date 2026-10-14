@@ -198,6 +198,12 @@ describe('0.7 look and sound', () => {
     expect(() => parseScript(withSteps([{ do: 'click', target: '#a', show: { voice: { engine: 'robot' } } }]))).toThrow(/show\.voice\.engine/);
   });
 
+  it('keeps a step voice to what it changes (no defaults filled in)', () => {
+    const s = parseScript(withSteps([{ do: 'click', target: '#a', show: { voice: { name: 'Daniel' } } }]));
+    expect(s.scenes[0].steps[0].show?.voice).toEqual({ name: 'Daniel' });
+    expect(parseScript(minimal).audio.voice).toEqual({ engine: 'system', speed: 1 });
+  });
+
   it('accepts a watermark with text or an image, and caption styles and fonts', () => {
     const s = parseScript({
       ...minimal,

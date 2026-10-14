@@ -237,6 +237,32 @@ function openBrowser(url: string) {
 }
 
 program
+  .command('voices')
+  .description('list the voices of a TTS engine, or try one')
+  .option('--engine <engine>', 'system, openai or elevenlabs', 'system')
+  .option('--lang <code>', 'only voices of this language (uk, en-gb, …)')
+  .option('--try <text>', 'speak this text and save it as a WAV')
+  .option('--voice <name>', 'the voice to try (name, or voice id for elevenlabs)')
+  .option('--play', 'play the sample (macOS)')
+  .option('--json', 'print { engine, voices } (or { file } with --try) as JSON')
+  .action(async (o: { engine: string; lang?: string; try?: string; voice?: string; play?: boolean; json?: boolean }) => {
+    const { VoiceSchema } = await import('../script/schema');
+    const parsed = VoiceSchema.safeParse({ engine: o.engine, name: o.voice });
+    if (!parsed.success) throw new Error(`--engine must be system, openai or elevenlabs, with --voice for elevenlabs (got "${o.engine}")`);
+    const voices = await import('../voices');
+    if (o.try) {
+      const file = await voices.tryVoice(parsed.data, o.try);
+      if (o.play && process.platform === 'darwin') spawn('afplay', [file], { stdio: 'ignore' }).on('error', () => undefined);
+      if (o.json) return emit({ file });
+      return say(`✓ ${file}`);
+    }
+    const list = voices.filterVoices(await voices.listVoices(parsed.data.engine), o.lang);
+    if (o.json) return emit({ engine: parsed.data.engine, voices: list });
+    for (const v of list) say(`  ${v.name.padEnd(28)} ${(v.language ?? '').padEnd(7)} ${v.id ?? v.sample ?? ''}`);
+    say(`${list.length} voices. Try one: showtime voices --try "Hello there" --voice "${list[0]?.id ?? list[0]?.name ?? 'name'}"`);
+  });
+
+program
   .command('inspect <url>')
   .description('list what a script can act on: every named control with a ready target, and a screenshot')
   .option('--viewport <WxH>', 'browser size', '1440x900')

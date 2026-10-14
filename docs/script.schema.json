@@ -425,15 +425,14 @@
                     "type": "object",
                     "properties": {
                       "engine": {
-                        "default": "system",
-                        "description": "system: macOS say / Linux espeak-ng; openai and elevenlabs read OPENAI_API_KEY / ELEVENLABS_API_KEY",
                         "type": "string",
                         "enum": [
                           "system",
                           "openai",
                           "elevenlabs",
                           "command"
-                        ]
+                        ],
+                        "description": "system: macOS say / Linux espeak-ng; openai and elevenlabs read OPENAI_API_KEY / ELEVENLABS_API_KEY"
                       },
                       "name": {
                         "description": "Voice name (system, openai) or voice id (elevenlabs)",
@@ -441,7 +440,6 @@
                         "minLength": 1
                       },
                       "speed": {
-                        "default": 1,
                         "type": "number",
                         "minimum": 0.5,
                         "maximum": 2
@@ -562,15 +560,14 @@
                     "type": "object",
                     "properties": {
                       "engine": {
-                        "default": "system",
-                        "description": "system: macOS say / Linux espeak-ng; openai and elevenlabs read OPENAI_API_KEY / ELEVENLABS_API_KEY",
                         "type": "string",
                         "enum": [
                           "system",
                           "openai",
                           "elevenlabs",
                           "command"
-                        ]
+                        ],
+                        "description": "system: macOS say / Linux espeak-ng; openai and elevenlabs read OPENAI_API_KEY / ELEVENLABS_API_KEY"
                       },
                       "name": {
                         "description": "Voice name (system, openai) or voice id (elevenlabs)",
@@ -578,7 +575,6 @@
                         "minLength": 1
                       },
                       "speed": {
-                        "default": 1,
                         "type": "number",
                         "minimum": 0.5,
                         "maximum": 2
@@ -723,15 +719,14 @@
                     "type": "object",
                     "properties": {
                       "engine": {
-                        "default": "system",
-                        "description": "system: macOS say / Linux espeak-ng; openai and elevenlabs read OPENAI_API_KEY / ELEVENLABS_API_KEY",
                         "type": "string",
                         "enum": [
                           "system",
                           "openai",
                           "elevenlabs",
                           "command"
-                        ]
+                        ],
+                        "description": "system: macOS say / Linux espeak-ng; openai and elevenlabs read OPENAI_API_KEY / ELEVENLABS_API_KEY"
                       },
                       "name": {
                         "description": "Voice name (system, openai) or voice id (elevenlabs)",
@@ -739,7 +734,6 @@
                         "minLength": 1
                       },
                       "speed": {
-                        "default": 1,
                         "type": "number",
                         "minimum": 0.5,
                         "maximum": 2
@@ -860,15 +854,14 @@
                     "type": "object",
                     "properties": {
                       "engine": {
-                        "default": "system",
-                        "description": "system: macOS say / Linux espeak-ng; openai and elevenlabs read OPENAI_API_KEY / ELEVENLABS_API_KEY",
                         "type": "string",
                         "enum": [
                           "system",
                           "openai",
                           "elevenlabs",
                           "command"
-                        ]
+                        ],
+                        "description": "system: macOS say / Linux espeak-ng; openai and elevenlabs read OPENAI_API_KEY / ELEVENLABS_API_KEY"
                       },
                       "name": {
                         "description": "Voice name (system, openai) or voice id (elevenlabs)",
@@ -876,7 +869,6 @@
                         "minLength": 1
                       },
                       "speed": {
-                        "default": 1,
                         "type": "number",
                         "minimum": 0.5,
                         "maximum": 2
@@ -997,15 +989,14 @@
                     "type": "object",
                     "properties": {
                       "engine": {
-                        "default": "system",
-                        "description": "system: macOS say / Linux espeak-ng; openai and elevenlabs read OPENAI_API_KEY / ELEVENLABS_API_KEY",
                         "type": "string",
                         "enum": [
                           "system",
                           "openai",
                           "elevenlabs",
                           "command"
-                        ]
+                        ],
+                        "description": "system: macOS say / Linux espeak-ng; openai and elevenlabs read OPENAI_API_KEY / ELEVENLABS_API_KEY"
                       },
                       "name": {
                         "description": "Voice name (system, openai) or voice id (elevenlabs)",
@@ -1013,7 +1004,6 @@
                         "minLength": 1
                       },
                       "speed": {
-                        "default": 1,
                         "type": "number",
                         "minimum": 0.5,
                         "maximum": 2
@@ -1137,15 +1127,14 @@
                     "type": "object",
                     "properties": {
                       "engine": {
-                        "default": "system",
-                        "description": "system: macOS say / Linux espeak-ng; openai and elevenlabs read OPENAI_API_KEY / ELEVENLABS_API_KEY",
                         "type": "string",
                         "enum": [
                           "system",
                           "openai",
                           "elevenlabs",
                           "command"
-                        ]
+                        ],
+                        "description": "system: macOS say / Linux espeak-ng; openai and elevenlabs read OPENAI_API_KEY / ELEVENLABS_API_KEY"
                       },
                       "name": {
                         "description": "Voice name (system, openai) or voice id (elevenlabs)",
@@ -1153,7 +1142,6 @@
                         "minLength": 1
                       },
                       "speed": {
-                        "default": 1,
                         "type": "number",
                         "minimum": 0.5,
                         "maximum": 2
@@ -1280,15 +1268,14 @@
                     "type": "object",
                     "properties": {
                       "engine": {
-                        "default": "system",
-                        "description": "system: macOS say / Linux espeak-ng; openai and elevenlabs read OPENAI_API_KEY / ELEVENLABS_API_KEY",
                         "type": "string",
                         "enum": [
                           "system",
                           "openai",
                           "elevenlabs",
                           "command"
-                        ]
+                        ],
+                        "description": "system: macOS say / Linux espeak-ng; openai and elevenlabs read OPENAI_API_KEY / ELEVENLABS_API_KEY"
                       },
                       "name": {
                         "description": "Voice name (system, openai) or voice id (elevenlabs)",
@@ -1296,7 +1283,6 @@
                         "minLength": 1
                       },
                       "speed": {
-                        "default": 1,
                         "type": "number",
                         "minimum": 0.5,
                         "maximum": 2
@@ -1427,15 +1413,14 @@
                     "type": "object",
                     "properties": {
                       "engine": {
-                        "default": "system",
-                        "description": "system: macOS say / Linux espeak-ng; openai and elevenlabs read OPENAI_API_KEY / ELEVENLABS_API_KEY",
                         "type": "string",
                         "enum": [
                           "system",
                           "openai",
                           "elevenlabs",
                           "command"
-                        ]
+                        ],
+                        "description": "system: macOS say / Linux espeak-ng; openai and elevenlabs read OPENAI_API_KEY / ELEVENLABS_API_KEY"
                       },
                       "name": {
                         "description": "Voice name (system, openai) or voice id (elevenlabs)",
@@ -1443,7 +1428,6 @@
                         "minLength": 1
                       },
                       "speed": {
-                        "default": 1,
                         "type": "number",
                         "minimum": 0.5,
                         "maximum": 2
@@ -1563,15 +1547,14 @@
                     "type": "object",
                     "properties": {
                       "engine": {
-                        "default": "system",
-                        "description": "system: macOS say / Linux espeak-ng; openai and elevenlabs read OPENAI_API_KEY / ELEVENLABS_API_KEY",
                         "type": "string",
                         "enum": [
                           "system",
                           "openai",
                           "elevenlabs",
                           "command"
-                        ]
+                        ],
+                        "description": "system: macOS say / Linux espeak-ng; openai and elevenlabs read OPENAI_API_KEY / ELEVENLABS_API_KEY"
                       },
                       "name": {
                         "description": "Voice name (system, openai) or voice id (elevenlabs)",
@@ -1579,7 +1562,6 @@
                         "minLength": 1
                       },
                       "speed": {
-                        "default": 1,
                         "type": "number",
                         "minimum": 0.5,
                         "maximum": 2
@@ -1832,14 +1814,14 @@
           "properties": {
             "engine": {
               "default": "system",
-              "description": "system: macOS say / Linux espeak-ng; openai and elevenlabs read OPENAI_API_KEY / ELEVENLABS_API_KEY",
               "type": "string",
               "enum": [
                 "system",
                 "openai",
                 "elevenlabs",
                 "command"
-              ]
+              ],
+              "description": "system: macOS say / Linux espeak-ng; openai and elevenlabs read OPENAI_API_KEY / ELEVENLABS_API_KEY"
             },
             "name": {
               "description": "Voice name (system, openai) or voice id (elevenlabs)",
@@ -2078,15 +2060,14 @@
                           "type": "object",
                           "properties": {
                             "engine": {
-                              "default": "system",
-                              "description": "system: macOS say / Linux espeak-ng; openai and elevenlabs read OPENAI_API_KEY / ELEVENLABS_API_KEY",
                               "type": "string",
                               "enum": [
                                 "system",
                                 "openai",
                                 "elevenlabs",
                                 "command"
-                              ]
+                              ],
+                              "description": "system: macOS say / Linux espeak-ng; openai and elevenlabs read OPENAI_API_KEY / ELEVENLABS_API_KEY"
                             },
                             "name": {
                               "description": "Voice name (system, openai) or voice id (elevenlabs)",
@@ -2094,7 +2075,6 @@
                               "minLength": 1
                             },
                             "speed": {
-                              "default": 1,
                               "type": "number",
                               "minimum": 0.5,
                               "maximum": 2
@@ -2215,15 +2195,14 @@
                           "type": "object",
                           "properties": {
                             "engine": {
-                              "default": "system",
-                              "description": "system: macOS say / Linux espeak-ng; openai and elevenlabs read OPENAI_API_KEY / ELEVENLABS_API_KEY",
                               "type": "string",
                               "enum": [
                                 "system",
                                 "openai",
                                 "elevenlabs",
                                 "command"
-                              ]
+                              ],
+                              "description": "system: macOS say / Linux espeak-ng; openai and elevenlabs read OPENAI_API_KEY / ELEVENLABS_API_KEY"
                             },
                             "name": {
                               "description": "Voice name (system, openai) or voice id (elevenlabs)",
@@ -2231,7 +2210,6 @@
                               "minLength": 1
                             },
                             "speed": {
-                              "default": 1,
                               "type": "number",
                               "minimum": 0.5,
                               "maximum": 2
@@ -2376,15 +2354,14 @@
                           "type": "object",
                           "properties": {
                             "engine": {
-                              "default": "system",
-                              "description": "system: macOS say / Linux espeak-ng; openai and elevenlabs read OPENAI_API_KEY / ELEVENLABS_API_KEY",
                               "type": "string",
                               "enum": [
                                 "system",
                                 "openai",
                                 "elevenlabs",
                                 "command"
-                              ]
+                              ],
+                              "description": "system: macOS say / Linux espeak-ng; openai and elevenlabs read OPENAI_API_KEY / ELEVENLABS_API_KEY"
                             },
                             "name": {
                               "description": "Voice name (system, openai) or voice id (elevenlabs)",
@@ -2392,7 +2369,6 @@
                               "minLength": 1
                             },
                             "speed": {
-                              "default": 1,
                               "type": "number",
                               "minimum": 0.5,
                               "maximum": 2
@@ -2513,15 +2489,14 @@
                           "type": "object",
                           "properties": {
                             "engine": {
-                              "default": "system",
-                              "description": "system: macOS say / Linux espeak-ng; openai and elevenlabs read OPENAI_API_KEY / ELEVENLABS_API_KEY",
                               "type": "string",
                               "enum": [
                                 "system",
                                 "openai",
                                 "elevenlabs",
                                 "command"
-                              ]
+                              ],
+                              "description": "system: macOS say / Linux espeak-ng; openai and elevenlabs read OPENAI_API_KEY / ELEVENLABS_API_KEY"
                             },
                             "name": {
                               "description": "Voice name (system, openai) or voice id (elevenlabs)",
@@ -2529,7 +2504,6 @@
                               "minLength": 1
                             },
                             "speed": {
-                              "default": 1,
                               "type": "number",
                               "minimum": 0.5,
                               "maximum": 2
@@ -2650,15 +2624,14 @@
                           "type": "object",
                           "properties": {
                             "engine": {
-                              "default": "system",
-                              "description": "system: macOS say / Linux espeak-ng; openai and elevenlabs read OPENAI_API_KEY / ELEVENLABS_API_KEY",
                               "type": "string",
                               "enum": [
                                 "system",
                                 "openai",
                                 "elevenlabs",
                                 "command"
-                              ]
+                              ],
+                              "description": "system: macOS say / Linux espeak-ng; openai and elevenlabs read OPENAI_API_KEY / ELEVENLABS_API_KEY"
                             },
                             "name": {
                               "description": "Voice name (system, openai) or voice id (elevenlabs)",
@@ -2666,7 +2639,6 @@
                               "minLength": 1
                             },
                             "speed": {
-                              "default": 1,
                               "type": "number",
                               "minimum": 0.5,
                               "maximum": 2
@@ -2790,15 +2762,14 @@
                           "type": "object",
                           "properties": {
                             "engine": {
-                              "default": "system",
-                              "description": "system: macOS say / Linux espeak-ng; openai and elevenlabs read OPENAI_API_KEY / ELEVENLABS_API_KEY",
                               "type": "string",
                               "enum": [
                                 "system",
                                 "openai",
                                 "elevenlabs",
                                 "command"
-                              ]
+                              ],
+                              "description": "system: macOS say / Linux espeak-ng; openai and elevenlabs read OPENAI_API_KEY / ELEVENLABS_API_KEY"
                             },
                             "name": {
                               "description": "Voice name (system, openai) or voice id (elevenlabs)",
@@ -2806,7 +2777,6 @@
                               "minLength": 1
                             },
                             "speed": {
-                              "default": 1,
                               "type": "number",
                               "minimum": 0.5,
                               "maximum": 2
@@ -2933,15 +2903,14 @@
                           "type": "object",
                           "properties": {
                             "engine": {
-                              "default": "system",
-                              "description": "system: macOS say / Linux espeak-ng; openai and elevenlabs read OPENAI_API_KEY / ELEVENLABS_API_KEY",
                               "type": "string",
                               "enum": [
                                 "system",
                                 "openai",
                                 "elevenlabs",
                                 "command"
-                              ]
+                              ],
+                              "description": "system: macOS say / Linux espeak-ng; openai and elevenlabs read OPENAI_API_KEY / ELEVENLABS_API_KEY"
                             },
                             "name": {
                               "description": "Voice name (system, openai) or voice id (elevenlabs)",
@@ -2949,7 +2918,6 @@
                               "minLength": 1
                             },
                             "speed": {
-                              "default": 1,
                               "type": "number",
                               "minimum": 0.5,
                               "maximum": 2
@@ -3080,15 +3048,14 @@
                           "type": "object",
                           "properties": {
                             "engine": {
-                              "default": "system",
-                              "description": "system: macOS say / Linux espeak-ng; openai and elevenlabs read OPENAI_API_KEY / ELEVENLABS_API_KEY",
                               "type": "string",
                               "enum": [
                                 "system",
                                 "openai",
                                 "elevenlabs",
                                 "command"
-                              ]
+                              ],
+                              "description": "system: macOS say / Linux espeak-ng; openai and elevenlabs read OPENAI_API_KEY / ELEVENLABS_API_KEY"
                             },
                             "name": {
                               "description": "Voice name (system, openai) or voice id (elevenlabs)",
@@ -3096,7 +3063,6 @@
                               "minLength": 1
                             },
                             "speed": {
-                              "default": 1,
                               "type": "number",
                               "minimum": 0.5,
                               "maximum": 2
@@ -3216,15 +3182,14 @@
                           "type": "object",
                           "properties": {
                             "engine": {
-                              "default": "system",
-                              "description": "system: macOS say / Linux espeak-ng; openai and elevenlabs read OPENAI_API_KEY / ELEVENLABS_API_KEY",
                               "type": "string",
                               "enum": [
                                 "system",
                                 "openai",
                                 "elevenlabs",
                                 "command"
-                              ]
+                              ],
+                              "description": "system: macOS say / Linux espeak-ng; openai and elevenlabs read OPENAI_API_KEY / ELEVENLABS_API_KEY"
                             },
                             "name": {
                               "description": "Voice name (system, openai) or voice id (elevenlabs)",
@@ -3232,7 +3197,6 @@
                               "minLength": 1
                             },
                             "speed": {
-                              "default": 1,
                               "type": "number",
                               "minimum": 0.5,
                               "maximum": 2

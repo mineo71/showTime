@@ -154,13 +154,14 @@ export async function ensureVoices(
   loaded: LoadedScript,
   opts: EngineOptions & { log?: (line: string) => void } = {},
 ): Promise<Record<string, VoiceClip>> {
-  const { voice } = loaded.script.audio;
   const dir = workPaths(loaded).audio;
   const clips: Record<string, VoiceClip> = {};
   for (const scene of loaded.script.scenes) {
     for (const [index, step] of scene.steps.entries()) {
       const text = step.show?.say;
       if (!text) continue;
+      // A step may change the voice for its own line (a second narrator, another language).
+      const voice = { ...loaded.script.audio.voice, ...step.show?.voice } as Voice;
       const where = stepKey(scene.id, index);
       const key = voiceKey(voice, text);
       const file = path.join(dir, `voice-${key}.wav`);

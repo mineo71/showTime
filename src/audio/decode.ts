@@ -25,9 +25,9 @@ const musicCache = new Map<string, Promise<Float32Array[]>>();
  * A music bed as stereo samples, decoded (and loudness-normalised, which reads the whole file) once
  * per file version: the studio remixes on every edit.
  */
-export async function musicSamples(file: string, lufs: number): Promise<Float32Array[]> {
+export async function musicSamples(file: string, lufs?: number): Promise<Float32Array[]> {
   const { mtimeMs, size } = await stat(file);
-  const key = `${file}|${mtimeMs}|${size}|${lufs}`;
+  const key = `${file}|${mtimeMs}|${size}|${lufs ?? 'raw'}`;
   let samples = musicCache.get(key);
   if (!samples) {
     for (const k of musicCache.keys()) if (k.startsWith(`${file}|`)) musicCache.delete(k);

@@ -57,6 +57,17 @@ describe('ensureVoices', () => {
     expect(await musicSamples(music, -20)).not.toBe(first);
   });
 
+  it('speaks a step with its own voice changes, cached apart', async () => {
+    const loaded = await fixtureScript('http://127.0.0.1:1/', (raw) => {
+      raw.scenes[0].steps[0].show.say = 'First narrator.';
+      raw.scenes[1].steps[0].show = { say: 'Second narrator.', voice: { command: 'ffmpeg -v error -f lavfi -i sine=duration=1.5 -f wav -y {out}' } };
+    });
+    loaded.script.audio.voice = { engine: 'command', speed: 1, command: 'ffmpeg -v error -f lavfi -i sine=duration=0.5 -f wav -y {out}' };
+    const clips = await ensureVoices(loaded);
+    expect(clips['report#1'].durationMs).toBeLessThan(700);
+    expect(clips['export#1'].durationMs).toBeGreaterThan(1400);
+  });
+
   it('names the step whose line failed', async () => {
     const loaded = await fixtureScript('http://127.0.0.1:1/', (raw) => {
       raw.scenes[1].steps[0].show.say = 'Export it anywhere.';

@@ -1,5 +1,5 @@
 import { execFile } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { existsSync, realpathSync } from 'node:fs';
 import { lstat, mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -88,6 +88,21 @@ describe('showtime CLI', () => {
     expect(r.code, r.stderr).toBe(0);
     expect((await readFile(starts, 'utf8')).trim().split('\n')).toHaveLength(1);
   }, 240_000);
+
+  it.runIf(process.platform === 'darwin')('lists system voices by language and tries one', async () => {
+    const all = JSON.parse((await cli(['voices', '--json'])).stdout);
+    expect(all.engine).toBe('system');
+    expect(all.voices.length).toBeGreaterThan(10);
+    const uk = JSON.parse((await cli(['voices', '--lang', 'uk', '--json'])).stdout);
+    expect(uk.voices.map((v: { name: string }) => v.name)).toContain('Lesya');
+    const dir = await mkdtemp(path.join(tmpdir(), 'showtime-voices-'));
+    const tried = await cli(['voices', '--try', 'Привіт, це Voxa.', '--voice', 'Lesya', '--json'], dir);
+    expect(tried.code, tried.stderr).toBe(0);
+    const { file } = JSON.parse(tried.stdout);
+    // The child's cwd is the real path (/private/var/… on macOS).
+    expect(file.startsWith(path.join(realpathSync(dir), '.showtime', 'voices'))).toBe(true);
+    expect(existsSync(file)).toBe(true);
+  });
 
   it('fails clearly on an invalid script', async () => {
     const dir = await mkdtemp(path.join(tmpdir(), 'showtime-cli-'));

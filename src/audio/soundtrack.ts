@@ -2,6 +2,7 @@ import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import { workPaths } from '../paths';
 import type { LoadedScript } from '../script/load';
+import type { Audio, SoundPack } from '../script/schema';
 import { introFrames, totalFrames } from '../timeline/frames';
 import type { Timeline } from '../timeline/types';
 import { musicSamples } from './decode';
@@ -9,6 +10,12 @@ import { mixTrack } from './mix';
 import { clickSamples, KEY_VARIANTS, keySamples } from './sfx';
 import type { VoiceClip } from './tts';
 import { RATE, readWav, writeWav } from './wav';
+
+/** `audio.sounds` in one shape: a pack, optional own files, a volume. */
+export function soundSettings(sounds: Audio['sounds']): { pack: SoundPack; click?: string; key?: string; volume: number } {
+  if (typeof sounds === 'object') return sounds;
+  return { pack: typeof sounds === 'string' ? sounds : 'soft', volume: 1 };
+}
 
 export const CLICK_GAIN = 0.5;
 export const KEY_GAIN = 0.2;
@@ -35,12 +42,16 @@ export async function mixSoundtrack(
   const voices = await Promise.all(
     t.narration.map(async (n) => ({ samples: (await readWav(clips[n.where].file)).channels[0], atMs: introMs + n.atMs })),
   );
-  const click = clickSamples(RATE);
-  const keys = Array.from({ length: KEY_VARIANTS }, (_, i) => keySamples(RATE, i));
+  const sfx = soundSettings(loaded.script.audio.sounds);
+  // Your own files win over the pack; they play as recorded (no loudness normalising on a click).
+  const own = async (file: string | undefined) => (file ? (await musicSamples(file))[0] : null);
+  const click = (await own(sfx.click)) ?? clickSamples(RATE, sfx.pack);
+  const ownKey = await own(sfx.key);
+  const keys = Array.from({ length: KEY_VARIANTS }, (_, i) => ownKey ?? keySamples(RATE, i, sfx.pack));
   const sounds = t.sounds.map((s, i) =>
     s.kind === 'click'
-      ? { samples: click, atMs: introMs + s.atMs, gain: CLICK_GAIN }
-      : { samples: keys[i % KEY_VARIANTS], atMs: introMs + s.atMs, gain: KEY_GAIN },
+      ? { samples: click, atMs: introMs + s.atMs, gain: CLICK_GAIN * sfx.volume }
+      : { samples: keys[i % KEY_VARIANTS], atMs: introMs + s.atMs, gain: KEY_GAIN * sfx.volume },
   );
   const appSounds = await Promise.all(
     t.clips.map(async (c) => ({
