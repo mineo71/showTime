@@ -53,6 +53,20 @@ describe('showtime CLI', () => {
     expect(missing.stderr).toMatch(/Cannot read script/);
   });
 
+  it('rehearses up to a step, inspects a page, and rejects bad render flags before rendering', async () => {
+    const loaded = await fixtureScript(server.url);
+    const until = await cli(['check', loaded.scriptPath, '--until', 'report#1', '--json']);
+    expect(until.code, until.stderr).toBe(0);
+    expect(JSON.parse(until.stdout).steps).toHaveLength(1);
+    const ins = await cli(['inspect', server.url, '--json'], loaded.dir);
+    expect(ins.code, ins.stderr).toBe(0);
+    expect(JSON.parse(ins.stdout).targets.some((t: { target: string }) => t.target === 'role=button[name="New report"]')).toBe(true);
+    const fps = await cli(['render', loaded.scriptPath, '--format', 'gif', '--fps', '99']);
+    expect(fps.stderr).toMatch(/--fps must be a whole number from 5 to 30/);
+    const scenes = await cli(['render', loaded.scriptPath, '--scenes', 'nope']);
+    expect(scenes.stderr).toMatch(/--scenes: no scene "nope" \(scenes: report, export\)/);
+  });
+
   it('fails clearly on an invalid script', async () => {
     const dir = await mkdtemp(path.join(tmpdir(), 'showtime-cli-'));
     const file = path.join(dir, 'bad.json');

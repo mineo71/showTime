@@ -36,6 +36,8 @@ interface RenderFlags {
   aspect: string;
   format?: string;
   width?: string;
+  fps?: string;
+  scenes?: string;
   audio: boolean;
 }
 
@@ -45,7 +47,20 @@ function renderOptions(o: RenderFlags) {
   if (width !== undefined && !(Number.isInteger(width) && width >= 16 && width <= 3840)) {
     throw new Error(`--width must be a whole number of pixels between 16 and 3840 (got "${o.width}")`);
   }
-  return { out: o.out, aspect: aspectOf(o.aspect), format: formatOf(o.out, o.format), width, audio: o.audio };
+  const fps = o.fps === undefined ? undefined : Number(o.fps);
+  if (fps !== undefined && !(Number.isInteger(fps) && fps >= 5 && fps <= 30)) {
+    throw new Error(`--fps must be a whole number from 5 to 30 (got "${o.fps}")`);
+  }
+  const scenes = o.scenes?.split(',').map((s) => s.trim()).filter(Boolean);
+  return { out: o.out, aspect: aspectOf(o.aspect), format: formatOf(o.out, o.format), width, fps, scenes, audio: o.audio };
+}
+
+/** Scene ids are checked before any recording or rendering starts. */
+function checkScenes(loaded: LoadedScript, scenes: string[] | undefined) {
+  const ids = loaded.script.scenes.map((s) => s.id);
+  for (const id of scenes ?? []) {
+    if (!ids.includes(id)) throw new Error(`--scenes: no scene "${id}" (scenes: ${ids.join(', ')})`);
+  }
 }
 
 const withRenderFlags = (c: Command) =>
@@ -54,6 +69,8 @@ const withRenderFlags = (c: Command) =>
     .option('--aspect <ratio>', '16:9, 9:16 or 1:1', '16:9')
     .option('--format <format>', 'mp4, gif or webp (default: from --out, else mp4)')
     .option('--width <px>', 'GIF/WebP width (default: 960, 540 or 720 by aspect)')
+    .option('--fps <n>', 'GIF/WebP frames per second (default: 15 GIF, 20 WebP)')
+    .option('--scenes <ids>', 'render only these scenes, comma-separated (no intro or outro)')
     .option('--no-audio', 'leave out narration, music and sounds (narration still paces burned-in subtitles)');
 
 async function render(loaded: LoadedScript, o: RenderFlags) {
@@ -103,10 +120,11 @@ program
   .description('rehearse: run every step fast, screenshot each, report the first failure')
   .option('--json', 'print the machine-readable report')
   .option('--headed', 'show the browser')
-  .action(async (file: string, o: { json?: boolean; headed?: boolean }) => {
+  .option('--until <step>', 'rehearse only up to and including this step (scene#n)')
+  .action(async (file: string, o: { json?: boolean; headed?: boolean; until?: string }) => {
     const loaded = await loadScript(file);
     const { check } = await import('../runner/check');
-    const report = await check(loaded, { headed: o.headed, log: o.json ? undefined : say });
+    const report = await check(loaded, { headed: o.headed, until: o.until, log: o.json ? undefined : say });
     if (o.json) emit(report);
     else say(formatCheck(report));
     if (!report.ok) process.exitCode = 1;
@@ -153,8 +171,9 @@ withRenderFlags(
 )
   .option('--json', 'print { video, durationMs, subtitles } as JSON')
   .action(async (file: string, o: RenderFlags) => {
-    renderOptions(o);
-    const result = await render(await loadScript(file), o);
+    const loaded = await loadScript(file);
+    checkScenes(loaded, renderOptions(o).scenes);
+    const result = await render(loaded, o);
     if (o.json) emit(result);
     else sayRendered(result);
   });
@@ -177,8 +196,9 @@ withRenderFlags(program.command('make <script>').description('check → record �
   .option('--headed', 'show the browser')
   .option('--json', 'print { check, take, video } as JSON')
   .action(async (file: string, o: RenderFlags & { headed?: boolean }) => {
-    renderOptions(o);
+    const options = renderOptions(o);
     const loaded = await loadScript(file);
+    checkScenes(loaded, options.scenes);
     const log = o.json ? undefined : say;
     const { check } = await import('../runner/check');
     const report = await check(loaded, { headed: o.headed });
@@ -203,6 +223,22 @@ function openBrowser(url: string) {
     process.platform === 'darwin' ? ['open', [url]] : process.platform === 'win32' ? ['cmd', ['/c', 'start', '""', url]] : ['xdg-open', [url]];
   spawn(cmd, args, { stdio: 'ignore', detached: true }).on('error', () => undefined).unref();
 }
+
+program
+  .command('inspect <url>')
+  .description('list what a script can act on: every named control with a ready target, and a screenshot')
+  .option('--viewport <WxH>', 'browser size', '1440x900')
+  .option('--json', 'print { url, title, targets, screenshot } as JSON')
+  .action(async (url: string, o: { viewport: string; json?: boolean }) => {
+    const size = /^(\d{3,4})x(\d{3,4})$/.exec(o.viewport);
+    if (!size) throw new Error(`--viewport must look like 1440x900 (got "${o.viewport}")`);
+    const { inspect } = await import('../inspect');
+    const r = await inspect(url, { viewport: { width: Number(size[1]), height: Number(size[2]) } });
+    if (o.json) return emit(r);
+    say(`${r.title || '(no title)'} — ${r.url}`);
+    for (const t of r.targets) say(`  ${t.role.padEnd(9)} ${t.target}${t.count > 1 ? `  (matches ${t.count})` : ''}`);
+    say(`screenshot: ${r.screenshot}`);
+  });
 
 program
   .command('studio <script>')
