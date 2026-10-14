@@ -16,7 +16,7 @@ import { parseLoaded, type LoadedScript } from '../script/load';
 import { loadTake } from '../take';
 import { stepFrames } from '../timeline/frames';
 import { stepKey } from '../timeline/narration';
-import type { Style } from '../script/schema';
+import type { Audio, Style } from '../script/schema';
 import type { Aspect, Timeline } from '../timeline/types';
 import { bundleClient } from './bundle';
 import { STYLES } from './client/styles';
@@ -69,6 +69,8 @@ export interface StudioState {
   script: Json | null;
   /** the script's look with brand-file defaults, whatever the state of the take */
   style: Style | null;
+  /** audio.sounds as resolved (brand file applied) */
+  sounds: Audio['sounds'] | null;
   steps: StepInfo[];
   timeline: Timeline | null;
   job: Job | null;
@@ -189,6 +191,7 @@ export async function startStudio(scriptFile: string, opts: StudioOptions = {}):
     error: null,
     script: null,
     style: null,
+    sounds: null,
     steps: [],
     timeline: null,
     job: null,
@@ -256,6 +259,7 @@ export async function startStudio(scriptFile: string, opts: StudioOptions = {}):
     }
     state.script = raw as Json;
     state.style = loaded.script.style;
+    state.sounds = loaded.script.audio.sounds;
     state.error = null;
     state.steps = stepsOf(loaded, raw as Json);
     let steps;

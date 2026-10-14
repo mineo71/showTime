@@ -259,7 +259,7 @@ program
     const list = voices.filterVoices(await voices.listVoices(parsed.data.engine), o.lang);
     if (o.json) return emit({ engine: parsed.data.engine, voices: list });
     for (const v of list) say(`  ${v.name.padEnd(28)} ${(v.language ?? '').padEnd(7)} ${v.id ?? v.sample ?? ''}`);
-    say(`${list.length} voices. Try one: showtime voices --try "Hello there" --voice "${list[0]?.id ?? list[0]?.name ?? 'name'}"`);
+    say(`${list.length} voice${list.length === 1 ? '' : 's'}. Try one: showtime voices --try "Hello there" --voice "${list[0]?.id ?? list[0]?.name ?? 'name'}"`);
   });
 
 program

@@ -54,6 +54,7 @@ button:disabled { opacity: 0.45; cursor: default; }
 .check { display: flex; align-items: center; gap: 8px; margin: 6px 0 10px; cursor: pointer; }
 .color { display: flex; align-items: center; gap: 8px; }
 .color input { width: 36px !important; height: 30px; padding: 2px !important; }
+button.link { border: 0; background: none; color: var(--accent); cursor: pointer; padding: 0; }
 
 .timeline { border-top: 1px solid var(--line); background: var(--panel); padding: 12px 16px 16px; }
 .track { position: relative; height: 72px; border-radius: 10px; background: var(--panel-2); overflow: hidden; cursor: pointer; }

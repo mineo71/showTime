@@ -204,6 +204,16 @@ describe('studio page', () => {
       expect(await readFile(loaded.scriptPath, 'utf8')).toBe(before);
       await page.locator('[data-field=accent]').evaluate((el: HTMLInputElement) => el.dispatchEvent(new Event('change', { bubbles: true })));
       await expect.poll(async () => (await readFile(loaded.scriptPath, 'utf8')).includes('#123456'), { timeout: 20_000 }).toBe(true);
+      // The 0.7 look: a click animation and a highlight for a step, a caption style and a sound pack.
+      await page.locator('[data-where="report#1"]').click();
+      await page.locator('[data-field=click]').selectOption('burst');
+      await page.locator('[data-field=spotlightKind]').selectOption('glow');
+      await expect.poll(async () => (await readFile(loaded.scriptPath, 'utf8')).includes('"click": "burst"'), { timeout: 20_000 }).toBe(true);
+      await expect.poll(async () => (await readFile(loaded.scriptPath, 'utf8')).includes('"spotlight": "glow"'), { timeout: 20_000 }).toBe(true);
+      await page.locator('[data-field=captionStyle]').selectOption('bar');
+      await expect.poll(async () => (await readFile(loaded.scriptPath, 'utf8')).includes('"captionStyle": "bar"'), { timeout: 20_000 }).toBe(true);
+      await page.locator('[data-field=sounds]').selectOption('pop');
+      await expect.poll(async () => (await readFile(loaded.scriptPath, 'utf8')).includes('"sounds": "pop"'), { timeout: 20_000 }).toBe(true);
       expect(errors).toEqual([]);
     } finally {
       await browser.close();
