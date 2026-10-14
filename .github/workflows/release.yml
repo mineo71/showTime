@@ -9,7 +9,12 @@ permissions:
   id-token: write # npm trusted publishing (OIDC) and provenance
 
 jobs:
+  # The same unit and integration jobs as every push: nothing is published unless both pass.
+  checks:
+    uses: ./.github/workflows/ci.yml
+
   release:
+    needs: checks
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -20,8 +25,6 @@ jobs:
           cache: npm
       - run: npm install -g npm@11 # trusted publishing needs npm ≥ 11.5.1
       - run: npm ci
-      - run: npm run typecheck
-      - run: npm test
 
       - name: Tag matches package.json
         run: |
