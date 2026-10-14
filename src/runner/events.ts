@@ -6,8 +6,10 @@ export class EventLog {
   readonly moves: Move[] = [];
   readonly clicks: Click[] = [];
   readonly idle: Interval[] = [];
-  /** keystroke times of human-paced typing */
+  /** keystroke times: human-paced typing and presses */
   readonly keys: number[] = [];
+  /** while a drag holds the mouse button */
+  readonly drags: Interval[] = [];
 
   constructor(private readonly t0: number = Date.now()) {}
 

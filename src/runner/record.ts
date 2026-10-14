@@ -33,13 +33,13 @@ interface Shot {
 async function shoot(session: Session, loaded: LoadedScript, framesDir: string, opts: RecordOptions): Promise<Shot> {
   const { script } = loaded;
   const { viewport, deviceScaleFactor } = script.app;
-  const cursor = await prepare(session, script);
+  const cursor = await prepare(session, script, loaded.dir);
   const capture = await startCapture(session.page, framesDir, {
     width: viewport.width * deviceScaleFactor,
     height: viewport.height * deviceScaleFactor,
   });
   const log = new EventLog(capture.t0);
-  const ctx: StepContext = { page: session.page, mode: 'record', log, net: session.net, cursor, baseUrl: script.app.url };
+  const ctx: StepContext = { page: session.page, mode: 'record', log, net: session.net, cursor, baseUrl: script.app.url, dir: loaded.dir };
   try {
     await sleep(ESTABLISH_MS);
     for (const scene of script.scenes) {
@@ -109,6 +109,7 @@ export async function record(loaded: LoadedScript, opts: RecordOptions = {}): Pr
         clicks: shot.log.clicks,
         idle: shot.log.idle,
         keys: shot.log.keys,
+        drags: shot.log.drags,
       };
       await writeFile(path.join(tmp, 'events.json'), JSON.stringify(events, null, 2));
       if (!opts.keepFrames) await rm(frames, { recursive: true, force: true });

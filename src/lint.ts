@@ -24,8 +24,8 @@ const LOADING_PAUSE_MS = 1500;
 /** Holding the frame this long for a voice is worth a note; twice as long, a warning. */
 const STRETCH_INFO_MS = 1500;
 const STRETCH_WARN_MS = 3000;
-const ACTIONS = new Set<Step['do']>(['click', 'press', 'type', 'select']);
-const TARGETED = new Set<Step['do']>(['click', 'type', 'hover', 'select']);
+const ACTIONS = new Set<Step['do']>(['click', 'dblclick', 'drag', 'upload', 'press', 'type', 'select']);
+const TARGETED = new Set<Step['do']>(['click', 'dblclick', 'drag', 'upload', 'type', 'hover', 'select']);
 
 const hasTarget = (s: Step) => TARGETED.has(s.do) || (s.do === 'scroll' && s.target !== undefined);
 export { readingMs };

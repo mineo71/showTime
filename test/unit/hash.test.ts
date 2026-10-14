@@ -49,6 +49,12 @@ describe('actionHash', () => {
     expect(actionHash(more)).toBe(actionHash(plain));
   });
 
+  it('keeps a 0.8 take valid: a click without button or modifiers hashes as it did', () => {
+    expect(actionHash(base)).toBe('c20e9dcf1864934c268f3c89677e50cb10dd777baeeb381ad9fc09a50afb4bd0');
+    expect(actionHash(make({ do: 'click', target: 'text=Go', button: 'right' }))).not.toBe(actionHash(base));
+    expect(actionHash(make({ do: 'click', target: 'text=Go', modifiers: ['Shift'] }))).not.toBe(actionHash(base));
+  });
+
   it('changes when an action changes', () => {
     expect(actionHash(make({ do: 'click', target: 'text=Stop' }))).not.toBe(actionHash(base));
   });

@@ -60,8 +60,10 @@ export interface TakeEvents {
   moves: Move[];
   clicks: Click[];
   idle: Interval[];
-  /** keystroke times (human-paced typing); missing in takes recorded before 0.4 */
+  /** keystroke times (human-paced typing, presses); missing in takes recorded before 0.4 */
   keys?: number[];
+  /** while a drag held the mouse button; missing in takes recorded before 0.9 */
+  drags?: Interval[];
 }
 
 export interface Segment {

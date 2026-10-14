@@ -6,6 +6,13 @@ const target = z
   .describe("Playwright selector, e.g. role=button[name='Save'], text=Save, #id, [data-testid=x], CSS");
 
 export const CLICK_KINDS = ['ripple', 'pulse', 'burst', 'ring', 'none'] as const;
+export const MODIFIERS = ['Alt', 'Control', 'ControlOrMeta', 'Meta', 'Shift'] as const;
+
+const modifiers = z
+  .array(z.enum(MODIFIERS))
+  .min(1)
+  .optional()
+  .describe('Keys held during the click; ControlOrMeta is ⌘ on macOS and Ctrl elsewhere');
 export const SOUND_PACKS = ['soft', 'mechanical', 'pop', 'tap', 'typewriter'] as const;
 
 // Without defaults: a step's `show.voice` lists only what it changes (zod keeps defaults under .partial()).
@@ -81,7 +88,39 @@ const exactlyOne = (a: string, b: string) => (s: Record<string, unknown>) =>
 
 export const StepSchema = z.discriminatedUnion('do', [
   z.object({ do: z.literal('goto'), url: z.string().min(1), show }).strict(),
-  z.object({ do: z.literal('click'), target, show }).strict(),
+  z
+    .object({
+      do: z.literal('click'),
+      target,
+      button: z.enum(['left', 'right', 'middle']).optional().describe('right opens context menus; left by default'),
+      modifiers,
+      show,
+    })
+    .strict(),
+  z.object({ do: z.literal('dblclick'), target, modifiers, show }).strict(),
+  z
+    .object({
+      do: z.literal('drag'),
+      target,
+      to: target.optional().describe('Drop on the centre of this element; it must be on screen with the target'),
+      by: z
+        .object({ x: z.number().int(), y: z.number().int() })
+        .strict()
+        .optional()
+        .describe('Or move this many CSS px from the target (sliders, resizing)'),
+      show,
+    })
+    .strict()
+    .refine(exactlyOne('to', 'by'), { message: 'drag needs exactly one of "to" or "by"' }),
+  z
+    .object({
+      do: z.literal('upload'),
+      target: target.describe('What a person clicks to pick files (a button, a drop zone), or the file input itself'),
+      files: z.array(z.string().min(1)).min(1).describe('Files to choose, relative to the script'),
+      show,
+    })
+    .strict(),
+  z.object({ do: z.literal('closeTab'), show }).strict().describe('Close the tab or popup a step opened and go back to the previous page'),
   z
     .object({
       do: z.literal('type'),

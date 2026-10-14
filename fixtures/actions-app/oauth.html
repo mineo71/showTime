@@ -1,0 +1,17 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Sign in</title>
+  </head>
+  <body style="margin: 0; background: #e0f2fe">
+    <button id="allow" style="margin: 40px; font-size: 20px">Allow</button>
+    <script>
+      // Like an OAuth consent screen: tell the opener, then close itself.
+      document.querySelector('#allow').addEventListener('click', () => {
+        window.opener.postMessage('allowed', '*');
+        window.close();
+      });
+    </script>
+  </body>
+</html>

@@ -1,0 +1,14 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Popup</title>
+  </head>
+  <body style="margin: 0; background: #ff00aa; height: 100vh">
+    <button id="in-popup" style="margin: 40px; font-size: 20px">Popup button</button>
+    <p id="popup-out">waiting</p>
+    <script>
+      document.querySelector('#in-popup').addEventListener('click', () => (document.querySelector('#popup-out').textContent = 'clicked'));
+    </script>
+  </body>
+</html>

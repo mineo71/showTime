@@ -266,3 +266,28 @@ describe('0.9 fields', () => {
     expect(() => parseScript({ ...minimal, locales: ['en-'] })).toThrow(/locales/);
   });
 });
+
+describe('0.9 steps', () => {
+  it('accepts double clicks, right and modifier clicks, drags, uploads and closing a tab', () => {
+    const s = parseScript(
+      withSteps([
+        { do: 'dblclick', target: '#a', modifiers: ['Meta'] },
+        { do: 'click', target: '#a', button: 'right' },
+        { do: 'click', target: '#a', modifiers: ['Shift', 'ControlOrMeta'] },
+        { do: 'drag', target: '#card', to: '#done' },
+        { do: 'drag', target: '#thumb', by: { x: 120, y: 0 } },
+        { do: 'upload', target: '#pick', files: ['a.png', 'b.pdf'] },
+        { do: 'closeTab' },
+      ]),
+    );
+    expect(s.scenes[0].steps.map((x) => x.do)).toEqual(['dblclick', 'click', 'click', 'drag', 'drag', 'upload', 'closeTab']);
+  });
+
+  it('rejects a drag without exactly one end, an upload without files and an unknown modifier', () => {
+    expect(() => parseScript(withSteps([{ do: 'drag', target: '#a' }]))).toThrow(/drag needs exactly one of "to" or "by"/);
+    expect(() => parseScript(withSteps([{ do: 'drag', target: '#a', to: '#b', by: { x: 1, y: 1 } }]))).toThrow(/drag needs exactly one/);
+    expect(() => parseScript(withSteps([{ do: 'upload', target: '#a', files: [] }]))).toThrow(/files/);
+    expect(() => parseScript(withSteps([{ do: 'click', target: '#a', modifiers: ['Hyper'] }]))).toThrow(/modifiers/);
+    expect(() => parseScript(withSteps([{ do: 'click', target: '#a', button: 'back' }]))).toThrow(/button/);
+  });
+});

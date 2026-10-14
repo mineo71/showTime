@@ -177,7 +177,7 @@ async function answer(route: Route, mock: Mock): Promise<void> {
 }
 
 /** Open app.url, run setup steps (fast, unlogged), park the mouse at the centre. */
-export async function prepare(session: Session, script: Script): Promise<Pt> {
+export async function prepare(session: Session, script: Script, dir?: string): Promise<Pt> {
   const { page } = session;
   try {
     await page.goto(script.app.url, { waitUntil: 'load', timeout: 30_000 });
@@ -185,7 +185,7 @@ export async function prepare(session: Session, script: Script): Promise<Pt> {
     throw new Error(`Cannot open app.url ${script.app.url}: ${(err as Error).message.split('\n')[0]}`);
   }
   const centre = { x: Math.round(script.app.viewport.width / 2), y: Math.round(script.app.viewport.height / 2) };
-  const ctx: StepContext = { page, mode: 'check', log: new EventLog(), net: session.net, cursor: centre, baseUrl: script.app.url };
+  const ctx: StepContext = { page, mode: 'check', log: new EventLog(), net: session.net, cursor: centre, baseUrl: script.app.url, dir };
   for (const [index, step] of script.setup.entries()) await runStep(ctx, step, { sceneId: 'setup', index });
   await page.mouse.move(centre.x, centre.y);
   return centre;

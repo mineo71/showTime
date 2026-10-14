@@ -73,8 +73,8 @@ async function rehearse(loaded: LoadedScript, opts: CheckOptions): Promise<Check
   const session = await openSession(script, opts);
   announceNet(session.replay?.report(), opts, !!opts.until);
   try {
-    const cursor = await prepare(session, script);
-    const ctx: StepContext = { page: session.page, mode: 'check', log: new EventLog(), net: session.net, cursor, baseUrl: script.app.url };
+    const cursor = await prepare(session, script, loaded.dir);
+    const ctx: StepContext = { page: session.page, mode: 'check', log: new EventLog(), net: session.net, cursor, baseUrl: script.app.url, dir: loaded.dir };
     let n = 0;
     let done = false;
     for (const scene of script.scenes) {

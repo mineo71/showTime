@@ -547,6 +547,30 @@
                 "minLength": 1,
                 "description": "Playwright selector, e.g. role=button[name='Save'], text=Save, #id, [data-testid=x], CSS"
               },
+              "button": {
+                "description": "right opens context menus; left by default",
+                "type": "string",
+                "enum": [
+                  "left",
+                  "right",
+                  "middle"
+                ]
+              },
+              "modifiers": {
+                "description": "Keys held during the click; ControlOrMeta is ⌘ on macOS and Ctrl elsewhere",
+                "minItems": 1,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "Alt",
+                    "Control",
+                    "ControlOrMeta",
+                    "Meta",
+                    "Shift"
+                  ]
+                }
+              },
               "show": {
                 "type": "object",
                 "properties": {
@@ -681,6 +705,640 @@
               "target"
             ],
             "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "do": {
+                "type": "string",
+                "const": "dblclick"
+              },
+              "target": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Playwright selector, e.g. role=button[name='Save'], text=Save, #id, [data-testid=x], CSS"
+              },
+              "modifiers": {
+                "description": "Keys held during the click; ControlOrMeta is ⌘ on macOS and Ctrl elsewhere",
+                "minItems": 1,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "Alt",
+                    "Control",
+                    "ControlOrMeta",
+                    "Meta",
+                    "Shift"
+                  ]
+                }
+              },
+              "show": {
+                "type": "object",
+                "properties": {
+                  "zoom": {
+                    "description": "Zoom depth for this step, or false to disable auto-zoom",
+                    "anyOf": [
+                      {
+                        "type": "number",
+                        "minimum": 1,
+                        "maximum": 4
+                      },
+                      {
+                        "type": "boolean",
+                        "const": false
+                      }
+                    ]
+                  },
+                  "caption": {
+                    "description": "Caption shown while this step plays",
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "spotlight": {
+                    "description": "Point at the target: dim (everything else darkens, true), ring, or glow",
+                    "anyOf": [
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "string",
+                        "enum": [
+                          "dim",
+                          "ring",
+                          "glow"
+                        ]
+                      }
+                    ]
+                  },
+                  "highlight": {
+                    "description": "CSS colour for this step's click animation and spotlight",
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "click": {
+                    "description": "Click animation for this step",
+                    "type": "string",
+                    "enum": [
+                      "ripple",
+                      "pulse",
+                      "burst",
+                      "ring",
+                      "none"
+                    ]
+                  },
+                  "voice": {
+                    "description": "Changes to audio.voice for this step's line",
+                    "type": "object",
+                    "properties": {
+                      "engine": {
+                        "type": "string",
+                        "enum": [
+                          "system",
+                          "openai",
+                          "elevenlabs",
+                          "command"
+                        ],
+                        "description": "system: macOS say / Linux espeak-ng; openai and elevenlabs read OPENAI_API_KEY / ELEVENLABS_API_KEY"
+                      },
+                      "name": {
+                        "description": "Voice name (system, openai) or voice id (elevenlabs)",
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "speed": {
+                        "type": "number",
+                        "minimum": 0.5,
+                        "maximum": 2
+                      },
+                      "model": {
+                        "description": "openai: gpt-4o-mini-tts by default; elevenlabs: eleven_multilingual_v2",
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "instructions": {
+                        "description": "openai only: how to speak, e.g. \"warm and confident\"",
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "command": {
+                        "description": "command engine: shell command that reads the text on stdin and writes audio to {out}",
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  "hold": {
+                    "description": "Extra real-time ms after the step",
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 30000
+                  },
+                  "captionMs": {
+                    "description": "How long the caption stays on screen (output ms) instead of its reading time; the next caption still ends it",
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 60000
+                  },
+                  "freezeMs": {
+                    "description": "Hold a still frame this long at the end of the step (output ms, no new take)",
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 30000
+                  },
+                  "speed": {
+                    "description": "Playback speed for this step",
+                    "type": "number",
+                    "minimum": 0.25,
+                    "maximum": 16
+                  },
+                  "say": {
+                    "description": "Narration spoken from the start of this step; the video waits for it before the next narrated step",
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "do",
+              "target"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "do": {
+                "type": "string",
+                "const": "drag"
+              },
+              "target": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Playwright selector, e.g. role=button[name='Save'], text=Save, #id, [data-testid=x], CSS"
+              },
+              "to": {
+                "description": "Drop on the centre of this element; it must be on screen with the target",
+                "type": "string",
+                "minLength": 1
+              },
+              "by": {
+                "description": "Or move this many CSS px from the target (sliders, resizing)",
+                "type": "object",
+                "properties": {
+                  "x": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  "y": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "required": [
+                  "x",
+                  "y"
+                ],
+                "additionalProperties": false
+              },
+              "show": {
+                "type": "object",
+                "properties": {
+                  "zoom": {
+                    "description": "Zoom depth for this step, or false to disable auto-zoom",
+                    "anyOf": [
+                      {
+                        "type": "number",
+                        "minimum": 1,
+                        "maximum": 4
+                      },
+                      {
+                        "type": "boolean",
+                        "const": false
+                      }
+                    ]
+                  },
+                  "caption": {
+                    "description": "Caption shown while this step plays",
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "spotlight": {
+                    "description": "Point at the target: dim (everything else darkens, true), ring, or glow",
+                    "anyOf": [
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "string",
+                        "enum": [
+                          "dim",
+                          "ring",
+                          "glow"
+                        ]
+                      }
+                    ]
+                  },
+                  "highlight": {
+                    "description": "CSS colour for this step's click animation and spotlight",
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "click": {
+                    "description": "Click animation for this step",
+                    "type": "string",
+                    "enum": [
+                      "ripple",
+                      "pulse",
+                      "burst",
+                      "ring",
+                      "none"
+                    ]
+                  },
+                  "voice": {
+                    "description": "Changes to audio.voice for this step's line",
+                    "type": "object",
+                    "properties": {
+                      "engine": {
+                        "type": "string",
+                        "enum": [
+                          "system",
+                          "openai",
+                          "elevenlabs",
+                          "command"
+                        ],
+                        "description": "system: macOS say / Linux espeak-ng; openai and elevenlabs read OPENAI_API_KEY / ELEVENLABS_API_KEY"
+                      },
+                      "name": {
+                        "description": "Voice name (system, openai) or voice id (elevenlabs)",
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "speed": {
+                        "type": "number",
+                        "minimum": 0.5,
+                        "maximum": 2
+                      },
+                      "model": {
+                        "description": "openai: gpt-4o-mini-tts by default; elevenlabs: eleven_multilingual_v2",
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "instructions": {
+                        "description": "openai only: how to speak, e.g. \"warm and confident\"",
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "command": {
+                        "description": "command engine: shell command that reads the text on stdin and writes audio to {out}",
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  "hold": {
+                    "description": "Extra real-time ms after the step",
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 30000
+                  },
+                  "captionMs": {
+                    "description": "How long the caption stays on screen (output ms) instead of its reading time; the next caption still ends it",
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 60000
+                  },
+                  "freezeMs": {
+                    "description": "Hold a still frame this long at the end of the step (output ms, no new take)",
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 30000
+                  },
+                  "speed": {
+                    "description": "Playback speed for this step",
+                    "type": "number",
+                    "minimum": 0.25,
+                    "maximum": 16
+                  },
+                  "say": {
+                    "description": "Narration spoken from the start of this step; the video waits for it before the next narrated step",
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "do",
+              "target"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "do": {
+                "type": "string",
+                "const": "upload"
+              },
+              "target": {
+                "type": "string",
+                "minLength": 1,
+                "description": "What a person clicks to pick files (a button, a drop zone), or the file input itself"
+              },
+              "files": {
+                "minItems": 1,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "description": "Files to choose, relative to the script"
+              },
+              "show": {
+                "type": "object",
+                "properties": {
+                  "zoom": {
+                    "description": "Zoom depth for this step, or false to disable auto-zoom",
+                    "anyOf": [
+                      {
+                        "type": "number",
+                        "minimum": 1,
+                        "maximum": 4
+                      },
+                      {
+                        "type": "boolean",
+                        "const": false
+                      }
+                    ]
+                  },
+                  "caption": {
+                    "description": "Caption shown while this step plays",
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "spotlight": {
+                    "description": "Point at the target: dim (everything else darkens, true), ring, or glow",
+                    "anyOf": [
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "string",
+                        "enum": [
+                          "dim",
+                          "ring",
+                          "glow"
+                        ]
+                      }
+                    ]
+                  },
+                  "highlight": {
+                    "description": "CSS colour for this step's click animation and spotlight",
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "click": {
+                    "description": "Click animation for this step",
+                    "type": "string",
+                    "enum": [
+                      "ripple",
+                      "pulse",
+                      "burst",
+                      "ring",
+                      "none"
+                    ]
+                  },
+                  "voice": {
+                    "description": "Changes to audio.voice for this step's line",
+                    "type": "object",
+                    "properties": {
+                      "engine": {
+                        "type": "string",
+                        "enum": [
+                          "system",
+                          "openai",
+                          "elevenlabs",
+                          "command"
+                        ],
+                        "description": "system: macOS say / Linux espeak-ng; openai and elevenlabs read OPENAI_API_KEY / ELEVENLABS_API_KEY"
+                      },
+                      "name": {
+                        "description": "Voice name (system, openai) or voice id (elevenlabs)",
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "speed": {
+                        "type": "number",
+                        "minimum": 0.5,
+                        "maximum": 2
+                      },
+                      "model": {
+                        "description": "openai: gpt-4o-mini-tts by default; elevenlabs: eleven_multilingual_v2",
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "instructions": {
+                        "description": "openai only: how to speak, e.g. \"warm and confident\"",
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "command": {
+                        "description": "command engine: shell command that reads the text on stdin and writes audio to {out}",
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  "hold": {
+                    "description": "Extra real-time ms after the step",
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 30000
+                  },
+                  "captionMs": {
+                    "description": "How long the caption stays on screen (output ms) instead of its reading time; the next caption still ends it",
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 60000
+                  },
+                  "freezeMs": {
+                    "description": "Hold a still frame this long at the end of the step (output ms, no new take)",
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 30000
+                  },
+                  "speed": {
+                    "description": "Playback speed for this step",
+                    "type": "number",
+                    "minimum": 0.25,
+                    "maximum": 16
+                  },
+                  "say": {
+                    "description": "Narration spoken from the start of this step; the video waits for it before the next narrated step",
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "do",
+              "target",
+              "files"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "do": {
+                "type": "string",
+                "const": "closeTab"
+              },
+              "show": {
+                "type": "object",
+                "properties": {
+                  "zoom": {
+                    "description": "Zoom depth for this step, or false to disable auto-zoom",
+                    "anyOf": [
+                      {
+                        "type": "number",
+                        "minimum": 1,
+                        "maximum": 4
+                      },
+                      {
+                        "type": "boolean",
+                        "const": false
+                      }
+                    ]
+                  },
+                  "caption": {
+                    "description": "Caption shown while this step plays",
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "spotlight": {
+                    "description": "Point at the target: dim (everything else darkens, true), ring, or glow",
+                    "anyOf": [
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "string",
+                        "enum": [
+                          "dim",
+                          "ring",
+                          "glow"
+                        ]
+                      }
+                    ]
+                  },
+                  "highlight": {
+                    "description": "CSS colour for this step's click animation and spotlight",
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "click": {
+                    "description": "Click animation for this step",
+                    "type": "string",
+                    "enum": [
+                      "ripple",
+                      "pulse",
+                      "burst",
+                      "ring",
+                      "none"
+                    ]
+                  },
+                  "voice": {
+                    "description": "Changes to audio.voice for this step's line",
+                    "type": "object",
+                    "properties": {
+                      "engine": {
+                        "type": "string",
+                        "enum": [
+                          "system",
+                          "openai",
+                          "elevenlabs",
+                          "command"
+                        ],
+                        "description": "system: macOS say / Linux espeak-ng; openai and elevenlabs read OPENAI_API_KEY / ELEVENLABS_API_KEY"
+                      },
+                      "name": {
+                        "description": "Voice name (system, openai) or voice id (elevenlabs)",
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "speed": {
+                        "type": "number",
+                        "minimum": 0.5,
+                        "maximum": 2
+                      },
+                      "model": {
+                        "description": "openai: gpt-4o-mini-tts by default; elevenlabs: eleven_multilingual_v2",
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "instructions": {
+                        "description": "openai only: how to speak, e.g. \"warm and confident\"",
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "command": {
+                        "description": "command engine: shell command that reads the text on stdin and writes audio to {out}",
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  "hold": {
+                    "description": "Extra real-time ms after the step",
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 30000
+                  },
+                  "captionMs": {
+                    "description": "How long the caption stays on screen (output ms) instead of its reading time; the next caption still ends it",
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 60000
+                  },
+                  "freezeMs": {
+                    "description": "Hold a still frame this long at the end of the step (output ms, no new take)",
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 30000
+                  },
+                  "speed": {
+                    "description": "Playback speed for this step",
+                    "type": "number",
+                    "minimum": 0.25,
+                    "maximum": 16
+                  },
+                  "say": {
+                    "description": "Narration spoken from the start of this step; the video waits for it before the next narrated step",
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "do"
+            ],
+            "additionalProperties": false,
+            "description": "Close the tab or popup a step opened and go back to the previous page"
           },
           {
             "type": "object",
@@ -2290,6 +2948,30 @@
                       "minLength": 1,
                       "description": "Playwright selector, e.g. role=button[name='Save'], text=Save, #id, [data-testid=x], CSS"
                     },
+                    "button": {
+                      "description": "right opens context menus; left by default",
+                      "type": "string",
+                      "enum": [
+                        "left",
+                        "right",
+                        "middle"
+                      ]
+                    },
+                    "modifiers": {
+                      "description": "Keys held during the click; ControlOrMeta is ⌘ on macOS and Ctrl elsewhere",
+                      "minItems": 1,
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": [
+                          "Alt",
+                          "Control",
+                          "ControlOrMeta",
+                          "Meta",
+                          "Shift"
+                        ]
+                      }
+                    },
                     "show": {
                       "type": "object",
                       "properties": {
@@ -2424,6 +3106,640 @@
                     "target"
                   ],
                   "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "do": {
+                      "type": "string",
+                      "const": "dblclick"
+                    },
+                    "target": {
+                      "type": "string",
+                      "minLength": 1,
+                      "description": "Playwright selector, e.g. role=button[name='Save'], text=Save, #id, [data-testid=x], CSS"
+                    },
+                    "modifiers": {
+                      "description": "Keys held during the click; ControlOrMeta is ⌘ on macOS and Ctrl elsewhere",
+                      "minItems": 1,
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": [
+                          "Alt",
+                          "Control",
+                          "ControlOrMeta",
+                          "Meta",
+                          "Shift"
+                        ]
+                      }
+                    },
+                    "show": {
+                      "type": "object",
+                      "properties": {
+                        "zoom": {
+                          "description": "Zoom depth for this step, or false to disable auto-zoom",
+                          "anyOf": [
+                            {
+                              "type": "number",
+                              "minimum": 1,
+                              "maximum": 4
+                            },
+                            {
+                              "type": "boolean",
+                              "const": false
+                            }
+                          ]
+                        },
+                        "caption": {
+                          "description": "Caption shown while this step plays",
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "spotlight": {
+                          "description": "Point at the target: dim (everything else darkens, true), ring, or glow",
+                          "anyOf": [
+                            {
+                              "type": "boolean"
+                            },
+                            {
+                              "type": "string",
+                              "enum": [
+                                "dim",
+                                "ring",
+                                "glow"
+                              ]
+                            }
+                          ]
+                        },
+                        "highlight": {
+                          "description": "CSS colour for this step's click animation and spotlight",
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "click": {
+                          "description": "Click animation for this step",
+                          "type": "string",
+                          "enum": [
+                            "ripple",
+                            "pulse",
+                            "burst",
+                            "ring",
+                            "none"
+                          ]
+                        },
+                        "voice": {
+                          "description": "Changes to audio.voice for this step's line",
+                          "type": "object",
+                          "properties": {
+                            "engine": {
+                              "type": "string",
+                              "enum": [
+                                "system",
+                                "openai",
+                                "elevenlabs",
+                                "command"
+                              ],
+                              "description": "system: macOS say / Linux espeak-ng; openai and elevenlabs read OPENAI_API_KEY / ELEVENLABS_API_KEY"
+                            },
+                            "name": {
+                              "description": "Voice name (system, openai) or voice id (elevenlabs)",
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "speed": {
+                              "type": "number",
+                              "minimum": 0.5,
+                              "maximum": 2
+                            },
+                            "model": {
+                              "description": "openai: gpt-4o-mini-tts by default; elevenlabs: eleven_multilingual_v2",
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "instructions": {
+                              "description": "openai only: how to speak, e.g. \"warm and confident\"",
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "command": {
+                              "description": "command engine: shell command that reads the text on stdin and writes audio to {out}",
+                              "type": "string",
+                              "minLength": 1
+                            }
+                          },
+                          "additionalProperties": false
+                        },
+                        "hold": {
+                          "description": "Extra real-time ms after the step",
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 30000
+                        },
+                        "captionMs": {
+                          "description": "How long the caption stays on screen (output ms) instead of its reading time; the next caption still ends it",
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 60000
+                        },
+                        "freezeMs": {
+                          "description": "Hold a still frame this long at the end of the step (output ms, no new take)",
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 30000
+                        },
+                        "speed": {
+                          "description": "Playback speed for this step",
+                          "type": "number",
+                          "minimum": 0.25,
+                          "maximum": 16
+                        },
+                        "say": {
+                          "description": "Narration spoken from the start of this step; the video waits for it before the next narrated step",
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      },
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "do",
+                    "target"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "do": {
+                      "type": "string",
+                      "const": "drag"
+                    },
+                    "target": {
+                      "type": "string",
+                      "minLength": 1,
+                      "description": "Playwright selector, e.g. role=button[name='Save'], text=Save, #id, [data-testid=x], CSS"
+                    },
+                    "to": {
+                      "description": "Drop on the centre of this element; it must be on screen with the target",
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "by": {
+                      "description": "Or move this many CSS px from the target (sliders, resizing)",
+                      "type": "object",
+                      "properties": {
+                        "x": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "y": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        }
+                      },
+                      "required": [
+                        "x",
+                        "y"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "show": {
+                      "type": "object",
+                      "properties": {
+                        "zoom": {
+                          "description": "Zoom depth for this step, or false to disable auto-zoom",
+                          "anyOf": [
+                            {
+                              "type": "number",
+                              "minimum": 1,
+                              "maximum": 4
+                            },
+                            {
+                              "type": "boolean",
+                              "const": false
+                            }
+                          ]
+                        },
+                        "caption": {
+                          "description": "Caption shown while this step plays",
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "spotlight": {
+                          "description": "Point at the target: dim (everything else darkens, true), ring, or glow",
+                          "anyOf": [
+                            {
+                              "type": "boolean"
+                            },
+                            {
+                              "type": "string",
+                              "enum": [
+                                "dim",
+                                "ring",
+                                "glow"
+                              ]
+                            }
+                          ]
+                        },
+                        "highlight": {
+                          "description": "CSS colour for this step's click animation and spotlight",
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "click": {
+                          "description": "Click animation for this step",
+                          "type": "string",
+                          "enum": [
+                            "ripple",
+                            "pulse",
+                            "burst",
+                            "ring",
+                            "none"
+                          ]
+                        },
+                        "voice": {
+                          "description": "Changes to audio.voice for this step's line",
+                          "type": "object",
+                          "properties": {
+                            "engine": {
+                              "type": "string",
+                              "enum": [
+                                "system",
+                                "openai",
+                                "elevenlabs",
+                                "command"
+                              ],
+                              "description": "system: macOS say / Linux espeak-ng; openai and elevenlabs read OPENAI_API_KEY / ELEVENLABS_API_KEY"
+                            },
+                            "name": {
+                              "description": "Voice name (system, openai) or voice id (elevenlabs)",
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "speed": {
+                              "type": "number",
+                              "minimum": 0.5,
+                              "maximum": 2
+                            },
+                            "model": {
+                              "description": "openai: gpt-4o-mini-tts by default; elevenlabs: eleven_multilingual_v2",
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "instructions": {
+                              "description": "openai only: how to speak, e.g. \"warm and confident\"",
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "command": {
+                              "description": "command engine: shell command that reads the text on stdin and writes audio to {out}",
+                              "type": "string",
+                              "minLength": 1
+                            }
+                          },
+                          "additionalProperties": false
+                        },
+                        "hold": {
+                          "description": "Extra real-time ms after the step",
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 30000
+                        },
+                        "captionMs": {
+                          "description": "How long the caption stays on screen (output ms) instead of its reading time; the next caption still ends it",
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 60000
+                        },
+                        "freezeMs": {
+                          "description": "Hold a still frame this long at the end of the step (output ms, no new take)",
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 30000
+                        },
+                        "speed": {
+                          "description": "Playback speed for this step",
+                          "type": "number",
+                          "minimum": 0.25,
+                          "maximum": 16
+                        },
+                        "say": {
+                          "description": "Narration spoken from the start of this step; the video waits for it before the next narrated step",
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      },
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "do",
+                    "target"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "do": {
+                      "type": "string",
+                      "const": "upload"
+                    },
+                    "target": {
+                      "type": "string",
+                      "minLength": 1,
+                      "description": "What a person clicks to pick files (a button, a drop zone), or the file input itself"
+                    },
+                    "files": {
+                      "minItems": 1,
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "description": "Files to choose, relative to the script"
+                    },
+                    "show": {
+                      "type": "object",
+                      "properties": {
+                        "zoom": {
+                          "description": "Zoom depth for this step, or false to disable auto-zoom",
+                          "anyOf": [
+                            {
+                              "type": "number",
+                              "minimum": 1,
+                              "maximum": 4
+                            },
+                            {
+                              "type": "boolean",
+                              "const": false
+                            }
+                          ]
+                        },
+                        "caption": {
+                          "description": "Caption shown while this step plays",
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "spotlight": {
+                          "description": "Point at the target: dim (everything else darkens, true), ring, or glow",
+                          "anyOf": [
+                            {
+                              "type": "boolean"
+                            },
+                            {
+                              "type": "string",
+                              "enum": [
+                                "dim",
+                                "ring",
+                                "glow"
+                              ]
+                            }
+                          ]
+                        },
+                        "highlight": {
+                          "description": "CSS colour for this step's click animation and spotlight",
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "click": {
+                          "description": "Click animation for this step",
+                          "type": "string",
+                          "enum": [
+                            "ripple",
+                            "pulse",
+                            "burst",
+                            "ring",
+                            "none"
+                          ]
+                        },
+                        "voice": {
+                          "description": "Changes to audio.voice for this step's line",
+                          "type": "object",
+                          "properties": {
+                            "engine": {
+                              "type": "string",
+                              "enum": [
+                                "system",
+                                "openai",
+                                "elevenlabs",
+                                "command"
+                              ],
+                              "description": "system: macOS say / Linux espeak-ng; openai and elevenlabs read OPENAI_API_KEY / ELEVENLABS_API_KEY"
+                            },
+                            "name": {
+                              "description": "Voice name (system, openai) or voice id (elevenlabs)",
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "speed": {
+                              "type": "number",
+                              "minimum": 0.5,
+                              "maximum": 2
+                            },
+                            "model": {
+                              "description": "openai: gpt-4o-mini-tts by default; elevenlabs: eleven_multilingual_v2",
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "instructions": {
+                              "description": "openai only: how to speak, e.g. \"warm and confident\"",
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "command": {
+                              "description": "command engine: shell command that reads the text on stdin and writes audio to {out}",
+                              "type": "string",
+                              "minLength": 1
+                            }
+                          },
+                          "additionalProperties": false
+                        },
+                        "hold": {
+                          "description": "Extra real-time ms after the step",
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 30000
+                        },
+                        "captionMs": {
+                          "description": "How long the caption stays on screen (output ms) instead of its reading time; the next caption still ends it",
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 60000
+                        },
+                        "freezeMs": {
+                          "description": "Hold a still frame this long at the end of the step (output ms, no new take)",
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 30000
+                        },
+                        "speed": {
+                          "description": "Playback speed for this step",
+                          "type": "number",
+                          "minimum": 0.25,
+                          "maximum": 16
+                        },
+                        "say": {
+                          "description": "Narration spoken from the start of this step; the video waits for it before the next narrated step",
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      },
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "do",
+                    "target",
+                    "files"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "do": {
+                      "type": "string",
+                      "const": "closeTab"
+                    },
+                    "show": {
+                      "type": "object",
+                      "properties": {
+                        "zoom": {
+                          "description": "Zoom depth for this step, or false to disable auto-zoom",
+                          "anyOf": [
+                            {
+                              "type": "number",
+                              "minimum": 1,
+                              "maximum": 4
+                            },
+                            {
+                              "type": "boolean",
+                              "const": false
+                            }
+                          ]
+                        },
+                        "caption": {
+                          "description": "Caption shown while this step plays",
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "spotlight": {
+                          "description": "Point at the target: dim (everything else darkens, true), ring, or glow",
+                          "anyOf": [
+                            {
+                              "type": "boolean"
+                            },
+                            {
+                              "type": "string",
+                              "enum": [
+                                "dim",
+                                "ring",
+                                "glow"
+                              ]
+                            }
+                          ]
+                        },
+                        "highlight": {
+                          "description": "CSS colour for this step's click animation and spotlight",
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "click": {
+                          "description": "Click animation for this step",
+                          "type": "string",
+                          "enum": [
+                            "ripple",
+                            "pulse",
+                            "burst",
+                            "ring",
+                            "none"
+                          ]
+                        },
+                        "voice": {
+                          "description": "Changes to audio.voice for this step's line",
+                          "type": "object",
+                          "properties": {
+                            "engine": {
+                              "type": "string",
+                              "enum": [
+                                "system",
+                                "openai",
+                                "elevenlabs",
+                                "command"
+                              ],
+                              "description": "system: macOS say / Linux espeak-ng; openai and elevenlabs read OPENAI_API_KEY / ELEVENLABS_API_KEY"
+                            },
+                            "name": {
+                              "description": "Voice name (system, openai) or voice id (elevenlabs)",
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "speed": {
+                              "type": "number",
+                              "minimum": 0.5,
+                              "maximum": 2
+                            },
+                            "model": {
+                              "description": "openai: gpt-4o-mini-tts by default; elevenlabs: eleven_multilingual_v2",
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "instructions": {
+                              "description": "openai only: how to speak, e.g. \"warm and confident\"",
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "command": {
+                              "description": "command engine: shell command that reads the text on stdin and writes audio to {out}",
+                              "type": "string",
+                              "minLength": 1
+                            }
+                          },
+                          "additionalProperties": false
+                        },
+                        "hold": {
+                          "description": "Extra real-time ms after the step",
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 30000
+                        },
+                        "captionMs": {
+                          "description": "How long the caption stays on screen (output ms) instead of its reading time; the next caption still ends it",
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 60000
+                        },
+                        "freezeMs": {
+                          "description": "Hold a still frame this long at the end of the step (output ms, no new take)",
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 30000
+                        },
+                        "speed": {
+                          "description": "Playback speed for this step",
+                          "type": "number",
+                          "minimum": 0.25,
+                          "maximum": 16
+                        },
+                        "say": {
+                          "description": "Narration spoken from the start of this step; the video waits for it before the next narrated step",
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      },
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "do"
+                  ],
+                  "additionalProperties": false,
+                  "description": "Close the tab or popup a step opened and go back to the previous page"
                 },
                 {
                   "type": "object",

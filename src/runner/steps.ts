@@ -1,3 +1,5 @@
+import { existsSync } from 'node:fs';
+import path from 'node:path';
 import type { Locator, Page } from 'playwright';
 import type { Step } from '../script/schema';
 import { clamp, easeInOutCubic } from '../timeline/math';
@@ -16,6 +18,8 @@ export interface StepContext {
   cursor: Pt;
   /** Relative `goto` URLs resolve against this (app.url); the current page when absent. */
   baseUrl?: string;
+  /** `upload` files resolve against this (the script's folder); the working directory when absent. */
+  dir?: string;
 }
 
 export interface StepWhere {
@@ -26,6 +30,10 @@ export interface StepWhere {
 export const STEP_TIMEOUT_MS = 10_000;
 export const WAIT_TIMEOUT_MS = 15_000;
 export const BEAT_MS = 450;
+/** A double click is drawn as two clicks this far apart. */
+export const DOUBLE_CLICK_GAP_MS = 120;
+/** How long a clicked upload target has to open a file chooser. */
+export const FILE_CHOOSER_MS = 5000;
 const NET_QUIET_MS = 300;
 const NET_CAP_MS = 3000;
 const IDLE_GRACE_MS = 300;
@@ -42,6 +50,8 @@ export class StepError extends Error {
 }
 
 export function describeStep(step: Step): string {
+  if (step.do === 'drag') return `drag ${step.target} → ${step.to ?? `${step.by!.x},${step.by!.y} px`}`;
+  if (step.do === 'upload') return `upload ${step.target} (${step.files.length} file${step.files.length === 1 ? '' : 's'})`;
   if ('target' in step && step.target) return `${step.do} ${step.target}`;
   if (step.do === 'wait') return step.for ? `wait ${step.for}` : `wait ${step.ms} ms`;
   if (step.do === 'goto') return `goto ${step.url}`;
@@ -62,6 +72,27 @@ export async function runStep(ctx: StepContext, step: Step, where: StepWhere): P
 }
 
 const centre = (r: Rect): Pt => ({ x: Math.round(r.x + r.width / 2), y: Math.round(r.y + r.height / 2) });
+const union = (a: Rect, b: Rect): Rect => {
+  const x = Math.min(a.x, b.x);
+  const y = Math.min(a.y, b.y);
+  return { x, y, width: Math.max(a.x + a.width, b.x + b.width) - x, height: Math.max(a.y + a.height, b.y + b.height) - y };
+};
+
+/** Bring the cursor to a target (scrolling it into view) and follow it if the page shifted meanwhile. */
+async function reach(ctx: StepContext, selector: string) {
+  const r = await resolve(ctx, selector, false);
+  let box = r.box;
+  let point = centre(box);
+  await travel(ctx, point, r.cursor);
+  // The page may have shifted during travel (late layout, animation): follow the element.
+  const now = await r.loc.boundingBox();
+  if (now && (Math.abs(now.x - box.x) > 2 || Math.abs(now.y - box.y) > 2)) {
+    box = now;
+    point = centre(now);
+    await travel(ctx, point, r.cursor);
+  }
+  return { loc: r.loc, box, point, cursor: r.cursor };
+}
 
 async function perform(ctx: StepContext, step: Step, where: StepWhere): Promise<void> {
   const { page, log } = ctx;
@@ -74,23 +105,20 @@ async function perform(ctx: StepContext, step: Step, where: StepWhere): Promise<
       await page.goto(new URL(step.url, ctx.baseUrl ?? page.url()).href, { waitUntil: 'load', timeout: WAIT_TIMEOUT_MS });
       break;
     case 'click':
+    case 'dblclick':
     case 'hover':
     case 'select':
     case 'type': {
-      const r = await resolve(ctx, step.target, false);
+      const r = await reach(ctx, step.target);
       target = r.box;
-      let point = centre(r.box);
-      await travel(ctx, point, r.cursor);
-      // The page may have shifted during travel (late layout, animation): follow the element.
-      const now = await r.loc.boundingBox();
-      if (now && (Math.abs(now.x - target.x) > 2 || Math.abs(now.y - target.y) > 2)) {
-        target = now;
-        point = centre(now);
-        await travel(ctx, point, r.cursor);
-      }
+      const point = r.point;
       actionMs = log.now();
       if (step.do !== 'hover') log.clicks.push({ tMs: actionMs, ...point });
-      if (step.do === 'click') await r.loc.click({ timeout: STEP_TIMEOUT_MS });
+      if (step.do === 'click') await r.loc.click({ timeout: STEP_TIMEOUT_MS, button: step.button, modifiers: step.modifiers });
+      if (step.do === 'dblclick') {
+        log.clicks.push({ tMs: actionMs + DOUBLE_CLICK_GAP_MS, ...point });
+        await r.loc.dblclick({ timeout: STEP_TIMEOUT_MS, modifiers: step.modifiers });
+      }
       if (step.do === 'select') await r.loc.selectOption(step.value, { timeout: STEP_TIMEOUT_MS });
       if (step.do === 'type') {
         await r.loc.click({ timeout: STEP_TIMEOUT_MS });
@@ -99,7 +127,61 @@ async function perform(ctx: StepContext, step: Step, where: StepWhere): Promise<
       }
       break;
     }
+    case 'drag': {
+      const r = await reach(ctx, step.target);
+      let end: Pt;
+      let toBox: Rect;
+      if (step.to) {
+        // Not scrolled: scrolling to the drop would move the target the cursor is about to grab.
+        const to = page.locator(step.to);
+        await to.waitFor({ state: 'visible', timeout: STEP_TIMEOUT_MS });
+        toBox = await stableBox(to);
+        end = centre(toBox);
+        const view = page.viewportSize();
+        if (view && (end.x < 0 || end.y < 0 || end.x > view.width || end.y > view.height)) {
+          throw new Error(`${step.to} is off screen; both ends of a drag must be on screen together (scroll first, or drag "by" an offset)`);
+        }
+      } else {
+        end = { x: r.point.x + step.by!.x, y: r.point.y + step.by!.y };
+        toBox = { x: r.box.x + step.by!.x, y: r.box.y + step.by!.y, width: r.box.width, height: r.box.height };
+      }
+      target = union(r.box, toBox);
+      actionMs = log.now();
+      log.clicks.push({ tMs: actionMs, ...r.point });
+      await page.mouse.down();
+      const heldMs = log.now();
+      await travel(ctx, end, r.cursor, true);
+      await page.mouse.up();
+      log.drags.push({ startMs: heldMs, endMs: log.now() });
+      break;
+    }
+    case 'upload': {
+      const files = step.files.map((f) => path.resolve(ctx.dir ?? process.cwd(), f));
+      const missing = files.find((f) => !existsSync(f));
+      if (missing) throw new Error(`no file at ${missing}`);
+      const loc = page.locator(step.target);
+      await loc.waitFor({ state: 'attached', timeout: STEP_TIMEOUT_MS });
+      const isInput = await loc.evaluate((el) => el instanceof HTMLInputElement && el.type === 'file');
+      // A hidden file input has nothing to point at: fill it directly.
+      if (isInput && !(await loc.isVisible())) {
+        await loc.setInputFiles(files);
+        break;
+      }
+      const r = await reach(ctx, step.target);
+      target = r.box;
+      actionMs = log.now();
+      log.clicks.push({ tMs: actionMs, ...r.point });
+      const chooser = page.waitForEvent('filechooser', { timeout: FILE_CHOOSER_MS }).catch(() => null);
+      await r.loc.click({ timeout: STEP_TIMEOUT_MS });
+      const picked = await chooser;
+      if (!picked) {
+        throw new Error(`clicking ${step.target} opened no file chooser; target the button or drop zone a person clicks to pick files, or the file input`);
+      }
+      await picked.setFiles(files);
+      break;
+    }
     case 'press':
+      if (ctx.mode === 'record') log.keys.push(log.now());
       await page.keyboard.press(step.key);
       break;
     case 'scroll':
@@ -163,10 +245,11 @@ async function stableBox(loc: Locator): Promise<Rect> {
   return prev;
 }
 
-async function travel(ctx: StepContext, to: Pt, cursor: CursorKind): Promise<void> {
+/** Move the cursor to `to`; `held` (a drag) sends a stream of moves in check mode too, which drag libraries need. */
+async function travel(ctx: StepContext, to: Pt, cursor: CursorKind, held = false): Promise<void> {
   const from = ctx.cursor;
   if (ctx.mode === 'check') {
-    await ctx.page.mouse.move(to.x, to.y);
+    await ctx.page.mouse.move(to.x, to.y, { steps: held ? 12 : 1 });
     ctx.cursor = to;
     return;
   }

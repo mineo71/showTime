@@ -1,0 +1,120 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Actions</title>
+    <style>
+      body { margin: 0; font: 15px system-ui, sans-serif; background: #f8fafc; }
+      main { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; padding: 16px; }
+      section { background: #fff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px; min-height: 140px; position: relative; }
+      #rows li { padding: 4px 8px; cursor: pointer; user-select: none; }
+      #rows li.selected { background: #c7d2fe; }
+      #menu { position: fixed; display: none; background: #0f172a; color: #fff; padding: 8px 12px; border-radius: 6px; }
+      .column { min-height: 60px; border: 2px dashed #cbd5e1; border-radius: 8px; padding: 6px; margin: 6px 0; }
+      #card { background: #fde68a; padding: 6px 10px; border-radius: 6px; cursor: grab; width: 120px; }
+      #track { position: relative; height: 8px; background: #e2e8f0; border-radius: 4px; margin: 24px 0; width: 300px; }
+      #thumb { position: absolute; left: 0; top: -8px; width: 24px; height: 24px; border-radius: 50%; background: #6366f1; touch-action: none; }
+      #far { position: absolute; top: 2600px; left: 16px; width: 200px; height: 60px; border: 2px dashed #94a3b8; }
+      #palette { display: none; position: fixed; top: 80px; left: 50%; transform: translateX(-50%); background: #0f172a; color: #fff; padding: 16px 24px; border-radius: 10px; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <section>
+        <h3>Double click</h3>
+        <p id="dbl">Double-click me</p>
+        <h3>Rows</h3>
+        <ul id="rows">
+          <li>Row 1</li>
+          <li>Row 2</li>
+          <li>Row 3</li>
+          <li>Row 4</li>
+        </ul>
+        <div id="menu">Rename · Delete</div>
+      </section>
+      <section>
+        <h3>Board</h3>
+        <div class="column" id="todo"><div id="card" draggable="true">Card 7</div></div>
+        <div class="column" id="done"></div>
+        <p id="done-count">done: 0</p>
+        <div id="track"><div id="thumb"></div></div>
+        <p id="value">value: 0</p>
+      </section>
+      <section>
+        <h3>Upload</h3>
+        <button id="pick">Upload files</button>
+        <input type="file" id="hidden-input" multiple style="display: none" />
+        <button id="nothing">Does nothing</button>
+        <p id="files">no files</p>
+        <h3>Pages</h3>
+        <button id="open-popup">Open popup</button>
+        <a id="new-tab" href="/tab.html" target="_blank">Docs in a new tab</a>
+        <button id="oauth">Sign in with Example</button>
+        <p id="status">signed out</p>
+      </section>
+    </main>
+    <div id="palette">Command palette</div>
+    <div id="far">Far away</div>
+    <script>
+      const $ = (s) => document.querySelector(s);
+      $('#dbl').addEventListener('dblclick', () => ($('#dbl').textContent = 'double'));
+
+      // Rows: click selects one, Shift+click selects a range, right click opens a menu.
+      const rows = [...document.querySelectorAll('#rows li')];
+      let anchor = 0;
+      rows.forEach((row, i) => {
+        row.addEventListener('click', (e) => {
+          if (e.shiftKey) {
+            const [a, b] = [Math.min(anchor, i), Math.max(anchor, i)];
+            rows.forEach((r, j) => r.classList.toggle('selected', j >= a && j <= b));
+          } else {
+            anchor = i;
+            rows.forEach((r, j) => r.classList.toggle('selected', j === i));
+          }
+        });
+        row.addEventListener('contextmenu', (e) => {
+          e.preventDefault();
+          Object.assign($('#menu').style, { display: 'block', left: `${e.clientX}px`, top: `${e.clientY}px` });
+        });
+      });
+
+      // HTML5 drag and drop.
+      $('#card').addEventListener('dragstart', (e) => e.dataTransfer.setData('text/plain', 'card'));
+      $('#done').addEventListener('dragover', (e) => e.preventDefault());
+      $('#done').addEventListener('drop', (e) => {
+        e.preventDefault();
+        $('#done').appendChild($('#card'));
+        $('#done-count').textContent = `done: ${$('#done').children.length}`;
+      });
+
+      // A pointer-driven slider, like most component libraries build them.
+      let from = null;
+      $('#thumb').addEventListener('pointerdown', (e) => {
+        $('#thumb').setPointerCapture(e.pointerId);
+        from = { x: e.clientX, left: $('#thumb').offsetLeft };
+      });
+      $('#thumb').addEventListener('pointermove', (e) => {
+        if (!from) return;
+        const left = Math.max(0, Math.min(276, from.left + e.clientX - from.x));
+        $('#thumb').style.left = `${left}px`;
+        $('#value').textContent = `value: ${Math.round(left)}`;
+      });
+      $('#thumb').addEventListener('pointerup', () => (from = null));
+
+      // A styled button that opens a hidden file input.
+      $('#pick').addEventListener('click', () => $('#hidden-input').click());
+      $('#hidden-input').addEventListener('change', (e) => {
+        $('#files').textContent = [...e.target.files].map((f) => f.name).join(', ');
+      });
+
+      $('#open-popup').addEventListener('click', () => window.open('/popup.html', 'popup', 'width=600,height=400'));
+      $('#oauth').addEventListener('click', () => window.open('/oauth.html', 'oauth', 'width=500,height=500'));
+      window.addEventListener('message', (e) => ($('#status').textContent = String(e.data)));
+
+      document.addEventListener('keydown', (e) => {
+        if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') $('#palette').style.display = 'block';
+        if (e.key === 'Escape') $('#palette').style.display = 'none';
+      });
+    </script>
+  </body>
+</html>
