@@ -80,3 +80,21 @@ describe('viewLayout', () => {
     });
   });
 });
+
+describe('viewLayout with a band reserved under the window', () => {
+  it('shrinks and lifts the window in 16:9 and 1:1, leaving the band free', () => {
+    for (const aspect of ['16:9', '1:1'] as const) {
+      const out = OUTPUT_SIZES[aspect];
+      const plain = viewLayout(out, stage, 0.06, BROWSER_BAR, aspect);
+      const band = 119;
+      const v = viewLayout(out, stage, 0.06, BROWSER_BAR, aspect, band);
+      expect(v.height).toBeLessThan(plain.height);
+      expect(v.y + v.height).toBeLessThanOrEqual(out.height - band);
+    }
+  });
+
+  it('ignores the band in 9:16, which has bands already', () => {
+    const out = OUTPUT_SIZES['9:16'];
+    expect(viewLayout(out, stage, 0.06, BROWSER_BAR, '9:16', 119)).toEqual(viewLayout(out, stage, 0.06, BROWSER_BAR, '9:16'));
+  });
+});

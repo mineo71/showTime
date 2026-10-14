@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { introFrames, outroFrames, qaShots, segmentPlan, sourceMsAtFrame, stepFrames, totalFrames, videoEndFrame } from '../../src/timeline/frames';
+import { introFrames, outroFrames, qaShots, sceneRange, segmentPlan, sourceMsAtFrame, stepFrames, totalFrames, videoEndFrame } from '../../src/timeline/frames';
 import { windowLayout } from '../../src/timeline/layout';
 import type { StepEvent, Timeline } from '../../src/timeline/types';
 
@@ -28,6 +28,8 @@ const timeline = (intro: boolean, outro = false): Timeline =>
     narration: [],
     subtitles: [],
     subtitlesBurned: false,
+    subtitleBand: 0,
+    clips: [],
     sounds: [],
     music: null,
     audio: null,
@@ -139,5 +141,23 @@ describe('stepFrames', () => {
       { where: 'a#1', startFrame: 66, endFrame: 66 + 48 },
       { where: 'a#2', startFrame: 66 + 48, endFrame: 66 + 102 },
     ]);
+  });
+});
+
+describe('sceneRange', () => {
+  const t = timeline(true);
+  const steps: StepEvent[] = [
+    { sceneId: 'a', index: 0, do: 'click', startMs: 0, actionMs: 1000, endMs: 1100, settledMs: 1600 },
+    { sceneId: 'b', index: 0, do: 'wait', startMs: 1600, actionMs: 1600, endMs: 5600, settledMs: 6400 },
+    { sceneId: 'c', index: 0, do: 'click', startMs: 6400, actionMs: 7000, endMs: 7100, settledMs: 8000 },
+  ];
+  it('runs from the first chosen scene to the end of the last, cards left out', () => {
+    expect(sceneRange(t, steps, ['b'])).toEqual({ from: 66 + 48, to: stepFrames(t, steps)[2].startFrame - 1 });
+    expect(sceneRange(t, steps, ['a'])).toEqual({ from: 66, to: 66 + 48 - 1 });
+    expect(sceneRange(t, steps, ['c'])).toEqual({ from: stepFrames(t, steps)[2].startFrame, to: videoEndFrame(t) - 1 });
+    expect(sceneRange(t, steps, ['c', 'a'])).toEqual({ from: 66, to: videoEndFrame(t) - 1 });
+  });
+  it('names the scenes there are when one is unknown', () => {
+    expect(() => sceneRange(t, steps, ['zz'])).toThrow(/--scenes: no scene "zz" \(scenes: a, b, c\)/);
   });
 });

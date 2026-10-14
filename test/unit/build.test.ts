@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { parseScript } from '../../src/script/schema';
 import { buildTimeline } from '../../src/timeline/build';
 import { NARRATION_GAP_MS } from '../../src/timeline/narration';
+import { sourceToOutput } from '../../src/timeline/timemap';
 import type { TakeEvents } from '../../src/timeline/types';
 
 const script = (style: Record<string, unknown> = {}, overrides: Record<string, unknown> = {}) =>
@@ -68,8 +69,16 @@ describe('buildTimeline', () => {
     ]);
   });
 
-  it('builds captions with a minimum duration', () => {
-    expect(t.captions).toEqual([{ startMs: 800, endMs: 2300, text: 'Open it', position: 'bottom' }]);
+  it('keeps a caption up for its reading time in output time, even over a sped-up wait', () => {
+    expect(t.captions).toHaveLength(1);
+    const c = t.captions[0];
+    expect(c).toMatchObject({ startMs: 800, text: 'Open it', position: 'bottom' });
+    // 1.5 s of output: 1.1 s at 1× up to the wait, the rest at 4000/600× over it.
+    expect(sourceToOutput(t.segments, c.endMs) - sourceToOutput(t.segments, c.startMs)).toBeCloseTo(1500, 0);
+    const long = script();
+    long.scenes[0].steps[0] = { do: 'click', target: '#a', show: { caption: 'Every invoice is paid within two days now' } };
+    const lc = buildTimeline(long, events).captions[0];
+    expect(sourceToOutput(t.segments, lc.endMs) - sourceToOutput(t.segments, lc.startMs)).toBeCloseTo(500 + 250 * 8, 0);
   });
 
   it('ends a caption when the next one starts, so they never overlap', () => {
@@ -78,7 +87,7 @@ describe('buildTimeline', () => {
     const c = buildTimeline(s, events).captions;
     expect(c.map((x) => [x.startMs, x.endMs, x.text])).toEqual([
       [800, 1900, 'Open it'],
-      [1900, 6400, 'Loading'],
+      [1900, 6800, 'Loading'],
     ]);
   });
 
@@ -189,7 +198,11 @@ describe('buildTimeline: sound', () => {
     expect(file.captions[0].position).toBe('bottom');
     const burn = buildTimeline(voiced({ subtitles: 'burn' }), events, { voices });
     expect(burn.subtitlesBurned).toBe(true);
-    expect(burn.captions[0].position).toBe('top');
+    // The subtitles get a band of their own under the window; captions keep their usual place.
+    expect(burn.subtitleBand).toBe(Math.round(1080 * 0.11));
+    expect(burn.captions[0].position).toBe('bottom');
+    expect(file.subtitleBand).toBe(0);
+    expect(buildTimeline(voiced({ subtitles: 'burn' }), events, { voices, aspect: '9:16' }).subtitleBand).toBe(0);
     expect(buildTimeline(voiced({ subtitles: 'off' }), events, { voices }).subtitles).toEqual([]);
   });
 
@@ -245,5 +258,16 @@ describe('buildTimeline: aspect ratios', () => {
   it('puts 9:16 captions in the bottom band whatever the target, and on top when subtitles are burned', () => {
     const low = { ...events, steps: events.steps.map((e, i) => (i === 0 ? { ...e, target: { x: 600, y: 830, width: 200, height: 40 } } : e)) };
     expect(buildTimeline(script(), low, { aspect: '9:16' }).captions[0].position).toBe('bottom');
+  });
+});
+
+describe('buildTimeline: clips', () => {
+  it('places each clip at its step start plus offset, in output time', () => {
+    const s = script({}, { audio: { clips: [{ file: '/a.wav', at: 's#3', offsetMs: 250, volume: 0.5 }, { file: '/b.wav', at: 's#1' }] } });
+    const t = buildTimeline(s, events);
+    expect(t.clips).toEqual([
+      { index: 0, atMs: Math.round(sourceToOutput(t.segments, 6400)) + 250, volume: 0.5 },
+      { index: 1, atMs: 800, volume: 1 },
+    ]);
   });
 });

@@ -78,3 +78,20 @@ export function stepFrames(t: Timeline, steps: StepEvent[]): { where: string; st
   const at = (ms: number) => Math.min(last, intro + toFrames(sourceToOutput(t.segments, ms), t.fps));
   return steps.map((s) => ({ where: stepKey(s.sceneId, s.index), startFrame: at(s.startMs), endFrame: at(s.settledMs) }));
 }
+
+/**
+ * Composition frames from the first chosen scene's first step to the end of the last chosen scene
+ * (the next scene's start, or the end of the video), inclusive. The intro and outro are left out.
+ */
+export function sceneRange(t: Timeline, steps: StepEvent[], scenes: string[]): { from: number; to: number } {
+  const order = [...new Set(steps.map((s) => s.sceneId))];
+  for (const id of scenes) {
+    if (!order.includes(id)) throw new Error(`--scenes: no scene "${id}" (scenes: ${order.join(', ')})`);
+  }
+  const chosen = order.map((id, i) => (scenes.includes(id) ? i : -1)).filter((i) => i >= 0);
+  const first = order[Math.min(...chosen)];
+  const afterLast = order[Math.max(...chosen) + 1];
+  const frames = stepFrames(t, steps);
+  const startOf = (id: string) => frames[steps.findIndex((s) => s.sceneId === id)].startFrame;
+  return { from: startOf(first), to: afterLast ? startOf(afterLast) - 1 : videoEndFrame(t) - 1 };
+}

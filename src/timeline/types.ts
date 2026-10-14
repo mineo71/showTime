@@ -144,8 +144,12 @@ export interface Timeline {
   spotlights: Spotlight[];
   narration: NarrationLine[];
   subtitles: Cue[];
-  /** Subtitles drawn on the video (captions then sit at the top). */
+  /** Subtitles drawn on the video. */
   subtitlesBurned: boolean;
+  /** Height (px) of the band under the window that burned subtitles sit in; 0 without one (9:16 has bands anyway). */
+  subtitleBand: number;
+  /** `audio.clips` placed in output ms from the video start; `index` points into the script's list. */
+  clips: { index: number; atMs: number; volume: number }[];
   sounds: Sound[];
   music: { volume: number } | null;
   /** The mixed soundtrack, relative to the renderer's public folder; set by the pipeline. */

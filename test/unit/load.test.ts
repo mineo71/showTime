@@ -148,6 +148,8 @@ describe('audio paths and brand audio', () => {
     expect((await loadScript(file)).script.audio.clips[0].file).toBe(join(root, 'demos', 'own.mp3'));
     await writeFile(file, JSON.stringify({ ...base, audio: { clips: [{ file: 'own.mp3', at: 'a#1' }, { file: 'gone.wav', at: 'a#1' }] } }));
     await expect(loadScript(file)).rejects.toThrow(/audio\.clips\[1\]\.file not found: .*gone\.wav/);
+    await writeFile(file, JSON.stringify({ ...base, audio: { clips: [{ file: 'own.mp3', at: 'b#7' }] } }));
+    await expect(loadScript(file)).rejects.toThrow(/audio\.clips\[0\]\.at: no step b#7/);
   });
 
   it('reports a missing music file', async () => {

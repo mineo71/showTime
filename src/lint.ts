@@ -1,5 +1,6 @@
 import type { Script, Step } from './script/schema';
 import { stepKey } from './timeline/narration';
+import { readingMs, words } from './timeline/reading';
 import { outputDurationMs, sourceToOutput } from './timeline/timemap';
 import type { StepEvent, Timeline } from './timeline/types';
 
@@ -26,10 +27,8 @@ const STRETCH_WARN_MS = 3000;
 const ACTIONS = new Set<Step['do']>(['click', 'press', 'type', 'select']);
 const TARGETED = new Set<Step['do']>(['click', 'type', 'hover', 'select']);
 
-const words = (text: string) => text.trim().split(/\s+/).filter(Boolean).length;
 const hasTarget = (s: Step) => TARGETED.has(s.do) || (s.do === 'scroll' && s.target !== undefined);
-/** Reading time for a caption: half a second to notice it, a quarter per word, never under 1.2 s. */
-export const readingMs = (text: string) => Math.max(1200, 500 + 250 * words(text));
+export { readingMs };
 
 /** Checks that need only the script. */
 export function lintScript(script: Script): Issue[] {

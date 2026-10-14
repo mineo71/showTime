@@ -36,13 +36,15 @@ const Picture: FC<ShowtimeVideoProps> = ({ timeline: t, assetBase }) => {
   if (t.outro && frame >= end) return <Outro timeline={t} frame={frame - end} />;
 
   const src = sourceMsAtFrame(t, frame) ?? 0;
-  const win = viewLayout(t.output, t.stage, t.style.padding, t.chrome ? BROWSER_BAR : 0, t.aspect);
+  const win = viewLayout(t.output, t.stage, t.style.padding, t.chrome ? BROWSER_BAR : 0, t.aspect, t.subtitleBand);
   const cam = cameraAt(t.camera, src);
   const { content } = win;
   const k = content.width / t.stage.width;
   const H = t.output.height;
-  // 9:16 puts captions and subtitles in the bands above and below the window; the others overlay it.
+  // 9:16 puts captions and subtitles in the bands above and below the window; the others overlay it,
+  // except burned subtitles, which get a band of their own under the window.
   const bands = t.aspect === '9:16';
+  const subtitleBelow = bands || t.subtitleBand > 0;
   const above = { top: 0, height: win.y - win.bar, alignItems: 'center' } as const;
   const below = { top: win.y + win.height, bottom: 0, alignItems: 'center' } as const;
   // After an intro card the window rises into place instead of cutting in.
@@ -121,13 +123,13 @@ const Picture: FC<ShowtimeVideoProps> = ({ timeline: t, assetBase }) => {
           timeline={t}
           srcMs={src}
           top={bands ? above : { top: win.y + Math.round(H * 0.03) }}
-          bottom={bands ? below : { bottom: Math.round(H * 0.075) }}
+          bottom={bands ? below : { bottom: Math.max(Math.round(H * 0.075), H - (win.y + win.height) + Math.round(H * 0.03)) }}
           fontSize={bands ? 46 : 36}
         />
         <Subtitles
           timeline={t}
           videoMs={((frame - intro) * 1000) / t.fps}
-          place={bands ? below : { bottom: Math.round(H * 0.06) }}
+          place={subtitleBelow ? below : { bottom: Math.round(H * 0.06) }}
           fontSize={bands ? 40 : 34}
         />
       </div>

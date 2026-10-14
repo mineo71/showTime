@@ -56,16 +56,19 @@ export function viewLayout(
   padding: number,
   bar = 0,
   aspect: Aspect = '16:9',
+  /** px kept free under the window (a subtitle band); 9:16 ignores it */
+  reserveBottom = 0,
 ): View {
+  const reserve = aspect === '9:16' ? 0 : reserveBottom;
   if (aspect === '16:9') {
-    const w = windowLayout(output, stage, padding, bar);
+    const w = windowLayout({ width: output.width, height: output.height - reserve }, stage, padding, bar);
     return { ...w, content: { width: w.width, height: w.height } };
   }
   const width = Math.round(output.width * (1 - 2 * padding));
-  const total = aspect === '9:16' ? Math.round(width * PORTRAIT_WINDOW) : Math.round(output.height * (1 - 2 * padding));
+  const total = aspect === '9:16' ? Math.round(width * PORTRAIT_WINDOW) : Math.round(output.height * (1 - 2 * padding) - reserve);
   const k = Math.max(width / stage.width, total / (stage.height + bar));
   const barPx = Math.round(bar * k);
-  const top = Math.round((output.height - total) / 2);
+  const top = Math.round((output.height - reserve - total) / 2);
   return {
     x: Math.round((output.width - width) / 2),
     y: top + barPx,

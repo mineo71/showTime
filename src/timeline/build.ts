@@ -5,7 +5,8 @@ import { clamp } from './math';
 import { RIPPLE_MS } from './cursor';
 import { CAPTION_FADE_MS, SPOTLIGHT_FADE_MS } from './fades';
 import { soundEvents, stepKey, subtitleCues, withNarration, type Span, type Typing } from './narration';
-import { buildSegments, sourceToOutput, type SpeedSpan } from './timemap';
+import { readingMs } from './reading';
+import { buildSegments, outputToSource, sourceToOutput, type SpeedSpan } from './timemap';
 import type { Aspect, CameraKey, Caption, NarrationLine, Rect, Spotlight, StepEvent, TakeEvents, Timeline } from './types';
 
 export const AUTO_SPEED_MIN_IDLE_MS = 800;
@@ -16,6 +17,8 @@ export const SPOTLIGHT_PAD = 8;
 export const OUTRO_MS = 2600;
 /** Bottom captions own the output below this fraction of its height. */
 export const CAPTION_BAND = 0.78;
+/** Burned subtitles get a band of this fraction of the output height under the window (16:9, 1:1). */
+export const SUBTITLE_BAND = 0.11;
 
 const ZOOMABLE = new Set<Step['do']>(['click', 'type', 'select', 'hover']);
 
@@ -55,7 +58,8 @@ function captionPosition(
   output: { width: number; height: number },
 ): Caption['position'] {
   if (!target) return 'bottom';
-  const band = output.height * CAPTION_BAND;
+  // Bottom captions sit just above the window's bottom edge (above the subtitle band when there is one).
+  const band = Math.min(output.height * CAPTION_BAND, win.y + win.height - output.height * 0.15);
   const low = [c.startMs, (c.startMs + c.endMs) / 2, c.endMs].some((tMs) => {
     const r = projectRect(target, cameraAt(camera, tMs), stage, win);
     return r.y + r.height > band;
@@ -70,12 +74,20 @@ export function buildTimeline(script: Script, ev: TakeEvents, opts: BuildOptions
   const stage = ev.viewport;
   const aspect = opts.aspect ?? '16:9';
   const output = OUTPUT_SIZES[aspect];
-  const win = viewLayout(output, stage, style.padding, style.chrome === 'browser' ? BROWSER_BAR : 0, aspect);
+  const pairs = ev.steps.map((e) => ({ e, step: stepOf(script, e) }));
+  const lines = pairs.flatMap(({ e, step }) => {
+    const where = stepKey(e.sceneId, e.index);
+    const durationMs = opts.voices?.[where];
+    return step.show?.say && durationMs !== undefined ? [{ where, text: step.show.say, startMs: e.startMs, durationMs }] : [];
+  });
+  const subtitlesBurned = script.audio.subtitles === 'burn' && lines.length > 0;
+  // Burned subtitles get their own band under the window, so they never cover the app (9:16 has bands already).
+  const subtitleBand = subtitlesBurned && aspect !== '9:16' ? Math.round(output.height * SUBTITLE_BAND) : 0;
+  const win = viewLayout(output, stage, style.padding, style.chrome === 'browser' ? BROWSER_BAR : 0, aspect, subtitleBand);
   const visible = visibleFraction(win);
   // Cropped formats follow every target; a zoom only adds what the crop doesn't already magnify.
   const crop = aspect !== '16:9';
   const cropDepth = Math.min(visible.x, visible.y);
-  const pairs = ev.steps.map((e) => ({ e, step: stepOf(script, e) }));
 
   // Speed: auto idle first, explicit `show.speed` next, pauses last (later spans win).
   const spans: SpeedSpan[] = [];
@@ -91,6 +103,10 @@ export function buildTimeline(script: Script, ev: TakeEvents, opts: BuildOptions
   for (const { e, step } of pairs) {
     if (step.do === 'pause') spans.push({ startMs: e.startMs, endMs: e.endMs, speed: 1 });
   }
+  const base = buildSegments(ev.video.durationMs, spans);
+  /** Source time at which `text`, shown from `startMs`, has been readable for long enough (output time). */
+  const readEnd = (startMs: number, text: string) =>
+    outputToSource(base, sourceToOutput(base, startMs) + Math.max(CAPTION_MIN_MS, readingMs(text)));
 
   const regions: ZoomRegion[] = [];
   const drafts: { startMs: number; endMs: number; text: string; target?: Rect }[] = [];
@@ -112,19 +128,12 @@ export function buildTimeline(script: Script, ev: TakeEvents, opts: BuildOptions
       }
     }
     if (step.show?.caption) {
-      drafts.push({ startMs: e.startMs, endMs: Math.max(e.settledMs, e.startMs + CAPTION_MIN_MS), text: step.show.caption, target: e.target });
+      drafts.push({ startMs: e.startMs, endMs: Math.max(e.settledMs, readEnd(e.startMs, step.show.caption)), text: step.show.caption, target: e.target });
     }
     if (step.show?.spotlight && e.target) {
       spotlights.push({ startMs: e.actionMs, endMs: e.settledMs, rect: pad(e.target, SPOTLIGHT_PAD) });
     }
   }
-
-  const lines = pairs.flatMap(({ e, step }) => {
-    const where = stepKey(e.sceneId, e.index);
-    const durationMs = opts.voices?.[where];
-    return step.show?.say && durationMs !== undefined ? [{ where, text: step.show.say, startMs: e.startMs, durationMs }] : [];
-  });
-  const subtitlesBurned = script.audio.subtitles === 'burn' && lines.length > 0;
 
   const camera = buildCamera(regions, { visible, hold: crop });
   // A caption ends when the next one starts: no overlap, so captions dip instead of colliding.
@@ -140,7 +149,7 @@ export function buildTimeline(script: Script, ev: TakeEvents, opts: BuildOptions
       endMs: d.endMs,
       text: d.text,
       // 9:16 captions sit in the band under the window, clear of the action.
-      position: subtitlesBurned ? 'top' : aspect === '9:16' ? 'bottom' : captionPosition(d.target, d, camera, stage, win, output),
+      position: aspect === '9:16' ? (subtitlesBurned ? 'top' : 'bottom') : captionPosition(d.target, d, camera, stage, win, output),
     }));
 
   // Narration holds freeze the frame, so they go where nothing is moving: not during an action,
@@ -160,7 +169,7 @@ export function buildTimeline(script: Script, ev: TakeEvents, opts: BuildOptions
     ...captions.flatMap((c) => fades(c, CAPTION_FADE_MS)),
     ...spotlights.flatMap((s) => fades(s, SPOTLIGHT_FADE_MS)),
   ];
-  const segments = withNarration(buildSegments(ev.video.durationMs, spans), lines, ev.video.durationMs, busy);
+  const segments = withNarration(base, lines, ev.video.durationMs, busy);
   const narration: NarrationLine[] = lines.map((l) => ({
     where: l.where,
     text: l.text,
@@ -168,6 +177,10 @@ export function buildTimeline(script: Script, ev: TakeEvents, opts: BuildOptions
     durationMs: l.durationMs,
   }));
   const subtitles = script.audio.subtitles === 'off' ? [] : narration.flatMap((n) => subtitleCues(n.text, n.atMs, n.durationMs));
+  const clips = script.audio.clips.flatMap((clip, index) => {
+    const at = pairs.find(({ e }) => stepKey(e.sceneId, e.index) === clip.at);
+    return at ? [{ index, atMs: Math.round(sourceToOutput(segments, at.e.startMs)) + clip.offsetMs, volume: clip.volume }] : [];
+  });
   const typing: Typing[] = pairs.flatMap(({ e, step }) =>
     step.do === 'type' && step.pace !== 'fast' ? [{ startMs: e.actionMs, endMs: e.endMs, chars: [...step.text].length }] : [],
   );
@@ -195,6 +208,8 @@ export function buildTimeline(script: Script, ev: TakeEvents, opts: BuildOptions
     narration,
     subtitles,
     subtitlesBurned,
+    subtitleBand,
+    clips,
     sounds: script.audio.sounds ? soundEvents(ev, typing, segments) : [],
     music: script.audio.music ? { volume: script.audio.music.volume } : null,
     audio: null,
