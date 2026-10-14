@@ -87,6 +87,11 @@ steps. Write one short sentence per moment about the benefit, not the clicks. `s
   environment (`OPENAI_API_KEY` / `ELEVENLABS_API_KEY`); never write keys into the script. Those
   engines send the narration text to the provider. `command` runs any TTS that reads stdin and
   writes `{out}` (inserted already quoted: write it bare, e.g. `piper -m en_US.onnx -f {out}`).
+- Pick a voice with `showtime voices --lang <code>` and audition it with
+  `showtime voices --try "…" --voice <name>`; a step's `show.voice` changes the voice for its line
+  (a second narrator).
+- `sounds`: `true`/`"soft"`, `"mechanical"`, `"pop"`, `"tap"`, `"typewriter"`, or
+  `{ pack, click: "file.wav", key: "file.wav", volume }`.
 - `music: { file, volume? }` adds a looped bed that ducks under the voice; only use files the user
   provides.
 - `subtitles`: `file` (default) writes `<video>.srt`; `burn` also draws them (good for 9:16, which
@@ -143,14 +148,18 @@ ask the user for one rather than guessing.
 - **Actions (`do`):** `goto {url}` · `click {target}` · `type {target, text, pace?: human|fast|ms, clear?}` ·
   `press {key}` · `hover {target}` · `select {target, value}` · `scroll {target} | {by}` ·
   `wait {for} | {ms}` · `pause {ms}`
-- **`show` (per step):** `zoom` (number, or `false`), `caption`, `spotlight`, `hold` (ms, real time),
-  `speed`, `say` (narration).
+- **`show` (per step):** `zoom` (number, or `false`), `caption`, `spotlight` (`true`/`dim`, `ring`,
+  `glow`), `highlight` (CSS colour), `click` (`ripple`, `pulse`, `burst`, `ring`, `none`), `hold`
+  (ms, real time), `speed`, `say` (narration), `voice` (changes to `audio.voice` for this line).
 - **`audio`:** `voice` (`{ engine: system | openai | elevenlabs | command, name?, speed?, model?,
   instructions?, command? }`), `music` (`{ file, volume? }`), `sounds` (clicks and keystrokes),
   `subtitles` (`file` | `burn` | `off`), `clips` (`[{ file, at: "scene#n", offsetMs?, volume? }]`:
   the app's own sounds, which the capture can't hear).
 - **`style`:** `background` (any CSS background), `chrome` (`browser` window frame | `none`), `address`
-  (address-bar text), `padding`, `radius`, `shadow`, `font`, `accent`, `autoZoom`, `autoSpeed`, `maxZoom`.
+  (address-bar text), `padding`, `radius`, `shadow`, `font`, `accent`, `autoZoom`, `autoSpeed`, `maxZoom`,
+  `click` (default click animation), `spotlightDim`, `captionStyle` (`dark`, `light`, `accent`,
+  `outline`, `bar`), `captionFont`, `titleFont`, `captionSize`, `fonts` (`[{ family, file }]`, embedded),
+  `watermark` (`{ text?, image?, position?, opacity?, size? }`).
 - **`app`:** `url`, `viewport`, `deviceScaleFactor`, `storageState` (Playwright storage-state JSON,
   path relative to the script), `colorScheme`, `locale`, `timezoneId`, `mask` (CSS selectors to blur —
   plain CSS only, not `text=` / `role=`), `hide` (CSS selectors to hide: dev badges such as Next.js's

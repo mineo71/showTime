@@ -148,6 +148,27 @@ again.
   </tr>
   <tr>
     <td valign="top">
+      <img src="docs/media/styles.jpg" alt="One click in four looks: ripple, burst with a glow, pulse with a ring, double ring with a dimmed page, an outline caption and a watermark" /><br />
+      <b>🎨 Your look</b><br />
+      <sub>Five click animations, a highlight colour per step, dim, ring or glow spotlights, five caption styles, your own fonts (embedded in the video) and a watermark. All of it re-renders without a new take.</sub>
+    </td>
+    <td valign="top">
+<pre lang="json">
+"audio": { "sounds": "mechanical" }
+
+"show": {
+  "say": "And over to Daniel.",
+  "voice": { "name": "Daniel" }
+}
+</pre>
+<pre>showtime voices --lang uk
+showtime voices --try "Привіт" --voice Lesya</pre>
+      <b>🔊 Sound packs and voices</b><br />
+      <sub>Soft, mechanical, pop, tap or typewriter clicks (or your own files), a different voice for any line, and a command to list and try the voices you have.</sub>
+    </td>
+  </tr>
+  <tr>
+    <td valign="top">
       <img src="docs/media/outro.jpg" alt="Outro card with logo, title and URL" /><br />
       <b>📣 Ends on your call to action</b><br />
       <sub>An outro card with your logo, a headline and the URL to visit. Put it in a brand file once and every demo ends the same way.</sub>
@@ -327,7 +348,10 @@ Targets are Playwright selectors: `role=button[name='Save']`, `text=Save`, `#id`
 |-------------|----------------|--------|
 | `caption`   | string         | caption while the step plays |
 | `zoom`      | 1–4 or `false` | override the auto-zoom depth, or skip zooming |
-| `spotlight` | boolean        | dim everything except the target |
+| `spotlight` | `true`/`dim`, `ring`, `glow` | point at the target: dim the rest, a ring, or a soft glow |
+| `highlight` | CSS colour     | colour of this step's click animation and spotlight (default `style.accent`) |
+| `click`     | `ripple`, `pulse`, `burst`, `ring`, `none` | this step's click animation |
+| `voice`     | `{ name?, engine?, speed?, … }` | changes to `audio.voice` for this step's `say` |
 | `hold`      | ms             | extra real time after the step (changes the take) |
 | `speed`     | 0.25–16        | playback speed for this step |
 | `say`       | string         | narration spoken from the start of the step; the next narrated step waits for it |
@@ -350,6 +374,13 @@ Targets are Playwright selectors: `role=button[name='Save']`, `text=Save`, `#id`
 | `autoZoom`   | `true`             | zoom on clicks, typing, hovers and selects |
 | `autoSpeed`  | `true`             | speed up idle stretches longer than 0.8 s |
 | `maxZoom`    | `1.8`              | cap for auto-zoom |
+| `click`      | `ripple`           | click animation: `ripple`, `pulse`, `burst`, `ring`, `none` |
+| `spotlightDim` | `0.55`           | how dark a `dim` spotlight makes the rest |
+| `captionStyle` | `dark`           | `dark`, `light`, `accent`, `outline` or `bar` |
+| `captionFont`, `titleFont` | `font` | families for captions/subtitles and for the cards |
+| `captionSize` | 36 (46 in 9:16)   | caption text size in px at 1080p |
+| `fonts`      | `[]`               | `[{ family, file, weight?, style? }]`: font files (woff2/woff/ttf/otf ≤ 5 MB) embedded in the video |
+| `watermark`  | none               | `{ text?, image?, position?, opacity?, size? }` in a corner of every frame |
 
 </details>
 
@@ -394,7 +425,7 @@ Targets are Playwright selectors: `role=button[name='Save']`, `text=Save`, `#id`
 | `voice.instructions` | none       | OpenAI only: how to speak ("warm, confident") |
 | `voice.command`      | none       | `command` only: a shell command that reads the text on stdin and writes audio to `{out}` (inserted already quoted, so write it bare; also in `$SHOWTIME_OUT`), e.g. `piper -m en_US.onnx -f {out}` |
 | `music`              | none       | `{ file, volume? }`: a bed under the whole video, looped and ducked under the voice |
-| `sounds`             | `false`    | click and keystroke sounds |
+| `sounds`             | `false`    | click and keystroke sounds: `true` (soft), `soft`, `mechanical`, `pop`, `tap`, `typewriter`, or `{ pack?, click?, key?, volume? }` with your own files |
 | `clips`              | `[]`       | `[{ file, at: "scene#n", offsetMs?, volume? }]`: the app's own sounds (a ringing phone, a caller), placed at a step; music ducks under them |
 | `subtitles`          | `file`     | `file`: an `.srt` next to the video; `burn`: also on the video (captions move up); `off` |
 
@@ -472,6 +503,7 @@ Put it next to your scripts or in any folder above them; the nearest one applies
 | `showtime setup [--agent claude\|codex\|all] [--no-browsers]` | download the browsers, link the skill |
 | `showtime make <script> [render options]` | check → record → render |
 | `showtime inspect <url> [--viewport 1440x900]` | every named control on the page with a ready target, and a screenshot |
+| `showtime voices [--engine …] [--lang uk] [--try "text" --voice name] [--play]` | list an engine's voices, or try one |
 | `showtime check <script> [--json] [--headed] [--until scene#n]` | rehearse; a screenshot per step; the first failure with an ARIA snapshot |
 | `showtime record <script> [--headed] [--keep-frames]` | record a take into `.showtime/<name>/take` |
 | `showtime render <script> [-o out] [--aspect 16:9\|9:16\|1:1] [--format mp4\|gif\|webp] [--width px] [--fps n] [--scenes a,b] [--no-audio]` | render from the last take, without re-recording; `--scenes` cuts a short clip |

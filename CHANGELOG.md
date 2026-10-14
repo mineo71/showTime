@@ -1,5 +1,20 @@
 # Changelog
 
+## Unreleased
+
+- Sound packs: `audio.sounds` takes `soft` (what `true` means), `mechanical`, `pop`, `tap` or
+  `typewriter`, or `{ pack, click, key, volume }` with your own files.
+- Click animations: `style.click` and `show.click` (`ripple`, `pulse`, `burst`, `ring`, `none`).
+- Highlights: `show.highlight` colours a step's click animation and spotlight; `show.spotlight` takes
+  `dim`, `ring` or `glow`; `style.spotlightDim`.
+- Overlay text: `style.captionStyle` (`dark`, `light`, `accent`, `outline`, `bar`), `captionFont`,
+  `titleFont`, `captionSize`, and `style.fonts` to embed font files in the video.
+- `style.watermark`: text and/or an image in a corner of every frame.
+- Voices: `show.voice` changes the voice for one line; `showtime voices` lists an engine's voices
+  (`--lang`) and tries one (`--try`, `--play`).
+- The studio edits click animations, spotlight styles, highlight colours, caption style and font,
+  the watermark and the sound pack.
+
 ## 0.6.0 — 2026-10-14
 
 - `showtime inspect <url>`: every named control on a page with a ready target and how many

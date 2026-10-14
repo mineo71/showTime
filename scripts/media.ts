@@ -13,6 +13,13 @@ import { chromium } from 'playwright';
 import { toWebp } from '../src/convert';
 import { run } from '../src/ffmpeg';
 import { startStudio } from '../src/studio/server';
+import { logoDataUri } from '../src/logo';
+import { renderStills } from '../src/render/render';
+import { loadScript } from '../src/script/load';
+import { loadTake } from '../src/take';
+import { buildTimeline } from '../src/timeline/build';
+import { introFrames } from '../src/timeline/frames';
+import { sourceToOutput } from '../src/timeline/timemap';
 import { qaShots, sourceMsAtFrame } from '../src/timeline/frames';
 import { BROWSER_BAR, windowLayout } from '../src/timeline/layout';
 import type { TakeEvents, Timeline } from '../src/timeline/types';
@@ -89,6 +96,9 @@ async function main() {
   await run('ffmpeg', ['-v', 'error', '-y', '-ss', (srcMs / 1000).toFixed(3), '-i', need(raw), '-frames:v', '1', '-vf', 'scale=1280:-1:flags=lanczos', '-q:v', '3', path.join(out, 'before.jpg')]);
   await jpeg(path.join(frames, `${COMPARE}.png`), 'after.jpg');
 
+  process.stdout.write('styles.jpg…\n');
+  await stylesImage();
+
   process.stdout.write('studio.jpg…\n');
   const studio = await startStudio(path.join(example, 'demo.json'), { port: 0 });
   const browser = await chromium.launch();
@@ -107,6 +117,40 @@ async function main() {
   }
 
   process.stdout.write(`✓ media in ${path.relative(process.cwd(), out)}\n`);
+}
+
+/** The same click in four looks: click animation, highlight, spotlight style, caption style, watermark. */
+async function stylesImage() {
+  const loaded = await loadScript(path.join(example, 'demo.json'));
+  const events = await loadTake(loaded);
+  const looks: { show: Record<string, unknown>; style: Record<string, unknown> }[] = [
+    { show: { click: 'ripple' }, style: {} },
+    { show: { click: 'burst', highlight: '#f59e0b', spotlight: 'glow' }, style: { captionStyle: 'accent' } },
+    { show: { click: 'pulse', highlight: '#38bdf8', spotlight: 'ring' }, style: { captionStyle: 'light' } },
+    { show: { click: 'ring', highlight: '#f43f5e', spotlight: true }, style: { captionStyle: 'outline', watermark: { text: 'fennel.example', position: 'top-right', opacity: 0.6, size: 28 } } },
+  ];
+  const tiles: string[] = [];
+  for (const [i, look] of looks.entries()) {
+    const script = structuredClone(loaded.script);
+    const index = script.scenes.find((sc) => sc.id === 'invoice')!.steps.findIndex((st) => 'target' in st && st.target?.includes('Packaging design'));
+    const step = script.scenes.find((sc) => sc.id === 'invoice')!.steps[index];
+    step.show = { ...step.show, caption: 'Past items in one click', ...look.show } as typeof step.show;
+    Object.assign(script.style, look.style);
+    const t = buildTimeline(script, events, { logo: script.meta.logo ? await logoDataUri(script.meta.logo) : undefined, watermark: script.style.watermark as never });
+    const fx = t.clickFx.find((c) => c.tMs >= events.steps.find((e) => e.sceneId === 'invoice' && e.index === index)!.actionMs)!;
+    const frame = introFrames(t) + Math.round((sourceToOutput(t.segments, fx.tMs + 200) * t.fps) / 1000);
+    const [still] = await renderStills(t, path.join(work), path.join(work, 'frames'), [{ frame, name: `look-${i}` }]);
+    const tile = path.join(work, `look-${i}.jpg`);
+    // The whole frame: the watermark sits outside the window.
+    await run('ffmpeg', ['-v', 'error', '-y', '-i', still, '-vf', 'scale=640:-1:flags=lanczos', '-q:v', '3', tile]);
+    tiles.push(tile);
+  }
+  await run('ffmpeg', [
+    '-v', 'error', '-y',
+    ...tiles.flatMap((t) => ['-i', t]),
+    '-filter_complex', '[0][1]hstack[t];[2][3]hstack[b];[t][b]vstack',
+    '-q:v', '3', path.join(out, 'styles.jpg'),
+  ]);
 }
 
 await main();
