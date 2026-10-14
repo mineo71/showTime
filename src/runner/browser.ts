@@ -4,6 +4,7 @@ import type { Pt } from '../timeline/types';
 import { EventLog } from './events';
 import { attachNet, type NetMode, type NetSession } from './replay';
 import { runStep, STEP_TIMEOUT_MS, type StepContext } from './steps';
+import { Tabs } from './tabs';
 import { sleep } from './time';
 
 export interface NetworkTracker {
@@ -14,7 +15,9 @@ export interface NetworkTracker {
 export interface Session {
   browser: Browser;
   context: BrowserContext;
-  page: Page;
+  /** the page steps act in now (a tab or popup a step opened, else the first) */
+  readonly page: Page;
+  tabs: Tabs;
   net: NetworkTracker;
   /** recorded or replayed traffic (script.replay), null when live */
   replay: NetSession | null;
@@ -24,7 +27,8 @@ export interface Session {
 /** Event streams never finish; counting them would hold every step for the full settle cap. */
 const isStream = (r: Request) => r.resourceType() === 'eventsource' || (r.headers().accept ?? '').includes('text/event-stream');
 
-export function trackNetwork(page: Page): NetworkTracker {
+/** Requests of every page in the context: a popup's requests count too. */
+export function trackNetwork(page: Pick<BrowserContext, 'on'>): NetworkTracker {
   let inflight = 0;
   const counted = new Set<Request>();
   let lastChange = Date.now();
@@ -110,11 +114,18 @@ export async function openSession(script: Script, opts: { headed?: boolean; net?
     const replay = await attachNet(context, script, opts.net);
     // Reversed, the first matching mock wins.
     for (const mock of [...app.mock].reverse()) await context.route(mock.url, (route) => answer(route, mock));
-    const page = await context.newPage();
-    page.setDefaultTimeout(STEP_TIMEOUT_MS);
-    page.on('dialog', (dialog) => {
+    // Every page, popups too: the same size (frames of one take share it), timeout and dialog answers.
+    context.on('page', (p) => {
+      p.setDefaultTimeout(STEP_TIMEOUT_MS);
+      if (!p.viewportSize() || p.viewportSize()!.width !== app.viewport.width || p.viewportSize()!.height !== app.viewport.height) {
+        p.setViewportSize(app.viewport).catch(() => undefined);
+      }
+    });
+    context.on('dialog', (dialog) => {
       (app.dialogs === 'accept' ? dialog.accept() : dialog.dismiss()).catch(() => undefined);
     });
+    const page = await context.newPage();
+    const tabs = new Tabs(context, page);
     for (const field of ['mask', 'hide'] as const) {
       const selectors = app[field];
       const invalid = await page.evaluate(
@@ -139,8 +150,11 @@ export async function openSession(script: Script, opts: { headed?: boolean; net?
     return {
       browser,
       context,
-      page,
-      net: trackNetwork(page),
+      get page() {
+        return tabs.active;
+      },
+      tabs,
+      net: trackNetwork(context),
       replay,
       close: () => {
         replay?.dispose();
@@ -185,8 +199,8 @@ export async function prepare(session: Session, script: Script, dir?: string): P
     throw new Error(`Cannot open app.url ${script.app.url}: ${(err as Error).message.split('\n')[0]}`);
   }
   const centre = { x: Math.round(script.app.viewport.width / 2), y: Math.round(script.app.viewport.height / 2) };
-  const ctx: StepContext = { page, mode: 'check', log: new EventLog(), net: session.net, cursor: centre, baseUrl: script.app.url, dir };
+  const ctx: StepContext = { page, mode: 'check', log: new EventLog(), net: session.net, cursor: centre, baseUrl: script.app.url, dir, tabs: session.tabs };
   for (const [index, step] of script.setup.entries()) await runStep(ctx, step, { sceneId: 'setup', index });
-  await page.mouse.move(centre.x, centre.y);
+  await ctx.page.mouse.move(centre.x, centre.y);
   return centre;
 }

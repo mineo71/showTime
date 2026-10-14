@@ -6,6 +6,7 @@ import { clamp, easeInOutCubic } from '../timeline/math';
 import type { CursorKind, Pt, Rect } from '../timeline/types';
 import type { NetworkTracker } from './browser';
 import type { EventLog } from './events';
+import type { Tabs } from './tabs';
 import { rng, sleep } from './time';
 
 export type Mode = 'record' | 'check';
@@ -20,6 +21,10 @@ export interface StepContext {
   baseUrl?: string;
   /** `upload` files resolve against this (the script's folder); the working directory when absent. */
   dir?: string;
+  /** Pages to follow: a step that opens a tab or popup moves `page` to it. Without it, one page. */
+  tabs?: Tabs;
+  /** Called when `page` changes (the recorder moves its screencast). */
+  onPage?: (page: Page) => Promise<void>;
 }
 
 export interface StepWhere {
@@ -95,6 +100,8 @@ async function reach(ctx: StepContext, selector: string) {
 }
 
 async function perform(ctx: StepContext, step: Step, where: StepWhere): Promise<void> {
+  // A popup may have closed itself since the last step.
+  if (ctx.page.isClosed()) await follow(ctx);
   const { page, log } = ctx;
   const startMs = log.now();
   let actionMs = startMs;
@@ -114,7 +121,8 @@ async function perform(ctx: StepContext, step: Step, where: StepWhere): Promise<
       const point = r.point;
       actionMs = log.now();
       if (step.do !== 'hover') log.clicks.push({ tMs: actionMs, ...point });
-      if (step.do === 'click') await r.loc.click({ timeout: STEP_TIMEOUT_MS, button: step.button, modifiers: step.modifiers });
+      // A click may close its own page (an OAuth popup's "Allow"): that is not a failure.
+      if (step.do === 'click') await r.loc.click({ timeout: STEP_TIMEOUT_MS, button: step.button, modifiers: step.modifiers }).catch(closedIsFine(page));
       if (step.do === 'dblclick') {
         log.clicks.push({ tMs: actionMs + DOUBLE_CLICK_GAP_MS, ...point });
         await r.loc.dblclick({ timeout: STEP_TIMEOUT_MS, modifiers: step.modifiers });
@@ -178,6 +186,12 @@ async function perform(ctx: StepContext, step: Step, where: StepWhere): Promise<
         throw new Error(`clicking ${step.target} opened no file chooser; target the button or drop zone a person clicks to pick files, or the file input`);
       }
       await picked.setFiles(files);
+      break;
+    }
+    case 'closeTab': {
+      if (!ctx.tabs) throw new Error('closeTab needs a browser session that follows tabs');
+      ctx.page = await ctx.tabs.close();
+      await ctx.onPage?.(ctx.page);
       break;
     }
     case 'press':
@@ -294,10 +308,24 @@ async function wheel(ctx: StepContext, by: number): Promise<void> {
   }
 }
 
+const closedIsFine = (page: Page) => (err: unknown) => {
+  if (!page.isClosed()) throw err;
+};
+
+/** Move to the page the run should act in now: a tab or popup the step opened, or the one before a closed one. */
+async function follow(ctx: StepContext): Promise<void> {
+  const next = await ctx.tabs?.settle();
+  if (!next) return;
+  ctx.page = next;
+  await ctx.onPage?.(next);
+}
+
 async function settle(ctx: StepContext, step: Step): Promise<void> {
   const s = ctx.log.now();
   await ctx.net.idle(NET_QUIET_MS, NET_CAP_MS);
   const waited = ctx.log.now() - s;
   if (waited > IDLE_GRACE_MS) ctx.log.idle.push({ startMs: s + IDLE_GRACE_MS, endMs: s + waited });
+  // Followed before the beat, so the new page is on screen while the viewer takes it in.
+  await follow(ctx);
   if (ctx.mode === 'record') await sleep(BEAT_MS + (step.show?.hold ?? 0));
 }

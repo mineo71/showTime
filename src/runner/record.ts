@@ -39,7 +39,17 @@ async function shoot(session: Session, loaded: LoadedScript, framesDir: string, 
     height: viewport.height * deviceScaleFactor,
   });
   const log = new EventLog(capture.t0);
-  const ctx: StepContext = { page: session.page, mode: 'record', log, net: session.net, cursor, baseUrl: script.app.url, dir: loaded.dir };
+  const ctx: StepContext = {
+    page: session.page,
+    mode: 'record',
+    log,
+    net: session.net,
+    cursor,
+    baseUrl: script.app.url,
+    dir: loaded.dir,
+    tabs: session.tabs,
+    onPage: (page) => capture.follow(page),
+  };
   try {
     await sleep(ESTABLISH_MS);
     for (const scene of script.scenes) {

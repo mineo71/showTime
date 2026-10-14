@@ -74,7 +74,7 @@ async function rehearse(loaded: LoadedScript, opts: CheckOptions): Promise<Check
   announceNet(session.replay?.report(), opts, !!opts.until);
   try {
     const cursor = await prepare(session, script, loaded.dir);
-    const ctx: StepContext = { page: session.page, mode: 'check', log: new EventLog(), net: session.net, cursor, baseUrl: script.app.url, dir: loaded.dir };
+    const ctx: StepContext = { page: session.page, mode: 'check', log: new EventLog(), net: session.net, cursor, baseUrl: script.app.url, dir: loaded.dir, tabs: session.tabs };
     let n = 0;
     let done = false;
     for (const scene of script.scenes) {
