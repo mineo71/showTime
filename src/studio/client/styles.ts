@@ -68,6 +68,12 @@ button.link { border: 0; background: none; color: var(--accent); cursor: pointer
 .step .name { font-size: 11px; color: var(--muted); }
 .step .do { font-weight: 600; font-size: 12px; }
 .step .icons i { font-style: normal; font-size: 11px; margin-right: 3px; opacity: 0.85; }
+.grip { position: absolute; top: 0; right: 0; bottom: 0; width: 9px; cursor: ew-resize; border-right: 3px solid transparent; touch-action: none; }
+.grip:hover, .dragging .grip, .cap:hover .grip { border-right-color: var(--accent); }
+.track > .step.dragging { border-color: var(--accent); z-index: 2; }
+.track.captions { height: 30px; margin-bottom: 6px; cursor: default; }
+.track > .cap { position: absolute; top: 4px; bottom: 4px; border-radius: 6px; padding: 3px 12px 3px 7px; background: #33295a; border: 1px solid #4a3d80; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.track > .freeze { position: absolute; top: 6px; bottom: 6px; border-radius: 0 7px 7px 0; pointer-events: none; background: repeating-linear-gradient(135deg, rgba(255,255,255,0.16) 0 5px, transparent 5px 10px); }
 .playhead { position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: #fbbf24; pointer-events: none; box-shadow: 0 0 8px #fbbf24aa; }
 .toast { position: fixed; right: 16px; bottom: 112px; max-width: 520px; padding: 10px 14px; border-radius: 10px; background: #3b1219; border: 1px solid #7f1d1d; white-space: pre-wrap; cursor: pointer; box-shadow: 0 10px 30px #0008; }
 @media (max-width: 900px) { .work { grid-template-columns: 1fr; } .side { border-left: 0; border-top: 1px solid var(--line); } }

@@ -87,6 +87,8 @@ export interface Caption {
   text: string;
   /** Bottom unless the step's target would sit under a bottom caption. */
   position: 'bottom' | 'top';
+  /** the step it belongs to (`scene#n`), for the studio */
+  where?: string;
 }
 
 export interface Spotlight {

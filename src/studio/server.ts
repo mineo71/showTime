@@ -49,6 +49,10 @@ export interface StepInfo {
   /** composition frames, when there is a take */
   startFrame: number | null;
   endFrame: number | null;
+  /** source ms from the step's start to its settled end (what `show.speed` applies to), when there is a take */
+  srcMs: number | null;
+  /** output ms of the holds (narration, freeze) inside it */
+  holdMs: number;
 }
 
 export interface Job {
@@ -242,6 +246,8 @@ export async function startStudio(scriptFile: string, opts: StudioOptions = {}):
         show: (step.show ?? {}) as Json,
         startFrame: null,
         endFrame: null,
+        srcMs: null,
+        holdMs: 0,
       })),
     );
 
@@ -290,7 +296,23 @@ export async function startStudio(scriptFile: string, opts: StudioOptions = {}):
       // A fresh query string, so the page doesn't play a cached mix.
       if (src) timeline.audio = { src: `${src}?v=${state.version + 1}` };
       const frames = new Map(stepFrames(timeline, steps).map((f) => [f.where, f]));
-      state.steps = state.steps.map((s) => ({ ...s, startFrame: frames.get(s.where)?.startFrame ?? null, endFrame: frames.get(s.where)?.endFrame ?? null }));
+      const holds = timeline.segments.filter((g) => g.speed === 0);
+      const spans = new Map(
+        steps.map((e) => [
+          stepKey(e.sceneId, e.index),
+          {
+            srcMs: e.settledMs - e.startMs,
+            holdMs: holds.filter((h) => h.srcStartMs >= e.startMs && h.srcStartMs < e.settledMs).reduce((n, h) => n + (h.holdMs ?? 0), 0),
+          },
+        ]),
+      );
+      state.steps = state.steps.map((s) => ({
+        ...s,
+        startFrame: frames.get(s.where)?.startFrame ?? null,
+        endFrame: frames.get(s.where)?.endFrame ?? null,
+        srcMs: spans.get(s.where)?.srcMs ?? null,
+        holdMs: spans.get(s.where)?.holdMs ?? 0,
+      }));
       state.timeline = timeline;
     } catch (err) {
       state.error = message(err);

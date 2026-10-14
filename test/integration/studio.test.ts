@@ -224,4 +224,50 @@ describe('studio page', () => {
       await browser.close();
     }
   });
+
+  it('sets speed and caption length by dragging, and freezes a step from the inspector', async () => {
+    const browser = await chromium.launch();
+    try {
+      const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+      const errors: string[] = [];
+      page.on('pageerror', (e) => errors.push(e.message));
+      await page.goto(studio.url);
+      await page.locator('[data-testid=player]').waitFor();
+      const show = async (where: string) => {
+        const raw = JSON.parse(await readFile(loaded.scriptPath, 'utf8'));
+        const [id, n] = where.split('#');
+        return (raw.scenes.find((x: { id: string }) => x.id === id).steps[Number(n) - 1].show ?? {}) as Record<string, number>;
+      };
+      const drag = async (selector: string, dx: number) => {
+        const box = (await page.locator(selector).boundingBox())!;
+        const y = box.y + box.height / 2;
+        await page.mouse.move(box.x + box.width / 2, y);
+        await page.mouse.down();
+        await page.mouse.move(box.x + box.width / 2 + dx, y, { steps: 6 });
+        await page.mouse.up();
+      };
+
+      // Twice as long: slower than real time, never below 0.25×.
+      const block = (await page.locator('[data-where="report#2"]').boundingBox())!;
+      await drag('[data-where="report#2"] [data-grip]', block.width);
+      await expect.poll(async () => (await show('report#2')).speed ?? 99, { timeout: 20_000 }).toBeLessThan(1);
+      expect((await show('report#2')).speed).toBeGreaterThanOrEqual(0.25);
+
+      // A caption bar dragged longer sets how long it stays up.
+      await expect.poll(() => page.locator('[data-caption="export#1"]').count()).toBe(1);
+      await drag('[data-caption="export#1"] [data-grip]', 120);
+      await expect.poll(async () => (await show('export#1')).captionMs ?? 0, { timeout: 20_000 }).toBeGreaterThan(1200);
+
+      // A freeze, set in the inspector, shows striped on the timeline.
+      await page.locator('[data-where="report#4"]').click();
+      const freeze = page.locator('[data-field=freezeMs]');
+      await freeze.fill('1500');
+      await freeze.press('Enter');
+      await expect.poll(async () => (await show('report#4')).freezeMs, { timeout: 20_000 }).toBe(1500);
+      await expect.poll(() => page.locator('[data-freeze="report#4"]').count(), { timeout: 20_000 }).toBe(1);
+      expect(errors).toEqual([]);
+    } finally {
+      await browser.close();
+    }
+  });
 });

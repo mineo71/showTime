@@ -116,7 +116,7 @@ export function buildTimeline(script: Script, ev: TakeEvents, opts: BuildOptions
   const after = (startMs: number, ms: number) => outputToSource(base, sourceToOutput(base, startMs) + ms);
 
   const regions: ZoomRegion[] = [];
-  const drafts: { startMs: number; endMs: number; text: string; target?: Rect }[] = [];
+  const drafts: { startMs: number; endMs: number; text: string; target?: Rect; where: string }[] = [];
   const spotlights: Spotlight[] = [];
   for (const { e, step } of pairs) {
     const zoom = step.show?.zoom;
@@ -138,7 +138,7 @@ export function buildTimeline(script: Script, ev: TakeEvents, opts: BuildOptions
       // captionMs sets the length; by default the caption stays for the step and its reading time.
       const { caption, captionMs } = step.show;
       const endMs = captionMs !== undefined ? after(e.startMs, captionMs) : Math.max(e.settledMs, after(e.startMs, Math.max(CAPTION_MIN_MS, readingMs(caption))));
-      drafts.push({ startMs: e.startMs, endMs, text: caption, target: e.target });
+      drafts.push({ startMs: e.startMs, endMs, text: caption, target: e.target, where: stepKey(e.sceneId, e.index) });
     }
     if (step.show?.spotlight && e.target) {
       spotlights.push({
@@ -166,6 +166,7 @@ export function buildTimeline(script: Script, ev: TakeEvents, opts: BuildOptions
       text: d.text,
       // 9:16 captions sit in the band under the window, clear of the action.
       position: aspect === '9:16' ? (subtitlesBurned ? 'top' : 'bottom') : captionPosition(d.target, d, camera, stage, win, output),
+      where: d.where,
     }));
 
   // Narration holds freeze the frame, so they go where nothing is moving: not during an action,

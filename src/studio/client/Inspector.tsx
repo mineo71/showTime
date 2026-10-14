@@ -19,6 +19,7 @@ export const Inspector: FC<{ step: StepInfo | null; take: StudioState['take']; a
     hold?: number;
     highlight?: string;
     click?: string;
+    freezeMs?: number;
   };
   const spotlight = show.spotlight === undefined || show.spotlight === false ? 'off' : show.spotlight === true ? 'dim' : show.spotlight;
   const set = (changes: Record<string, unknown>) => onEdit({ where: step.where, step: step.id, show: changes } as Edit);
@@ -89,6 +90,14 @@ export const Inspector: FC<{ step: StepInfo | null; take: StudioState['take']; a
             <span className="muted">accent</span>
           )}
         </span>
+      </Row>
+      <Row label="Freeze (ms)" hint="a still at the step's end">
+        <TextField
+          field="freezeMs"
+          value={show.freezeMs === undefined ? undefined : String(show.freezeMs)}
+          placeholder="0"
+          onCommit={(v) => set({ freezeMs: v === null ? null : Math.round(Number(v)) })}
+        />
       </Row>
       <Row label="Hold (ms)" hint="changes the take: record again">
         <TextField field="hold" value={show.hold === undefined ? undefined : String(show.hold)} placeholder="0" onCommit={(v) => set({ hold: v === null ? null : Math.round(Number(v)) })} />

@@ -96,6 +96,8 @@ export const App = () => {
           if (f !== null) seek(f);
         }}
         onSeek={seek}
+        onEdit={edit}
+        onDragStart={() => player.current?.pause()}
       />
       {toast ? (
         <div className="toast" role="alert" onClick={() => setToast(null)}>
