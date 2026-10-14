@@ -503,7 +503,7 @@
                     "maximum": 30000
                   },
                   "captionMs": {
-                    "description": "Keep the caption on screen at least this long (output ms)",
+                    "description": "How long the caption stays on screen (output ms) instead of its reading time; the next caption still ends it",
                     "type": "integer",
                     "minimum": 0,
                     "maximum": 60000
@@ -650,7 +650,7 @@
                     "maximum": 30000
                   },
                   "captionMs": {
-                    "description": "Keep the caption on screen at least this long (output ms)",
+                    "description": "How long the caption stays on screen (output ms) instead of its reading time; the next caption still ends it",
                     "type": "integer",
                     "minimum": 0,
                     "maximum": 60000
@@ -821,7 +821,7 @@
                     "maximum": 30000
                   },
                   "captionMs": {
-                    "description": "Keep the caption on screen at least this long (output ms)",
+                    "description": "How long the caption stays on screen (output ms) instead of its reading time; the next caption still ends it",
                     "type": "integer",
                     "minimum": 0,
                     "maximum": 60000
@@ -968,7 +968,7 @@
                     "maximum": 30000
                   },
                   "captionMs": {
-                    "description": "Keep the caption on screen at least this long (output ms)",
+                    "description": "How long the caption stays on screen (output ms) instead of its reading time; the next caption still ends it",
                     "type": "integer",
                     "minimum": 0,
                     "maximum": 60000
@@ -1115,7 +1115,7 @@
                     "maximum": 30000
                   },
                   "captionMs": {
-                    "description": "Keep the caption on screen at least this long (output ms)",
+                    "description": "How long the caption stays on screen (output ms) instead of its reading time; the next caption still ends it",
                     "type": "integer",
                     "minimum": 0,
                     "maximum": 60000
@@ -1265,7 +1265,7 @@
                     "maximum": 30000
                   },
                   "captionMs": {
-                    "description": "Keep the caption on screen at least this long (output ms)",
+                    "description": "How long the caption stays on screen (output ms) instead of its reading time; the next caption still ends it",
                     "type": "integer",
                     "minimum": 0,
                     "maximum": 60000
@@ -1418,7 +1418,7 @@
                     "maximum": 30000
                   },
                   "captionMs": {
-                    "description": "Keep the caption on screen at least this long (output ms)",
+                    "description": "How long the caption stays on screen (output ms) instead of its reading time; the next caption still ends it",
                     "type": "integer",
                     "minimum": 0,
                     "maximum": 60000
@@ -1575,7 +1575,7 @@
                     "maximum": 30000
                   },
                   "captionMs": {
-                    "description": "Keep the caption on screen at least this long (output ms)",
+                    "description": "How long the caption stays on screen (output ms) instead of its reading time; the next caption still ends it",
                     "type": "integer",
                     "minimum": 0,
                     "maximum": 60000
@@ -1721,7 +1721,7 @@
                     "maximum": 30000
                   },
                   "captionMs": {
-                    "description": "Keep the caption on screen at least this long (output ms)",
+                    "description": "How long the caption stays on screen (output ms) instead of its reading time; the next caption still ends it",
                     "type": "integer",
                     "minimum": 0,
                     "maximum": 60000
@@ -2246,7 +2246,7 @@
                           "maximum": 30000
                         },
                         "captionMs": {
-                          "description": "Keep the caption on screen at least this long (output ms)",
+                          "description": "How long the caption stays on screen (output ms) instead of its reading time; the next caption still ends it",
                           "type": "integer",
                           "minimum": 0,
                           "maximum": 60000
@@ -2393,7 +2393,7 @@
                           "maximum": 30000
                         },
                         "captionMs": {
-                          "description": "Keep the caption on screen at least this long (output ms)",
+                          "description": "How long the caption stays on screen (output ms) instead of its reading time; the next caption still ends it",
                           "type": "integer",
                           "minimum": 0,
                           "maximum": 60000
@@ -2564,7 +2564,7 @@
                           "maximum": 30000
                         },
                         "captionMs": {
-                          "description": "Keep the caption on screen at least this long (output ms)",
+                          "description": "How long the caption stays on screen (output ms) instead of its reading time; the next caption still ends it",
                           "type": "integer",
                           "minimum": 0,
                           "maximum": 60000
@@ -2711,7 +2711,7 @@
                           "maximum": 30000
                         },
                         "captionMs": {
-                          "description": "Keep the caption on screen at least this long (output ms)",
+                          "description": "How long the caption stays on screen (output ms) instead of its reading time; the next caption still ends it",
                           "type": "integer",
                           "minimum": 0,
                           "maximum": 60000
@@ -2858,7 +2858,7 @@
                           "maximum": 30000
                         },
                         "captionMs": {
-                          "description": "Keep the caption on screen at least this long (output ms)",
+                          "description": "How long the caption stays on screen (output ms) instead of its reading time; the next caption still ends it",
                           "type": "integer",
                           "minimum": 0,
                           "maximum": 60000
@@ -3008,7 +3008,7 @@
                           "maximum": 30000
                         },
                         "captionMs": {
-                          "description": "Keep the caption on screen at least this long (output ms)",
+                          "description": "How long the caption stays on screen (output ms) instead of its reading time; the next caption still ends it",
                           "type": "integer",
                           "minimum": 0,
                           "maximum": 60000
@@ -3161,7 +3161,7 @@
                           "maximum": 30000
                         },
                         "captionMs": {
-                          "description": "Keep the caption on screen at least this long (output ms)",
+                          "description": "How long the caption stays on screen (output ms) instead of its reading time; the next caption still ends it",
                           "type": "integer",
                           "minimum": 0,
                           "maximum": 60000
@@ -3318,7 +3318,7 @@
                           "maximum": 30000
                         },
                         "captionMs": {
-                          "description": "Keep the caption on screen at least this long (output ms)",
+                          "description": "How long the caption stays on screen (output ms) instead of its reading time; the next caption still ends it",
                           "type": "integer",
                           "minimum": 0,
                           "maximum": 60000
@@ -3464,7 +3464,7 @@
                           "maximum": 30000
                         },
                         "captionMs": {
-                          "description": "Keep the caption on screen at least this long (output ms)",
+                          "description": "How long the caption stays on screen (output ms) instead of its reading time; the next caption still ends it",
                           "type": "integer",
                           "minimum": 0,
                           "maximum": 60000

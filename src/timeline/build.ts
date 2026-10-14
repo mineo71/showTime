@@ -6,7 +6,7 @@ import { RIPPLE_MS } from './cursor';
 import { CAPTION_FADE_MS, SPOTLIGHT_FADE_MS } from './fades';
 import { soundEvents, stepKey, subtitleCues, withNarration, type Span, type Typing } from './narration';
 import { readingMs } from './reading';
-import { buildSegments, outputToSource, sourceToOutput, type SpeedSpan } from './timemap';
+import { buildSegments, insertHolds, outputToSource, sourceToOutput, type SpeedSpan } from './timemap';
 import type { Aspect, CameraKey, Caption, ClickFx, FontFile, NarrationLine, Rect, Spotlight, StepEvent, TakeEvents, Timeline, Watermark } from './types';
 
 export const AUTO_SPEED_MIN_IDLE_MS = 800;
@@ -107,10 +107,13 @@ export function buildTimeline(script: Script, ev: TakeEvents, opts: BuildOptions
   for (const { e, step } of pairs) {
     if (step.do === 'pause') spans.push({ startMs: e.startMs, endMs: e.endMs, speed: 1 });
   }
-  const base = buildSegments(ev.video.durationMs, spans);
-  /** Source time at which `text`, shown from `startMs`, has been readable for long enough (output time). */
-  const readEnd = (startMs: number, text: string) =>
-    outputToSource(base, sourceToOutput(base, startMs) + Math.max(CAPTION_MIN_MS, readingMs(text)));
+  // Freezes hold a step's last frame just before it settles, so its caption, zoom and spotlight stay.
+  const freezes = pairs.flatMap(({ e, step }) =>
+    step.show?.freezeMs ? [{ atMs: Math.max(e.startMs, e.settledMs - 1), holdMs: step.show.freezeMs }] : [],
+  );
+  const base = insertHolds(buildSegments(ev.video.durationMs, spans), freezes);
+  /** Source time at which a caption shown from `startMs` has been up for `ms` of output. */
+  const after = (startMs: number, ms: number) => outputToSource(base, sourceToOutput(base, startMs) + ms);
 
   const regions: ZoomRegion[] = [];
   const drafts: { startMs: number; endMs: number; text: string; target?: Rect }[] = [];
@@ -132,7 +135,10 @@ export function buildTimeline(script: Script, ev: TakeEvents, opts: BuildOptions
       }
     }
     if (step.show?.caption) {
-      drafts.push({ startMs: e.startMs, endMs: Math.max(e.settledMs, readEnd(e.startMs, step.show.caption)), text: step.show.caption, target: e.target });
+      // captionMs sets the length; by default the caption stays for the step and its reading time.
+      const { caption, captionMs } = step.show;
+      const endMs = captionMs !== undefined ? after(e.startMs, captionMs) : Math.max(e.settledMs, after(e.startMs, Math.max(CAPTION_MIN_MS, readingMs(caption))));
+      drafts.push({ startMs: e.startMs, endMs, text: caption, target: e.target });
     }
     if (step.show?.spotlight && e.target) {
       spotlights.push({

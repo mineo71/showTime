@@ -63,7 +63,7 @@ export const ShowSchema = z
     click: z.enum(CLICK_KINDS).optional().describe('Click animation for this step'),
     voice: VoiceFields.partial().optional().describe('Changes to audio.voice for this step\'s line'),
     hold: z.number().int().min(0).max(30_000).optional().describe('Extra real-time ms after the step'),
-    captionMs: z.number().int().min(0).max(60_000).optional().describe('Keep the caption on screen at least this long (output ms)'),
+    captionMs: z.number().int().min(0).max(60_000).optional().describe('How long the caption stays on screen (output ms) instead of its reading time; the next caption still ends it'),
     freezeMs: z.number().int().min(0).max(30_000).optional().describe('Hold a still frame this long at the end of the step (output ms, no new take)'),
     speed: z.number().min(0.25).max(16).optional().describe('Playback speed for this step'),
     say: z

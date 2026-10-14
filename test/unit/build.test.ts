@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { parseScript } from '../../src/script/schema';
 import { buildTimeline } from '../../src/timeline/build';
 import { NARRATION_GAP_MS } from '../../src/timeline/narration';
-import { sourceToOutput } from '../../src/timeline/timemap';
+import { outputDurationMs, sourceToOutput } from '../../src/timeline/timemap';
 import type { TakeEvents } from '../../src/timeline/types';
 
 const script = (style: Record<string, unknown> = {}, overrides: Record<string, unknown> = {}) =>
@@ -89,6 +89,31 @@ describe('buildTimeline', () => {
       [800, 1900, 'Open it'],
       [1900, 6800, 'Loading'],
     ]);
+  });
+
+  it('sets a caption\'s length with captionMs, longer or shorter, still ending when the next one starts', () => {
+    const len = (tl: ReturnType<typeof buildTimeline>) => sourceToOutput(tl.segments, tl.captions[0].endMs) - sourceToOutput(tl.segments, tl.captions[0].startMs);
+    const s = script();
+    s.scenes[0].steps[0] = { do: 'click', target: '#a', show: { caption: 'Open it', captionMs: 3000 } };
+    expect(len(buildTimeline(s, events))).toBeCloseTo(3000, 0);
+    s.scenes[0].steps[0] = { do: 'click', target: '#a', show: { caption: 'Open it', captionMs: 600 } };
+    expect(buildTimeline(s, events).captions[0]).toMatchObject({ startMs: 800, endMs: 1400 });
+    s.scenes[0].steps[0] = { do: 'click', target: '#a', show: { caption: 'Open it', captionMs: 9000 } };
+    s.scenes[0].steps[1] = { do: 'wait', for: 'text=Ready', show: { caption: 'Loading' } };
+    expect(buildTimeline(s, events).captions[0].endMs).toBe(1900);
+  });
+
+  it('freezes a step\'s last frame for freezeMs, its caption staying up through it', () => {
+    const s = script();
+    s.scenes[0].steps[0] = { do: 'click', target: '#a', show: { caption: 'Open it', freezeMs: 2000 } };
+    const frozen = buildTimeline(s, events);
+    expect(frozen.segments.filter((x) => x.speed === 0)).toEqual([{ srcStartMs: 1899, srcEndMs: 1899, speed: 0, holdMs: 2000 }]);
+    expect(outputDurationMs(frozen.segments) - outputDurationMs(t.segments)).toBeCloseTo(2000, 0);
+    const c = frozen.captions[0];
+    expect(c.startMs <= 1899 && c.endMs > 1899).toBe(true);
+    // the zoom on the clicked button holds through the freeze too
+    const cam = frozen.camera.filter((k) => k.tMs <= 1899).at(-1)!;
+    expect(cam.scale).toBeGreaterThan(1);
   });
 
   it('moves a caption to the top when its target sits where bottom captions go', () => {
