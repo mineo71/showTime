@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.6.0 — 2026-10-14
 
 - `showtime inspect <url>`: every named control on a page with a ready target and how many
   elements it matches, plus a full-page screenshot.
