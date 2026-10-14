@@ -25,7 +25,7 @@ export const api = {
   edit: (edit: Edit) => call<StudioState>('/api/edit', edit),
   aspect: (aspect: string) => call<StudioState>('/api/aspect', { aspect }),
   render: (format: string) => call<Job>('/api/render', { format }),
-  record: () => call<Job>('/api/record', {}),
+  record: (net = 'auto') => call<Job>('/api/record', { net }),
   /** Server-sent events: `state` when the script or preview changed, `job` for render/record progress. */
   events: (on: { state: () => void; job: (job: Job) => void }) => {
     const source = new EventSource(`/api/events?token=${encodeURIComponent(token)}`);

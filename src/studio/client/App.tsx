@@ -16,6 +16,7 @@ export const App = () => {
   // The selected step, by position and by what it does: when the agent inserts a step, the selection follows its step.
   const [selected, setSelected] = useState<{ where: string; id: string } | null>(null);
   const [frame, setFrame] = useState(0);
+  const [net, setNet] = useState('auto');
   const [toast, setToast] = useState<string | null>(null);
   const player = useRef<PlayerRef>(null);
 
@@ -76,9 +77,11 @@ export const App = () => {
         job={job}
         onAspect={(a) => api.aspect(a).then(accept, (err: Error) => setToast(err.message))}
         onRender={(format) => run(() => api.render(format))}
-        onRecord={() => run(api.record)}
+        onRecord={() => run(() => api.record(net))}
+        net={net}
+        onNet={setNet}
       />
-      <Banners state={state} job={job} onRecord={() => run(api.record)} />
+      <Banners state={state} job={job} onRecord={() => run(() => api.record(net))} />
       <main className="work">
         <Preview state={state} player={player} onFrame={setFrame} />
         <aside className="side">

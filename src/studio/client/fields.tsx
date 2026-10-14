@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type FC, type ReactNode } from 'react';
+import { parseWholeMs } from './numbers';
 
 /** A text input that commits on Enter or blur; empty commits null. */
 export const TextField: FC<{
@@ -32,6 +33,41 @@ export const TextField: FC<{
   ) : (
     <input
       {...props}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') commit();
+      }}
+    />
+  );
+};
+
+/**
+ * A whole number of ms that commits on Enter or blur; empty commits null. Anything else is refused
+ * in place (the field turns red) and the value stays as it was.
+ */
+export const MsField: FC<{ field: string; value: number | undefined; onCommit: (value: number | null) => void }> = ({ field, value, onCommit }) => {
+  const shown = value === undefined ? '' : String(value);
+  const [text, setText] = useState(shown);
+  const [invalid, setInvalid] = useState(false);
+  useEffect(() => {
+    setText(shown);
+    setInvalid(false);
+  }, [shown]);
+  const commit = () => {
+    const next = parseWholeMs(text);
+    if (next === 'invalid') return setInvalid(true);
+    setInvalid(false);
+    if (next !== (value ?? null)) onCommit(next);
+  };
+  return (
+    <input
+      data-field={field}
+      inputMode="numeric"
+      value={text}
+      placeholder="0"
+      aria-invalid={invalid}
+      className={invalid ? 'invalid' : undefined}
+      onChange={(e) => setText(e.target.value)}
+      onBlur={commit}
       onKeyDown={(e) => {
         if (e.key === 'Enter') commit();
       }}

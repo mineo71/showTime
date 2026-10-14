@@ -1,7 +1,7 @@
 import type { FC } from 'react';
 import type { Edit } from '../edit';
 import type { StepInfo, StudioState } from '../server';
-import { ColorInput, Row, TextField } from './fields';
+import { ColorInput, MsField, Row, TextField } from './fields';
 
 const ZOOMS = ['auto', 'off', '1.25', '1.5', '1.8', '2', '2.5', '3'];
 const CLICKS = ['default', 'ripple', 'pulse', 'burst', 'ring', 'none'];
@@ -92,15 +92,10 @@ export const Inspector: FC<{ step: StepInfo | null; take: StudioState['take']; a
         </span>
       </Row>
       <Row label="Freeze (ms)" hint="a still at the step's end">
-        <TextField
-          field="freezeMs"
-          value={show.freezeMs === undefined ? undefined : String(show.freezeMs)}
-          placeholder="0"
-          onCommit={(v) => set({ freezeMs: v === null ? null : Math.round(Number(v)) })}
-        />
+        <MsField field="freezeMs" value={show.freezeMs} onCommit={(freezeMs) => set({ freezeMs })} />
       </Row>
       <Row label="Hold (ms)" hint="changes the take: record again">
-        <TextField field="hold" value={show.hold === undefined ? undefined : String(show.hold)} placeholder="0" onCommit={(v) => set({ hold: v === null ? null : Math.round(Number(v)) })} />
+        <MsField field="hold" value={show.hold} onCommit={(hold) => set({ hold })} />
       </Row>
     </section>
   );

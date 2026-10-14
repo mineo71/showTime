@@ -1,5 +1,8 @@
 import path from 'node:path';
 
+/** The answer to a page whose token is not this run's: the studio was restarted since it loaded. */
+export const STALE_PAGE = 'This page is from an earlier studio session. Reload it.';
+
 /** Only the studio's own address: a page on another host that resolves to 127.0.0.1 is refused. */
 export function hostAllowed(host: string | undefined, port: number): boolean {
   return host === `127.0.0.1:${port}` || host === `localhost:${port}`;

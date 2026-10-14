@@ -10,6 +10,7 @@ import { aspectOf, formatOf } from '../convert';
 import { workPaths } from '../paths';
 import { renderDemo, timelineFor } from '../pipeline';
 import { record } from '../runner/record';
+import { NET_MODES, type NetMode } from '../runner/replay';
 import { describeStep } from '../runner/steps';
 import { CONFIG_FILE } from '../script/config';
 import { parseLoaded, pickLocale, type LoadedScript } from '../script/load';
@@ -21,7 +22,7 @@ import type { Aspect, Timeline } from '../timeline/types';
 import { bundleClient } from './bundle';
 import { STYLES } from './client/styles';
 import { applyEdit, formatScript, parseEdit, StaleStepError, stepId } from './edit';
-import { filePath, hostAllowed, originAllowed, tokenOk } from './guard';
+import { filePath, hostAllowed, originAllowed, STALE_PAGE, tokenOk } from './guard';
 
 type Json = Record<string, unknown>;
 
@@ -79,6 +80,8 @@ export interface StudioState {
   sounds: Audio['sounds'] | null;
   /** the intro card's text in the open locale */
   meta: { title?: string; subtitle?: string } | null;
+  /** the script records and replays its network (`replay`): Record offers a network mode */
+  replay: boolean;
   steps: StepInfo[];
   timeline: Timeline | null;
   job: Job | null;
@@ -210,6 +213,7 @@ export async function startStudio(scriptFile: string, opts: StudioOptions = {}):
     style: null,
     sounds: null,
     meta: null,
+    replay: false,
     steps: [],
     timeline: null,
     job: null,
@@ -281,6 +285,7 @@ export async function startStudio(scriptFile: string, opts: StudioOptions = {}):
     state.style = loaded.script.style;
     state.meta = { title: loaded.script.meta.title, subtitle: loaded.script.meta.subtitle };
     state.sounds = loaded.script.audio.sounds;
+    state.replay = !!loaded.script.replay;
     state.error = null;
     state.steps = stepsOf(loaded, raw as Json);
     let steps;
@@ -354,7 +359,8 @@ export async function startStudio(scriptFile: string, opts: StudioOptions = {}):
   const pushJob = () => send('job', state.job);
   function startJob(kind: Job['kind'], work: (job: Job) => Promise<string | null>) {
     if (state.job?.status === 'running') throw new HttpError(409, `A ${state.job.kind} is already running.`);
-    if (!loaded) throw new HttpError(409, state.error ?? 'The script is not loaded yet.');
+    // An invalid script is not run in its last good version: the person would not know which one ran.
+    if (!loaded || state.error) throw new HttpError(409, state.error ?? 'The script is not loaded yet.');
     const job: Job = { kind, status: 'running', progress: 0, lines: [], result: null, error: null };
     state.job = job;
     pushJob();
@@ -421,8 +427,11 @@ export async function startStudio(scriptFile: string, opts: StudioOptions = {}):
       return json(202, state.job);
     }
     if (route === '/api/record') {
+      const net = (body as Json).net ?? 'auto';
+      if (!(NET_MODES as readonly unknown[]).includes(net)) throw new HttpError(400, `net must be auto, live, record or replay (got "${String(net)}")`);
       startJob('record', async (job) => {
         await record(loaded!, {
+          net: net as NetMode,
           log: (line) => {
             job.lines.push(line);
             pushJob();
@@ -463,7 +472,8 @@ export async function startStudio(scriptFile: string, opts: StudioOptions = {}):
         return sendFile(req, res, target);
       }
       if (route.startsWith('/api/')) {
-        if (!originAllowed(req.headers.origin, port) || !tokenOk(req.headers, req.url ?? '', token)) throw new HttpError(403, 'Forbidden.');
+        if (!originAllowed(req.headers.origin, port)) throw new HttpError(403, 'Forbidden.');
+        if (!tokenOk(req.headers, req.url ?? '', token)) throw new HttpError(403, STALE_PAGE);
         return handleApi(req, res, route);
       }
       throw new HttpError(404, 'Not found.');
@@ -484,8 +494,13 @@ export async function startStudio(scriptFile: string, opts: StudioOptions = {}):
 
   await enqueue(rebuild);
 
-  // Watch folders, not files: editors and the studio itself save by replacing the file.
-  const watched = [file, loaded ? (loaded as LoadedScript).config : null].filter((f): f is string => !!f);
+  // Watch folders, not files: editors and the studio itself save by replacing the file. A brand
+  // file may appear (or go) in the script's folder or any above it, so all of them are watched.
+  const folders: string[] = [];
+  for (let d = dir; ; d = path.dirname(d)) {
+    folders.push(d);
+    if (path.dirname(d) === d) break;
+  }
   let timer: NodeJS.Timeout | undefined;
   const onChange = () => {
     clearTimeout(timer);
@@ -498,17 +513,23 @@ export async function startStudio(scriptFile: string, opts: StudioOptions = {}):
     }, 150);
   };
   let configTouched = false;
-  const watchers: FSWatcher[] = [...new Set(watched.map((f) => path.dirname(f)))].map((d) =>
-    watch(d, (_event, changedName) => {
-      if (!changedName) return;
-      const full = path.join(d, changedName.toString());
-      if (full === file) onChange();
-      else if (path.basename(full) === CONFIG_FILE && watched.includes(full)) {
-        configTouched = true;
-        onChange();
-      }
-    }),
-  );
+  const watchers: FSWatcher[] = folders.flatMap((d) => {
+    try {
+      return [
+        watch(d, (_event, changedName) => {
+          if (!changedName) return;
+          const full = path.join(d, changedName.toString());
+          if (full === file) onChange();
+          else if (changedName.toString() === CONFIG_FILE) {
+            configTouched = true;
+            onChange();
+          }
+        }),
+      ];
+    } catch {
+      return []; // a folder we may not watch (permissions): its brand file is read, just not followed
+    }
+  });
   const keepAlive = setInterval(() => {
     for (const res of streams) res.write(': keep-alive\n\n');
   }, 15_000);

@@ -50,6 +50,7 @@ button:disabled { opacity: 0.45; cursor: default; }
 .label small { opacity: 0.7; }
 .row input, .row textarea, .row select { width: 100%; padding: 7px 9px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel-2); outline: none; resize: vertical; }
 .row input:focus, .row textarea:focus, .row select:focus { border-color: var(--accent); }
+.row input.invalid { border-color: #ef4444; }
 .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .check { display: flex; align-items: center; gap: 8px; margin: 6px 0 10px; cursor: pointer; }
 .color { display: flex; align-items: center; gap: 8px; }

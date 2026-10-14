@@ -1,4 +1,4 @@
-import { chmod, readFile, writeFile } from 'node:fs/promises';
+import { chmod, readFile, rm, writeFile } from 'node:fs/promises';
 import { request } from 'node:http';
 import path from 'node:path';
 import { chromium } from 'playwright';
@@ -154,6 +154,56 @@ describe('studio server', () => {
       .toMatch(/^audio\/preview\.wav\?v=\d+$/);
   });
 
+  it('tells a page from an earlier studio session to reload, and keeps other refusals plain', async () => {
+    const old = await fetch(new URL('/api/state', studio.url), { headers: { 'x-showtime-token': 'from-yesterday' } });
+    expect(old.status).toBe(403);
+    expect((await old.json()).error).toMatch(/earlier studio session\. Reload it/);
+    const crossSite = await api('/api/state', { headers: { origin: 'https://evil.example' } });
+    expect((await crossSite.json()).error).toBe('Forbidden.');
+  });
+
+  it('records with the network mode the page picked, and refuses an unknown one', async () => {
+    expect((await (await api('/api/state')).json()).replay).toBe(false);
+    const bogus = await api('/api/record', { method: 'POST', body: JSON.stringify({ net: 'offline' }) });
+    expect(bogus.status).toBe(400);
+    expect((await bogus.json()).error).toMatch(/auto, live, record or replay/);
+    // The demo has no replay section: --net record fails at once, which shows the mode reached record().
+    const res = await api('/api/record', { method: 'POST', body: JSON.stringify({ net: 'record' }) });
+    expect(res.status).toBe(202);
+    await expect
+      .poll(async () => (await (await api('/api/state')).json()).job?.error ?? '', { timeout: 20_000 })
+      .toMatch(/--net record: the script has no "replay" section/);
+  });
+
+  it('refuses to render or record an invalid script instead of using the last good one', async () => {
+    const good = await readFile(loaded.scriptPath, 'utf8');
+    const raw = JSON.parse(good);
+    raw.scenes[0].steps[0].show = { zoom: 99 };
+    await writeFile(loaded.scriptPath, JSON.stringify(raw, null, 2));
+    try {
+      await expect.poll(async () => (await (await api('/api/state')).json()).error ?? '', { timeout: 20_000 }).toMatch(/zoom/);
+      for (const route of ['/api/render', '/api/record']) {
+        const res = await api(route, { method: 'POST', body: '{}' });
+        expect(res.status).toBe(409);
+        expect((await res.json()).error).toMatch(/zoom/);
+      }
+    } finally {
+      await writeFile(loaded.scriptPath, good);
+      await expect.poll(async () => (await (await api('/api/state')).json()).error, { timeout: 20_000 }).toBeNull();
+    }
+  });
+
+  it('picks up a brand file created after it started, and its removal', async () => {
+    const brand = path.join(loaded.dir, 'showtime.config.json');
+    await writeFile(brand, JSON.stringify({ style: { radius: 31 } }));
+    try {
+      await expect.poll(async () => (await (await api('/api/state')).json()).style?.radius, { timeout: 20_000 }).toBe(31);
+    } finally {
+      await rm(brand, { force: true });
+    }
+    await expect.poll(async () => (await (await api('/api/state')).json()).style?.radius, { timeout: 20_000 }).toBe(14);
+  });
+
   it('says when there is no take yet', async () => {
     const fresh = await fixtureScript(server.url);
     const other = await startStudio(fresh.scriptPath, { port: 0 });
@@ -265,6 +315,12 @@ describe('studio page', () => {
       await freeze.press('Enter');
       await expect.poll(async () => (await show('report#4')).freezeMs, { timeout: 20_000 }).toBe(1500);
       await expect.poll(() => page.locator('[data-freeze="report#4"]').count(), { timeout: 20_000 }).toBe(1);
+      // Text that isn't a whole number is refused in place; the freeze stays.
+      await freeze.fill('abc');
+      await freeze.press('Enter');
+      await expect.poll(() => freeze.getAttribute('aria-invalid')).toBe('true');
+      await page.waitForTimeout(1500);
+      expect((await show('report#4')).freezeMs).toBe(1500);
       expect(errors).toEqual([]);
     } finally {
       await browser.close();

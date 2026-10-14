@@ -5,6 +5,7 @@ import path from 'node:path';
 import { Command } from 'commander';
 import { workPaths } from '../paths';
 import { loadScript, type LoadedScript } from '../script/load';
+import { NET_MODES, type NetMode } from '../runner/replay';
 import { scriptJsonSchema } from '../script/schema';
 import type { TakeEvents } from '../timeline/types';
 import { aspectOf, formatOf } from '../convert';
@@ -63,8 +64,7 @@ function checkScenes(loaded: LoadedScript, scenes: string[] | undefined) {
   }
 }
 
-const NET_MODES = ['auto', 'live', 'record', 'replay'] as const;
-type Net = (typeof NET_MODES)[number];
+type Net = NetMode;
 const NET_HELP = 'network for script.replay: auto (replay the file if it exists, else record it), live, record or replay';
 function netOf(value: string | undefined): Net | undefined {
   if (value === undefined) return undefined;

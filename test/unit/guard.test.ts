@@ -33,3 +33,11 @@ describe('studio guard', () => {
     expect(filePath(root, '/files/')).toBeNull();
   });
 });
+
+describe('STALE_PAGE', () => {
+  it('tells the person to reload instead of a bare refusal', async () => {
+    const { STALE_PAGE } = await import('../../src/studio/guard');
+    expect(STALE_PAGE).toMatch(/earlier studio session/);
+    expect(STALE_PAGE).toMatch(/Reload/);
+  });
+});

@@ -9,7 +9,8 @@ import type { Script } from '../script/schema';
 import { clientText, HttpStore, stripSecrets, WsReplay, type HttpEntry, type WsRecording } from './replay-core';
 import { sleep } from './time';
 
-export type NetMode = 'auto' | 'live' | 'record' | 'replay';
+export const NET_MODES = ['auto', 'live', 'record', 'replay'] as const;
+export type NetMode = (typeof NET_MODES)[number];
 
 export interface NetReport {
   mode: 'record' | 'replay';
