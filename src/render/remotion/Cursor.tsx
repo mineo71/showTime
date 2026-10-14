@@ -8,7 +8,7 @@ const IBEAM = 'M10 4.5 H13 Q14 4.5 14 5.5 Q14 4.5 15 4.5 H18 M14 5.5 V22.5 M10 2
 const HOTSPOT = { arrow: { x: 5, y: 2 }, text: { x: 14, y: 14 } } as const;
 
 export const Cursor: FC<{ timeline: Timeline; srcMs: number }> = ({ timeline, srcMs }) => {
-  const c = cursorAt(timeline.moves, timeline.clicks, srcMs);
+  const c = cursorAt(timeline.moves, timeline.clicks, srcMs, timeline.drags ?? []);
   if (!c.visible) return null;
   const shape = c.kind === 'text' ? 'text' : 'arrow';
   const hs = HOTSPOT[shape];

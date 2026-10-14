@@ -10,7 +10,7 @@ import { Intro } from './Intro';
 import { Outro } from './Outro';
 import { cssFamily } from './css';
 import { Fonts } from './Fonts';
-import { Captions, Ripples, Spotlights, Subtitles } from './Overlays';
+import { activeCaption, Captions, KeyCaps, Ripples, Spotlights, Subtitles } from './Overlays';
 import { Watermark } from './Watermark';
 
 export type ShowtimeVideoProps = {
@@ -52,6 +52,10 @@ const Picture: FC<ShowtimeVideoProps> = ({ timeline: t, assetBase }) => {
   const subtitleBelow = bands || t.subtitleBand > 0;
   const above = { top: 0, height: win.y - win.bar, alignItems: 'center' } as const;
   const below = { top: win.y + win.height, bottom: 0, alignItems: 'center' } as const;
+  // Keycaps sit inside the window, near its bottom edge, or near its top while a caption covers the
+  // bottom of the window (captions in 9:16 sit in the bands, outside it).
+  const captionInBottom = !bands && activeCaption(t, src)?.position === 'bottom';
+  const keysPlace = captionInBottom ? { top: win.y + Math.round(H * 0.03) } : { bottom: H - (win.y + win.height) + Math.round(H * 0.03) };
   // After an intro card the window rises into place instead of cutting in.
   const enter = intro
     ? interpolate(frame - intro, [0, 16], [0, 1], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp', easing: Easing.out(Easing.cubic) })
@@ -131,6 +135,7 @@ const Picture: FC<ShowtimeVideoProps> = ({ timeline: t, assetBase }) => {
           bottom={bands ? below : { bottom: captionBottom(t.output, win, t.subtitleBand) }}
           fontSize={bands ? 46 : 36}
         />
+        <KeyCaps timeline={t} srcMs={src} place={keysPlace} fontSize={bands ? 40 : 30} />
         <Subtitles
           timeline={t}
           videoMs={((frame - intro) * 1000) / t.fps}

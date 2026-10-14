@@ -3,7 +3,8 @@ import { parseScript } from '../../src/script/schema';
 import { buildTimeline } from '../../src/timeline/build';
 import { CAPTION_FADE_MS, SPOTLIGHT_FADE_MS } from '../../src/timeline/fades';
 import { NARRATION_GAP_MS } from '../../src/timeline/narration';
-import { outputDurationMs, sourceToOutput } from '../../src/timeline/timemap';
+import { KEYS_MS } from '../../src/timeline/keys';
+import { outputDurationMs, outputToSource, sourceToOutput } from '../../src/timeline/timemap';
 import type { TakeEvents } from '../../src/timeline/types';
 
 const script = (style: Record<string, unknown> = {}, overrides: Record<string, unknown> = {}) =>
@@ -339,5 +340,54 @@ describe('buildTimeline: highlights and click animations', () => {
     expect(g.watermark).toEqual(watermark);
     expect(t.fonts).toEqual([]);
     expect(t.watermark).toBeNull();
+  });
+});
+
+describe('keys on screen and drags', () => {
+  const keyed = (steps: Record<string, unknown>[], style: Record<string, unknown> = {}) =>
+    parseScript({ version: 1, app: { url: 'http://x' }, style, scenes: [{ id: 's', steps }] });
+  const ev = (n: number): TakeEvents => ({
+    ...events,
+    steps: Array.from({ length: n }, (_, i) => ({ sceneId: 's', index: i, do: 'press' as const, startMs: 1000 + i * 3000, actionMs: 1000 + i * 3000, endMs: 1050 + i * 3000, settledMs: 1500 + i * 3000 })),
+    moves: [],
+    clicks: [],
+    idle: [],
+  });
+
+  it('shows a combo by default, and a single key only with keys: all', () => {
+    const steps = [{ do: 'press', key: 'Meta+K' }, { do: 'press', key: 'Enter' }];
+    const t = buildTimeline(keyed(steps), ev(2));
+    expect(t.keys).toHaveLength(1);
+    expect(t.keys[0]).toMatchObject({ startMs: 1000 });
+    expect(t.keys[0].caps.at(-1)).toBe('K');
+    expect(buildTimeline(keyed(steps, { keys: 'all' }), ev(2)).keys.map((k) => k.caps.at(-1))).toEqual(['K', 'Enter']);
+    expect(buildTimeline(keyed(steps, { keys: 'off' }), ev(2)).keys).toEqual([]);
+  });
+
+  it('keeps keys up for KEYS_MS of output, or until the next ones', () => {
+    const t = buildTimeline(keyed([{ do: 'press', key: 'Meta+K' }, { do: 'press', key: 'Meta+J', show: { speed: 4 } }], { autoSpeed: false }), ev(2));
+    expect(t.keys[0].endMs).toBeCloseTo(outputToSource(t.segments, sourceToOutput(t.segments, 1000) + KEYS_MS), 0);
+    const close = buildTimeline(keyed([{ do: 'press', key: 'Meta+K' }, { do: 'press', key: 'Meta+J' }]), {
+      ...ev(2),
+      steps: ev(2).steps.map((s, i) => ({ ...s, startMs: 1000 + i * 500, actionMs: 1000 + i * 500, endMs: 1050 + i * 500, settledMs: 1400 + i * 500 })),
+    });
+    expect(close.keys[0].endMs).toBe(1500);
+  });
+
+  it('shows the modifiers of a modifier click', () => {
+    const t = buildTimeline(keyed([{ do: 'click', target: '#a', modifiers: ['Shift'] }, { do: 'dblclick', target: '#a', modifiers: ['Alt'] }]), {
+      ...ev(2),
+      steps: ev(2).steps.map((s, i) => ({ ...s, do: i ? ('dblclick' as const) : ('click' as const), target: { x: 10, y: 10, width: 50, height: 20 } })),
+    });
+    expect(t.keys.map((k) => k.caps)).toEqual([
+      [expect.any(String), 'click'],
+      [expect.any(String), 'double-click'],
+    ]);
+  });
+
+  it('carries the drags of the take, none for older takes', () => {
+    expect(buildTimeline(script(), events).drags).toEqual([]);
+    const drags = [{ startMs: 1500, endMs: 1800 }];
+    expect(buildTimeline(script(), { ...events, drags }).drags).toEqual(drags);
   });
 });

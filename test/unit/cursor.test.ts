@@ -46,3 +46,13 @@ describe('pressAt / ripplesAt', () => {
     expect(ripplesAt(clicks, 1951)).toEqual([]);
   });
 });
+
+describe('cursorAt while dragging', () => {
+  it('stays pressed for the whole drag, and lets go after it', () => {
+    const moves = [{ startMs: 0, endMs: 100, from: { x: 0, y: 0 }, to: { x: 10, y: 10 }, cursor: 'arrow' as const }];
+    const drags = [{ startMs: 1000, endMs: 2000 }];
+    expect(cursorAt(moves, [], 1500, drags).press).toBeCloseTo(0.85, 2);
+    expect(cursorAt(moves, [], 2500, drags).press).toBe(1);
+    expect(cursorAt(moves, [], 1500).press).toBe(1);
+  });
+});

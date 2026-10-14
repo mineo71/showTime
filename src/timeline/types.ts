@@ -111,6 +111,13 @@ export interface ClickFx {
   color: string;
 }
 
+/** Keys shown on screen for a press or a modifier click (source ms). */
+export interface KeyCap {
+  startMs: number;
+  endMs: number;
+  caps: string[];
+}
+
 export interface FontFile {
   family: string;
   /** data URI */
@@ -177,6 +184,10 @@ export interface Timeline {
   spotlights: Spotlight[];
   /** click animations; `clicks` still drives the cursor press */
   clickFx: ClickFx[];
+  /** keycaps of presses and modifier clicks (style.keys) */
+  keys: KeyCap[];
+  /** while a drag holds the button: the cursor stays pressed */
+  drags: Interval[];
   /** font files embedded for captions, cards and the watermark */
   fonts: FontFile[];
   watermark: Watermark | null;

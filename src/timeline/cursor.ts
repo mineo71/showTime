@@ -1,8 +1,10 @@
 import { clamp, easeInOutCubic } from './math';
-import type { Click, CursorKind, Move } from './types';
+import type { Click, CursorKind, Interval, Move } from './types';
 
 export const RIPPLE_MS = 450;
 const PRESS_MS = 140;
+/** How far the cursor shrinks while pressed. */
+const PRESSED = 0.85;
 const FADE_IN_MS = 200;
 const KIND_SWITCH_AT = 0.9;
 
@@ -18,7 +20,7 @@ export interface CursorState {
 export function pressAt(clicks: Click[], tMs: number): number {
   for (const c of clicks) {
     const d = tMs - c.tMs;
-    if (d >= 0 && d <= PRESS_MS) return 1 - 0.15 * Math.sin((Math.PI * d) / PRESS_MS);
+    if (d >= 0 && d <= PRESS_MS) return 1 - (1 - PRESSED) * Math.sin((Math.PI * d) / PRESS_MS);
   }
   return 1;
 }
@@ -29,7 +31,8 @@ export function ripplesAt(clicks: Click[], tMs: number): Array<{ x: number; y: n
     .map((c) => ({ x: c.x, y: c.y, tMs: c.tMs, progress: (tMs - c.tMs) / RIPPLE_MS }));
 }
 
-export function cursorAt(moves: Move[], clicks: Click[], tMs: number): CursorState {
+/** `drags`: while one holds the button, the cursor stays pressed. */
+export function cursorAt(moves: Move[], clicks: Click[], tMs: number, drags: Interval[] = []): CursorState {
   if (!moves.length) return { x: 0, y: 0, kind: 'arrow', visible: false, opacity: 0, press: 1 };
   const first = moves[0];
   if (tMs < first.startMs) return { ...first.from, kind: 'arrow', visible: false, opacity: 0, press: 1 };
@@ -55,5 +58,6 @@ export function cursorAt(moves: Move[], clicks: Click[], tMs: number): CursorSta
     kind = p < KIND_SWITCH_AT ? prevKind : m.cursor;
   }
   const opacity = clamp((tMs - first.startMs) / FADE_IN_MS, 0, 1);
-  return { x, y, kind, visible: true, opacity, press: pressAt(clicks, tMs) };
+  const held = drags.some((d) => tMs >= d.startMs && tMs <= d.endMs);
+  return { x, y, kind, visible: true, opacity, press: held ? PRESSED : pressAt(clicks, tMs) };
 }

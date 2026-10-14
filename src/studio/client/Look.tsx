@@ -48,6 +48,15 @@ export const Look: FC<{ state: StudioState; onEdit: (edit: Edit) => void }> = ({
               </select>
             </Row>
           </div>
+          <Row label="Keys on screen" hint="keycaps for presses">
+            <select data-field="keys" value={style.keys ?? 'combos'} onChange={(e) => setStyle({ keys: e.target.value })}>
+              {['combos', 'all', 'off'].map((v) => (
+                <option key={v} value={v}>
+                  {v === 'combos' ? 'combos (⌘K)' : v}
+                </option>
+              ))}
+            </select>
+          </Row>
           <Row label="Caption font" hint="a family on this machine or in style.fonts">
             <TextField field="captionFont" value={style.captionFont} placeholder={style.font.split(',')[0]} onCommit={(v) => setStyle({ captionFont: v })} />
           </Row>

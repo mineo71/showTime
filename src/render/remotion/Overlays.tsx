@@ -1,6 +1,7 @@
 import type { CSSProperties, FC } from 'react';
 import { RIPPLE_MS } from '../../timeline/cursor';
 import { CAPTION_FADE_MS, SPOTLIGHT_FADE_MS } from '../../timeline/fades';
+import { KEYS_FADE_MS } from '../../timeline/keys';
 import { clamp, easeOutCubic } from '../../timeline/math';
 import type { Timeline } from '../../timeline/types';
 import { cssFamily } from './css';
@@ -150,4 +151,43 @@ export const Subtitles: FC<{ timeline: Timeline; videoMs: number; place: Place; 
       </div>
     </div>
   );
+};
+
+/** Keycaps of the press (or modifier click) on screen now. */
+export const KeyCaps: FC<LayerProps & { place: Place; fontSize: number }> = ({ timeline, srcMs, place, fontSize }) => {
+  const k = (timeline.keys ?? []).find((x) => srcMs >= x.startMs && srcMs <= x.endMs);
+  if (!k) return null;
+  const o = envelope(srcMs, k.startMs, k.endMs, KEYS_FADE_MS);
+  const { style } = timeline;
+  return (
+    <div style={{ ...row(place), gap: Math.round(fontSize * 0.3), opacity: o, transform: `translateY(${(1 - o) * 8}px)` }}>
+      {k.caps.map((cap, i) => (
+        <div
+          key={i}
+          style={{
+            minWidth: Math.round(fontSize * 1.6),
+            padding: `${Math.round(fontSize * 0.28)}px ${Math.round(fontSize * 0.5)}px`,
+            borderRadius: Math.round(fontSize * 0.32),
+            background: 'rgba(15, 23, 42, 0.9)',
+            borderBottom: '4px solid rgba(0, 0, 0, 0.45)',
+            boxShadow: '0 10px 30px rgba(0, 0, 0, 0.3)',
+            color: '#fff',
+            fontFamily: cssFamily(style.captionFont ?? style.font),
+            fontSize,
+            fontWeight: 600,
+            lineHeight: 1.1,
+            textAlign: 'center',
+          }}
+        >
+          {cap}
+        </div>
+      ))}
+    </div>
+  );
+};
+
+/** The caption on screen at `srcMs`, if any (keycaps take the other slot). */
+export const activeCaption = (timeline: Timeline, srcMs: number) => {
+  const active = timeline.captions.filter((c) => srcMs >= c.startMs && srcMs <= c.endMs);
+  return active[active.length - 1];
 };

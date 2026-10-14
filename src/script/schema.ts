@@ -175,6 +175,10 @@ export const StyleSchema = z
       .describe('Frame the recording in a browser window with an address bar, or show the bare viewport'),
     address: z.string().optional().describe('Address-bar text; defaults to the app URL without its scheme'),
     click: z.enum(CLICK_KINDS).default('ripple').describe('Click animation'),
+    keys: z
+      .enum(['combos', 'all', 'off'])
+      .default('combos')
+      .describe('Keys on screen: combos (presses with a modifier, modifier clicks), all presses, or off'),
     spotlightDim: z.number().min(0).max(1).default(0.55).describe('How dark a dim spotlight makes the rest'),
     captionStyle: z.enum(['dark', 'light', 'accent', 'outline', 'bar']).default('dark'),
     captionFont: z.string().min(1).optional().describe('Font family of captions and subtitles (default: font)'),

@@ -31,6 +31,8 @@ const timeline = (intro: boolean, outro = false): Timeline =>
     subtitleBand: 0,
     clips: [],
     clickFx: [],
+    keys: [],
+    drags: [],
     fonts: [],
     watermark: null,
     sounds: [],

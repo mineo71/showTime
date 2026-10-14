@@ -8,9 +8,12 @@ import { workPaths } from '../../src/paths';
 import { renderDemo, renderQaFrames, timelineFor } from '../../src/pipeline';
 import { record } from '../../src/runner/record';
 import { loadScript, type LoadedScript } from '../../src/script/load';
-import { totalFrames } from '../../src/timeline/frames';
+import { renderStills } from '../../src/render/render';
+import { introFrames, sourceMsAtFrame, totalFrames } from '../../src/timeline/frames';
+import { BROWSER_BAR, viewLayout } from '../../src/timeline/layout';
 import type { Timeline } from '../../src/timeline/types';
 import { fixtureScript } from '../helpers/fixture';
+import { pixelsDiffering } from '../helpers/pixel';
 import { FIXTURES, serveDir } from '../helpers/serve';
 
 let server: Awaited<ReturnType<typeof serveDir>>;
@@ -42,6 +45,23 @@ describe('render', () => {
     expect(tl.segments.some((s) => s.speed > 1)).toBe(true);
     expect(tl.camera.length).toBeGreaterThan(0);
     expect(tl.captions.map((c) => c.text)).toContain('Кешбек видно одразу');
+  });
+
+  it('draws keycaps inside the window, near its bottom', async () => {
+    const { timeline } = await timelineFor(loaded);
+    const frame = introFrames(timeline) + 20;
+    const src = sourceMsAtFrame(timeline, frame)!;
+    const plain: Timeline = { ...timeline, captions: [], keys: [] };
+    const keyed: Timeline = { ...plain, keys: [{ startMs: src - 1000, endMs: src + 1000, caps: ['⌘', '⇧', 'K'] }] };
+    const out = path.join(workPaths(loaded).root, 'keys-test');
+    const [a] = await renderStills(plain, workPaths(loaded).root, out, [{ frame, name: 'plain' }]);
+    const [b] = await renderStills(keyed, workPaths(loaded).root, out, [{ frame, name: 'keyed' }]);
+    const win = viewLayout(timeline.output, timeline.stage, timeline.style.padding, timeline.chrome ? BROWSER_BAR : 0, timeline.aspect, timeline.subtitleBand);
+    const bottom = Math.round(win.y + win.height);
+    const band = { x: 860, y: bottom - 140, width: 200, height: 130 };
+    expect(await pixelsDiffering(a, b, band)).toBeGreaterThan(500);
+    // and nothing outside the window changed
+    expect(await pixelsDiffering(a, b, { x: 860, y: bottom + 4, width: 200, height: 20 })).toBe(0);
   });
 
   it('renders QA stills: intro + one per step, plus a contact sheet', async () => {
@@ -87,7 +107,7 @@ describe('render', () => {
     const edited = await editScript((raw) => {
       raw.scenes[1].steps[1].show = { say: 'That is all. Thanks for watching!' };
       raw.audio = {
-        voice: { engine: 'command', command: 'ffmpeg -v error -f lavfi -i sine=frequency=330:duration=3 -f wav -y {out}' },
+        voice: { engine: 'command', command: 'ffmpeg -nostdin -v error -f lavfi -i sine=frequency=330:duration=3 -f wav -y {out}' },
         sounds: true,
         subtitles: 'burn',
       };

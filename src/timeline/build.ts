@@ -4,10 +4,11 @@ import { BROWSER_BAR, OUTPUT_SIZES, projectRect, viewLayout, visibleFraction, ty
 import { clamp } from './math';
 import { RIPPLE_MS } from './cursor';
 import { CAPTION_FADE_MS, SPOTLIGHT_FADE_MS } from './fades';
+import { hasModifier, keyCaps, KEYS_MS } from './keys';
 import { soundEvents, stepKey, subtitleCues, withNarration, type Span, type Typing } from './narration';
 import { readingMs } from './reading';
 import { buildSegments, insertHolds, outputToSource, sourceToOutput, type SpeedSpan } from './timemap';
-import type { Aspect, CameraKey, Caption, ClickFx, FontFile, NarrationLine, Rect, Spotlight, StepEvent, TakeEvents, Timeline, Watermark } from './types';
+import type { Aspect, CameraKey, Caption, ClickFx, FontFile, KeyCap, NarrationLine, Rect, Spotlight, StepEvent, TakeEvents, Timeline, Watermark } from './types';
 
 export const AUTO_SPEED_MIN_IDLE_MS = 800;
 export const AUTO_SPEED_TARGET_MS = 600;
@@ -20,7 +21,7 @@ export const CAPTION_BAND = 0.78;
 /** Burned subtitles get a band of this fraction of the output height under the window (16:9, 1:1). */
 export const SUBTITLE_BAND = 0.11;
 
-const ZOOMABLE = new Set<Step['do']>(['click', 'type', 'select', 'hover']);
+const ZOOMABLE = new Set<Step['do']>(['click', 'dblclick', 'drag', 'upload', 'type', 'select', 'hover']);
 
 export interface BuildOptions {
   fps?: number;
@@ -155,6 +156,23 @@ export function buildTimeline(script: Script, ev: TakeEvents, opts: BuildOptions
     }
   }
 
+  // Keys on screen: a combo press (every press with keys: all) and a modifier click, until the next.
+  const keys: KeyCap[] = [];
+  if (style.keys !== 'off') {
+    for (const { e, step } of pairs) {
+      let caps: string[] | null = null;
+      if (step.do === 'press' && (style.keys === 'all' || hasModifier(step.key))) caps = keyCaps(step.key);
+      if ((step.do === 'click' || step.do === 'dblclick') && step.modifiers?.length) {
+        caps = [...step.modifiers.map((m) => keyCaps(m)[0]), step.do === 'dblclick' ? 'double-click' : 'click'];
+      }
+      if (caps) keys.push({ startMs: e.actionMs, endMs: after(e.actionMs, KEYS_MS), caps });
+    }
+    keys.forEach((k, i) => {
+      const next = keys[i + 1];
+      if (next) k.endMs = Math.min(k.endMs, next.startMs);
+    });
+  }
+
   const camera = buildCamera(regions, { visible, hold: crop });
   // A caption ends when the next one starts: no overlap, so captions dip instead of colliding.
   drafts.sort((a, b) => a.startMs - b.startMs);
@@ -233,6 +251,8 @@ export function buildTimeline(script: Script, ev: TakeEvents, opts: BuildOptions
     captions,
     spotlights,
     clickFx,
+    keys,
+    drags: ev.drags ?? [],
     fonts: opts.fonts ?? [],
     watermark: opts.watermark ?? null,
     narration,

@@ -29,6 +29,7 @@ const StyleEdit = z
     autoZoom: nullable(z.boolean()),
     autoSpeed: nullable(z.boolean()),
     click: nullable(z.enum(CLICK_KINDS)),
+    keys: nullable(z.enum(['combos', 'all', 'off'])),
     captionStyle: nullable(z.enum(['dark', 'light', 'accent', 'outline', 'bar'])),
     captionFont: nullable(z.string()),
     titleFont: nullable(z.string()),

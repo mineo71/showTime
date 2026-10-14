@@ -110,3 +110,11 @@ describe('formatScript', () => {
     expect(JSON.parse(text)).toEqual(raw());
   });
 });
+
+describe('0.9 look', () => {
+  it('lets the studio set how keys are shown', () => {
+    const edit = parseEdit({ style: { keys: 'all' } });
+    expect(applyEdit({ ...raw() }, edit).style).toEqual({ keys: 'all' });
+    expect(() => parseEdit({ style: { keys: 'some' } })).toThrow(/Invalid edit/);
+  });
+});
