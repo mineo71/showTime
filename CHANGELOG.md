@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.9.0 — 2026-10-14
 
 - New actions: `dblclick`; `click` with `button` (`right` for context menus, `middle`) and
   `modifiers` (`Shift`, `ControlOrMeta`, …); `drag` from a target to another (`to`) or by an offset
