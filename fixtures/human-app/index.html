@@ -11,6 +11,7 @@
     <button>Save <span>draft</span></button>
     <div id="plain-save">Save</div>
     <a href="popup.html" target="_blank">Open the popup</a>
+    <button id="signin" onclick="window.open('oauth.html', 'oauth', 'width=500,height=500')">Sign in with Example</button>
     <p id="out"></p>
     <script>
       for (const el of document.querySelectorAll('a, button, div')) el.addEventListener('click', () => (document.getElementById('out').textContent = el.textContent));

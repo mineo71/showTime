@@ -3,9 +3,11 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { chromium, type BrowserContext, type Page } from 'playwright';
 import { formatScript } from '../studio/edit';
-import { toSteps, toTarget, type HumanStep, type RecordedAction } from './convert';
+import { followPages, toSteps, toTarget, type HumanStep, type RecordedAction } from './convert';
 
 export const SCHEMA_URL = 'https://raw.githubusercontent.com/mineo71/showTime/main/docs/script.schema.json';
+/** How long a page that closes itself stays open, so its last action is reported. */
+const SELF_CLOSE_GRACE_MS = 1000;
 
 export interface RecordHumanOptions {
   /** where the script goes */
@@ -72,8 +74,9 @@ export async function recordHuman(url: string, opts: RecordHumanOptions): Promis
   const viewport = opts.viewport ?? { width: 1440, height: 900 };
   // Playwright would close the browser and exit on Ctrl+C itself; showTime handles it, so the script gets written.
   const browser = await chromium.launch({ headless: opts.headless ?? false, handleSIGINT: false });
-  const actions: RecordedAction[] = [];
-  const pageNotes: string[] = [];
+  const entries: Array<{ page: number; action: RecordedAction }> = [];
+  // Pages that closed themselves (an OAuth popup): they will again when the script runs, so no closeTab.
+  const selfClosed = new Set<number>();
   let title = '';
   try {
     const context = (await browser.newContext({ viewport })) as Recordable;
@@ -81,28 +84,50 @@ export async function recordHuman(url: string, opts: RecordHumanOptions): Promis
       throw new Error('This Playwright version has no programmatic recorder. Install the Playwright version showTime ships with.');
     }
     const page = await context.newPage();
+    const say = (a: RecordedAction) => opts.log?.(`● ${a.name}${a.selector ? ` ${toTarget(a.selector)}` : ''}${a.text ? ` "${a.text}"` : ''}`);
+    // Every page the flow touches, in the order they opened: actions are kept with their page and
+    // put in one line once recording ends (the recorder may report a click after the popup it opened).
+    const pages: unknown[] = [page];
+    const indexOf = (p: unknown) => {
+      if (!pages.includes(p)) pages.push(p);
+      return pages.indexOf(p);
+    };
+    context.on('page', (p) => indexOf(p));
+    // A page closing itself tells showTime first, and stays open a moment: the recorder reports an
+    // action about half a second after it happens, and a closed page's last click would be lost.
+    await context.exposeBinding('__showtimeClosing', async (source) => {
+      selfClosed.add(indexOf(source.page));
+      await new Promise((resolve) => setTimeout(resolve, SELF_CLOSE_GRACE_MS));
+    });
+    await context.addInitScript({
+      content: `(() => {
+  const close = window.close.bind(window);
+  window.close = () => {
+    Promise.resolve(window.__showtimeClosing && window.__showtimeClosing()).catch(() => undefined).finally(() => close());
+  };
+})();`,
+    });
     await page.goto(url);
     title = await page.title();
-    const say = (a: RecordedAction) => opts.log?.(`● ${a.name}${a.selector ? ` ${toTarget(a.selector)}` : ''}${a.text ? ` "${a.text}"` : ''}`);
-    // showTime films one page: actions in popups and new tabs are left out, with a note.
-    const otherPage = () => {
-      if (!pageNotes.length) pageNotes.push('actions in a popup or new tab were skipped; showTime records one page');
-    };
     await context._startRecording(
       { language: 'jsonl' },
       {
         actionAdded: (from, action) => {
-          if (from !== page) return otherPage();
-          actions.push(action);
+          if (action.name === 'openPage' || action.name === 'closePage') return;
+          entries.push({ page: indexOf(from), action });
           say(action);
         },
         // Typing into a field arrives as one fill, updated keystroke by keystroke.
         actionUpdated: (from, action) => {
-          if (from === page && actions.length) actions[actions.length - 1] = action;
+          const n = indexOf(from);
+          for (let i = entries.length - 1; i >= 0; i--) {
+            if (entries[i].page === n) {
+              entries[i] = { page: n, action };
+              break;
+            }
+          }
         },
-        signalAdded: (_from, signal) => {
-          if ((signal as { name?: string }).name === 'popup') otherPage();
-        },
+        signalAdded: () => undefined,
       },
     );
     await orInterrupt(opts.drive ? opts.drive(page) : untilClosed(context));
@@ -111,9 +136,7 @@ export async function recordHuman(url: string, opts: RecordHumanOptions): Promis
     await browser.close().catch(() => undefined);
   }
 
-  const converted = toSteps(actions, url);
-  const steps = converted.steps;
-  const notes = [...converted.notes, ...pageNotes];
+  const { steps, notes } = toSteps(followPages(entries, selfClosed), url);
   for (const note of notes) opts.log?.(`⚠ ${note}`);
   if (!steps.length) throw new Error('Nothing was recorded, so no script was written.');
   const script = {

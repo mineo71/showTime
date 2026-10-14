@@ -64,7 +64,7 @@ describe('record-human on real-world labels, popups and Ctrl+C', () => {
   });
   afterAll(() => app.close());
 
-  it('writes selectors that still find the clicked elements, and leaves popup actions out with a note', async () => {
+  it('writes selectors that still find the clicked elements, and follows a popup until it is closed', async () => {
     const out = path.join(await mkdtemp(path.join(tmpdir(), 'showtime-human-')), 'flow.json');
     const result = await recordHuman(app.url, {
       out,
@@ -72,16 +72,23 @@ describe('record-human on real-world labels, popups and Ctrl+C', () => {
       drive: async (page) => {
         await page.getByText('Inbox 12').click();
         await page.locator('#long').click();
-        await page.locator('#plain-save').click();
         const [popup] = await Promise.all([page.waitForEvent('popup'), page.getByText('Open the popup').click()]);
         await popup.waitForLoadState();
         await popup.getByText('Confirm in popup').click();
+        // A person reads, then closes this one: a closeTab. The sign-in window below closes itself: no closeTab.
+        await page.waitForTimeout(800);
+        await popup.close();
+        await page.locator('#plain-save').click();
+        const [oauth] = await Promise.all([page.waitForEvent('popup'), page.locator('#signin').click()]);
+        await oauth.waitForLoadState();
+        await Promise.all([oauth.waitForEvent('close'), oauth.locator('#allow').click()]);
+        await page.locator('#long').click();
         await page.waitForTimeout(300);
       },
     });
-    const targets = result.steps.map((s) => ('target' in s ? s.target : ''));
-    expect(targets.some((t) => /Confirm in popup/.test(t))).toBe(false);
-    expect(result.notes.join('\n')).toMatch(/popup or new tab/);
+    expect(result.steps.map((s) => s.do)).toEqual(['click', 'click', 'click', 'click', 'closeTab', 'click', 'click', 'click', 'click']);
+    expect('target' in result.steps[3] && result.steps[3].target).toMatch(/Confirm in popup/);
+    expect(result.notes).toEqual([]);
     const report = await check(await loadScript(out));
     expect(report.failure ?? null).toBeNull();
     expect(report.ok).toBe(true);

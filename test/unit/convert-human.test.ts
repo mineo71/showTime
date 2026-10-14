@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { toSteps, toTarget } from '../../src/human/convert';
+import { followPages, toSteps, toTarget } from '../../src/human/convert';
 
 describe('toTarget', () => {
   it('rewrites internal selectors only where the public form matches the same elements', () => {
@@ -55,25 +55,102 @@ describe('toSteps', () => {
       [
         { name: 'navigate', url: 'http://127.0.0.1:4800/app/settings?tab=2' },
         { name: 'navigate', url: 'https://other.example/' },
-        { name: 'click', selector: '#menu', button: 'right', clickCount: 1, modifiers: 0 },
-        { name: 'click', selector: '#row', button: 'left', clickCount: 2, modifiers: 0 },
         { name: 'openPage', url: 'http://127.0.0.1:4800/popup' },
-        { name: 'setInputFiles', selector: '#upload' },
+        { name: 'closePage' },
         { name: 'fill', selector: '#search', text: '' },
+        { name: 'setInputFiles', selector: '#upload', files: [] },
+        { name: 'assertText', selector: '#x' },
       ],
       url,
     );
     expect(steps).toEqual([
       { do: 'goto', url: '/app/settings?tab=2' },
       { do: 'goto', url: 'https://other.example/' },
-      { do: 'click', target: '#row' },
     ]);
     expect(notes).toEqual([
-      'click #menu: right clicks are not replayed; skipped',
-      'click #row: a double click is replayed as one click',
-      'a new tab or popup opened; showTime records one page, so it was skipped',
-      'setInputFiles #upload: file uploads are not replayed; skipped',
       'fill #search: clearing a field is not replayed; skipped',
+      'setInputFiles #upload: clearing a file input is not replayed; skipped',
+      'assertText #x: not replayed; skipped',
     ]);
+  });
+
+  it('keeps double, right, middle and modifier clicks', () => {
+    const { steps, notes } = toSteps(
+      [
+        { name: 'click', selector: '#row', button: 'left', clickCount: 2, modifiers: 0 },
+        { name: 'click', selector: '#row', button: 'left', clickCount: 2, modifiers: 4 },
+        { name: 'click', selector: '#menu', button: 'right', clickCount: 1, modifiers: 0 },
+        { name: 'click', selector: '#tab', button: 'middle', clickCount: 1, modifiers: 0 },
+        { name: 'click', selector: '#r3', button: 'left', clickCount: 1, modifiers: 8 },
+        { name: 'click', selector: '#r4', button: 'left', clickCount: 1, modifiers: 1 | 2 },
+      ],
+      url,
+    );
+    expect(steps).toEqual([
+      { do: 'dblclick', target: '#row' },
+      { do: 'dblclick', target: '#row', modifiers: ['Meta'] },
+      { do: 'click', target: '#menu', button: 'right' },
+      { do: 'click', target: '#tab', button: 'middle' },
+      { do: 'click', target: '#r3', modifiers: ['Shift'] },
+      { do: 'click', target: '#r4', modifiers: ['Alt', 'Control'] },
+    ]);
+    expect(notes).toEqual([]);
+  });
+
+  it('turns a file pick into an upload, asking to check the paths, and a closed tab into closeTab', () => {
+    const { steps, notes } = toSteps(
+      [
+        { name: 'click', selector: '#pick', button: 'left', clickCount: 1, modifiers: 0 },
+        { name: 'setInputFiles', selector: '#file', files: ['logo.png', 'terms.pdf'] },
+        { name: 'closeTab' },
+      ],
+      url,
+    );
+    expect(steps).toEqual([
+      { do: 'upload', target: '#pick', files: ['logo.png', 'terms.pdf'] },
+      { do: 'closeTab' },
+    ]);
+    expect(notes).toEqual(['upload #pick: the recorder knows only file names (logo.png, terms.pdf); check the paths, relative to the script']);
+  });
+});
+
+describe('followPages', () => {
+  const a = (selector: string) => ({ name: 'click', selector, button: 'left', clickCount: 1, modifiers: 0 });
+
+  it('follows a newer page, and closes it with closeTab when the flow goes back', () => {
+    const out = followPages(
+      [
+        { page: 0, action: a('#open') },
+        { page: 1, action: a('#in-popup') },
+        { page: 0, action: a('#back') },
+      ],
+      new Set(),
+    );
+    expect(out.map((x) => x.selector ?? x.name)).toEqual(['#open', '#in-popup', 'closeTab', '#back']);
+  });
+
+  it('adds no closeTab for a page that closed itself', () => {
+    const out = followPages(
+      [
+        { page: 0, action: a('#oauth') },
+        { page: 1, action: a('#allow') },
+        { page: 0, action: a('#next') },
+      ],
+      new Set([1]),
+    );
+    expect(out.map((x) => x.selector ?? x.name)).toEqual(['#oauth', '#allow', '#next']);
+  });
+
+  it('closes every newer page when the flow jumps back past them', () => {
+    const out = followPages(
+      [
+        { page: 0, action: a('#a') },
+        { page: 1, action: a('#b') },
+        { page: 2, action: a('#c') },
+        { page: 0, action: a('#d') },
+      ],
+      new Set(),
+    );
+    expect(out.map((x) => x.selector ?? x.name)).toEqual(['#a', '#b', '#c', 'closeTab', 'closeTab', '#d']);
   });
 });

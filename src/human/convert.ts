@@ -12,10 +12,17 @@ export interface RecordedAction {
   button?: string;
   clickCount?: number;
   url?: string;
+  /** setInputFiles: file names only (the recorder never sees paths) */
+  files?: string[];
 }
 
+type Modifier = 'Alt' | 'Control' | 'Meta' | 'Shift';
+
 export type HumanStep =
-  | { do: 'click'; target: string }
+  | { do: 'click'; target: string; button?: 'right' | 'middle'; modifiers?: Modifier[] }
+  | { do: 'dblclick'; target: string; modifiers?: Modifier[] }
+  | { do: 'upload'; target: string; files: string[] }
+  | { do: 'closeTab' }
   | { do: 'type'; target: string; text: string }
   | { do: 'select'; target: string; value: string }
   | { do: 'press'; key: string }
@@ -40,14 +47,15 @@ function part(p: string): string {
 /** A recorded selector as a readable target; anything without a public twin stays as recorded. */
 export const toTarget = (selector: string): string => selector.split(' >> ').map(part).join(' >> ');
 
-const MODIFIERS: Array<[bit: number, name: string]> = [
+const MODIFIERS: Array<[bit: number, name: Modifier]> = [
   [1, 'Alt'],
   [2, 'Control'],
   [4, 'Meta'],
   [8, 'Shift'],
 ];
 
-const keyCombo = (key: string, modifiers = 0) => [...MODIFIERS.filter(([bit]) => modifiers & bit).map(([, n]) => n), key].join('+');
+const modifierNames = (modifiers = 0) => MODIFIERS.filter(([bit]) => modifiers & bit).map(([, n]) => n);
+const keyCombo = (key: string, modifiers = 0) => [...modifierNames(modifiers), key].join('+');
 
 /** A navigation as a goto: relative to the app when it stays on the app's origin. */
 function gotoUrl(url: string, appUrl: string): string {
@@ -68,12 +76,11 @@ export function toSteps(actions: RecordedAction[], appUrl: string): { steps: Hum
     const what = `${a.name} ${a.selector ?? ''}`.trim();
     switch (a.name) {
       case 'click': {
-        if (a.button && a.button !== 'left') {
-          notes.push(`${what}: ${a.button} clicks are not replayed; skipped`);
-          break;
-        }
-        if ((a.clickCount ?? 1) > 1) notes.push(`${what}: a double click is replayed as one click`);
-        steps.push({ do: 'click', target });
+        const modifiers = modifierNames(a.modifiers);
+        const mods = modifiers.length ? { modifiers } : {};
+        if ((a.clickCount ?? 1) > 1) steps.push({ do: 'dblclick', target, ...mods });
+        else if (a.button === 'right' || a.button === 'middle') steps.push({ do: 'click', target, button: a.button, ...mods });
+        else steps.push({ do: 'click', target, ...mods });
         break;
       }
       case 'check':
@@ -104,17 +111,49 @@ export function toSteps(actions: RecordedAction[], appUrl: string): { steps: Hum
       case 'navigate':
         if (a.url) steps.push({ do: 'goto', url: gotoUrl(a.url, appUrl) });
         break;
+      // A step that opens a page is followed into it; the recorder decides when a closed one needs closeTab.
       case 'openPage':
-        if (steps.length || actions.indexOf(a) > 0) notes.push('a new tab or popup opened; showTime records one page, so it was skipped');
-        break;
       case 'closePage':
         break;
-      case 'setInputFiles':
-        notes.push(`${what}: file uploads are not replayed; skipped`);
+      case 'closeTab':
+        steps.push({ do: 'closeTab' });
         break;
+      case 'setInputFiles': {
+        const files = a.files ?? [];
+        if (!files.length) {
+          notes.push(`${what}: clearing a file input is not replayed; skipped`);
+          break;
+        }
+        // The click that opened the file chooser is what a person does: the upload targets it.
+        const prev = steps.at(-1);
+        const opener = prev?.do === 'click' && !prev.button && !prev.modifiers ? (steps.pop() as { target: string }).target : target;
+        steps.push({ do: 'upload', target: opener, files });
+        notes.push(`upload ${opener}: the recorder knows only file names (${files.join(', ')}); check the paths, relative to the script`);
+        break;
+      }
       default:
         notes.push(`${what}: not replayed; skipped`);
     }
   }
   return { steps, notes };
+}
+
+/**
+ * Actions recorded across pages (0 = the first page, higher = opened later), in one line a script
+ * can replay: a newer page is followed into (the runner does that by itself), and going back to an
+ * older page closes the newer ones with closeTab, except those that closed themselves.
+ */
+export function followPages(entries: Array<{ page: number; action: RecordedAction }>, selfClosed: ReadonlySet<number>): RecordedAction[] {
+  const stack = [0];
+  const out: RecordedAction[] = [];
+  for (const { page, action } of entries) {
+    if (stack.includes(page)) {
+      while (stack[stack.length - 1] !== page) {
+        const closed = stack.pop()!;
+        if (!selfClosed.has(closed)) out.push({ name: 'closeTab' });
+      }
+    } else stack.push(page);
+    out.push(action);
+  }
+  return out;
 }
