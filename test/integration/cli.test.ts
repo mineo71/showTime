@@ -89,6 +89,28 @@ describe('showtime CLI', () => {
     expect((await readFile(starts, 'utf8')).trim().split('\n')).toHaveLength(1);
   }, 240_000);
 
+  it('lists ElevenLabs voices with only the key (no --voice needed)', async () => {
+    const { createServer } = await import('node:http');
+    const stub = createServer((req, res) => {
+      if (req.url === '/v1/voices' && req.headers['xi-api-key'] === 'el-test') {
+        res.writeHead(200, { 'content-type': 'application/json' }).end(JSON.stringify({ voices: [{ voice_id: 'v1', name: 'Rachel', labels: { language: 'en' } }] }));
+      } else res.writeHead(401).end();
+    });
+    await new Promise<void>((r) => stub.listen(0, '127.0.0.1', r));
+    try {
+      const port = (stub.address() as { port: number }).port;
+      const r = await cli(['voices', '--engine', 'elevenlabs', '--json'], tmpdir(), {
+        ...process.env,
+        ELEVENLABS_API_KEY: 'el-test',
+        ELEVENLABS_BASE_URL: `http://127.0.0.1:${port}`,
+      });
+      expect(r.code, r.stderr).toBe(0);
+      expect(JSON.parse(r.stdout).voices).toEqual([{ name: 'Rachel', id: 'v1', language: 'en' }]);
+    } finally {
+      stub.close();
+    }
+  });
+
   it.runIf(process.platform === 'darwin')('lists system voices by language and tries one', async () => {
     const all = JSON.parse((await cli(['voices', '--json'])).stdout);
     expect(all.engine).toBe('system');

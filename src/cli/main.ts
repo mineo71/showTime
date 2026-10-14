@@ -246,18 +246,20 @@ program
   .option('--play', 'play the sample (macOS)')
   .option('--json', 'print { engine, voices } (or { file } with --try) as JSON')
   .action(async (o: { engine: string; lang?: string; try?: string; voice?: string; play?: boolean; json?: boolean }) => {
-    const { VoiceSchema } = await import('../script/schema');
-    const parsed = VoiceSchema.safeParse({ engine: o.engine, name: o.voice });
-    if (!parsed.success) throw new Error(`--engine must be system, openai or elevenlabs, with --voice for elevenlabs (got "${o.engine}")`);
+    if (!['system', 'openai', 'elevenlabs'].includes(o.engine)) throw new Error(`--engine must be system, openai or elevenlabs (got "${o.engine}")`);
+    const engine = o.engine as 'system' | 'openai' | 'elevenlabs';
     const voices = await import('../voices');
     if (o.try) {
+      const { VoiceSchema } = await import('../script/schema');
+      const parsed = VoiceSchema.safeParse({ engine, name: o.voice });
+      if (!parsed.success) throw new Error('--try with elevenlabs needs --voice <voice id> (list them with showtime voices --engine elevenlabs)');
       const file = await voices.tryVoice(parsed.data, o.try);
       if (o.play && process.platform === 'darwin') spawn('afplay', [file], { stdio: 'ignore' }).on('error', () => undefined);
       if (o.json) return emit({ file });
       return say(`✓ ${file}`);
     }
-    const list = voices.filterVoices(await voices.listVoices(parsed.data.engine), o.lang);
-    if (o.json) return emit({ engine: parsed.data.engine, voices: list });
+    const list = voices.filterVoices(await voices.listVoices(engine), o.lang);
+    if (o.json) return emit({ engine, voices: list });
     for (const v of list) say(`  ${v.name.padEnd(28)} ${(v.language ?? '').padEnd(7)} ${v.id ?? v.sample ?? ''}`);
     say(`${list.length} voice${list.length === 1 ? '' : 's'}. Try one: showtime voices --try "Hello there" --voice "${list[0]?.id ?? list[0]?.name ?? 'name'}"`);
   });

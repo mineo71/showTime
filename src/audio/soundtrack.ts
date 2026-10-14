@@ -44,7 +44,8 @@ export async function mixSoundtrack(
   );
   const sfx = soundSettings(loaded.script.audio.sounds);
   // Your own files win over the pack; they play as recorded (no loudness normalising on a click).
-  const own = async (file: string | undefined) => (file ? (await musicSamples(file))[0] : null);
+  // Decoded to mono: a mono click upmixed to stereo would lose 3 dB, a right-panned one most of itself.
+  const own = async (file: string | undefined) => (file ? (await musicSamples(file, undefined, 1))[0] : null);
   const click = (await own(sfx.click)) ?? clickSamples(RATE, sfx.pack);
   const ownKey = await own(sfx.key);
   const keys = Array.from({ length: KEY_VARIANTS }, (_, i) => ownKey ?? keySamples(RATE, i, sfx.pack));

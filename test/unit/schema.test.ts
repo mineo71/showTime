@@ -198,6 +198,15 @@ describe('0.7 look and sound', () => {
     expect(() => parseScript(withSteps([{ do: 'click', target: '#a', show: { voice: { engine: 'robot' } } }]))).toThrow(/show\.voice\.engine/);
   });
 
+  it('starts a step voice afresh when it switches engine, keeping only the speed', async () => {
+    const { voiceFor } = await import('../../src/script/schema');
+    const base: { engine: string; name?: string; speed: number; model?: string } = { engine: 'system', name: 'Daniel', speed: 1.1, model: 'x' };
+    expect(voiceFor(base, { engine: 'openai' })).toEqual({ engine: 'openai', speed: 1.1 });
+    expect(voiceFor(base, { name: 'Samantha' })).toEqual({ ...base, name: 'Samantha' });
+    expect(voiceFor(base, { engine: 'system', name: 'Fred' })).toEqual({ ...base, name: 'Fred' });
+    expect(voiceFor(base, undefined)).toEqual(base);
+  });
+
   it('keeps a step voice to what it changes (no defaults filled in)', () => {
     const s = parseScript(withSteps([{ do: 'click', target: '#a', show: { voice: { name: 'Daniel' } } }]));
     expect(s.scenes[0].steps[0].show?.voice).toEqual({ name: 'Daniel' });

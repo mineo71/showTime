@@ -1,14 +1,14 @@
 import type { FC } from 'react';
 import type { Edit } from '../edit';
 import type { StepInfo, StudioState } from '../server';
-import { Row, TextField } from './fields';
+import { ColorInput, Row, TextField } from './fields';
 
 const ZOOMS = ['auto', 'off', '1.25', '1.5', '1.8', '2', '2.5', '3'];
 const CLICKS = ['default', 'ripple', 'pulse', 'burst', 'ring', 'none'];
 const SPOTLIGHTS = ['off', 'dim', 'ring', 'glow'];
 const SPEEDS = ['auto', '0.5', '1', '1.5', '2', '4'];
 
-export const Inspector: FC<{ step: StepInfo | null; take: StudioState['take']; onEdit: (edit: Edit) => void }> = ({ step, onEdit }) => {
+export const Inspector: FC<{ step: StepInfo | null; take: StudioState['take']; accent?: string; onEdit: (edit: Edit) => void }> = ({ step, accent, onEdit }) => {
   if (!step) return <section className="panel hint">Select a step on the timeline to edit how it is presented.</section>;
   const show = step.show as {
     caption?: string;
@@ -80,15 +80,7 @@ export const Inspector: FC<{ step: StepInfo | null; take: StudioState['take']; o
       </div>
       <Row label="Highlight colour" hint="click and spotlight">
         <span className="color">
-          <input
-            type="color"
-            data-field="highlight"
-            defaultValue={/^#[0-9a-f]{6}$/i.test(show.highlight ?? '') ? show.highlight : '#6366f1'}
-            key={show.highlight ?? 'none'}
-            onBlur={(e) => {
-              if (e.target.value !== show.highlight) set({ highlight: e.target.value });
-            }}
-          />
+          <ColorInput field="highlight" value={show.highlight} fallback={accent} onCommit={(highlight) => set({ highlight })} />
           {show.highlight ? (
             <button className="link" onClick={() => set({ highlight: null })}>
               reset

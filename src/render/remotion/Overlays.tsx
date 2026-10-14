@@ -3,6 +3,7 @@ import { RIPPLE_MS } from '../../timeline/cursor';
 import { CAPTION_FADE_MS, SPOTLIGHT_FADE_MS } from '../../timeline/fades';
 import { clamp, easeOutCubic } from '../../timeline/math';
 import type { Timeline } from '../../timeline/types';
+import { cssFamily } from './css';
 
 type LayerProps = { timeline: Timeline; srcMs: number };
 
@@ -108,7 +109,7 @@ export const Captions: FC<LayerProps & { top: Place; bottom: Place; fontSize: nu
         style={{
           maxWidth: '70%',
           padding: '18px 34px',
-          fontFamily: style.captionFont ?? style.font,
+          fontFamily: cssFamily(style.captionFont ?? style.font),
           fontSize: style.captionSize ?? fontSize,
           fontWeight: 600,
           lineHeight: 1.25,
@@ -138,7 +139,7 @@ export const Subtitles: FC<{ timeline: Timeline; videoMs: number; place: Place; 
           borderRadius: 12,
           background: 'rgba(0, 0, 0, 0.72)',
           color: '#fff',
-          fontFamily: timeline.style.captionFont ?? timeline.style.font,
+          fontFamily: cssFamily(timeline.style.captionFont ?? timeline.style.font),
           fontSize,
           fontWeight: 500,
           lineHeight: 1.35,

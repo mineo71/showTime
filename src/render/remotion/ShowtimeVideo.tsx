@@ -8,6 +8,7 @@ import { BrowserBar } from './BrowserBar';
 import { Cursor } from './Cursor';
 import { Intro } from './Intro';
 import { Outro } from './Outro';
+import { cssFamily } from './css';
 import { Fonts } from './Fonts';
 import { Captions, Ripples, Spotlights, Subtitles } from './Overlays';
 import { Watermark } from './Watermark';
@@ -59,7 +60,7 @@ const Picture: FC<ShowtimeVideoProps> = ({ timeline: t, assetBase }) => {
   const leave = t.outro ? interpolate(frame, [end - 12, end], [1, 0], { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' }) : 1;
 
   return (
-    <AbsoluteFill style={{ background: t.style.background, fontFamily: t.style.font }}>
+    <AbsoluteFill style={{ background: t.style.background, fontFamily: cssFamily(t.style.font) }}>
       <div
         style={{
           position: 'absolute',

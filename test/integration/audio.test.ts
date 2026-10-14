@@ -68,6 +68,34 @@ describe('ensureVoices', () => {
     expect(clips['export#1'].durationMs).toBeGreaterThan(1400);
   });
 
+  it('mixes your own click file at the pack volume', async () => {
+    const { mixSoundtrack, CLICK_GAIN } = await import('../../src/audio/soundtrack');
+    const { buildTimeline } = await import('../../src/timeline/build');
+    const { introFrames } = await import('../../src/timeline/frames');
+    const loaded = await fixtureScript('http://127.0.0.1:1/');
+    const click = path.join(loaded.dir, 'click.wav');
+    const { writeWav: write } = await import('../../src/audio/wav');
+    await write(click, [new Float32Array(4800).fill(0.8)], 48_000);
+    loaded.script.audio.sounds = { pack: 'soft', click, volume: 0.5 };
+    const events = {
+      version: 1 as const,
+      actionHash: 'x',
+      viewport: { width: 1280, height: 800 },
+      deviceScaleFactor: 1,
+      video: { file: 'raw.mp4', width: 1280, height: 800, fps: 30, durationMs: 3000 },
+      steps: [{ sceneId: 'report', index: 0, do: 'click' as const, startMs: 0, actionMs: 1000, endMs: 1100, settledMs: 1500 }],
+      moves: [],
+      clicks: [{ tMs: 1000, x: 10, y: 10 }],
+      idle: [],
+    };
+    loaded.script.scenes = [{ id: 'report', steps: [{ do: 'click', target: '#a' }] }];
+    const t = buildTimeline(loaded.script, events);
+    const src = await mixSoundtrack(loaded, t, {});
+    const mix = await readWav(path.join(loaded.dir, '.showtime', 'demo', src!));
+    const at = Math.round(((introFrames(t) * 1000) / t.fps + 1000 + 20) * 48);
+    expect(mix.channels[0][at]).toBeCloseTo(0.8 * CLICK_GAIN * 0.5, 2);
+  });
+
   it('names the step whose line failed', async () => {
     const loaded = await fixtureScript('http://127.0.0.1:1/', (raw) => {
       raw.scenes[1].steps[0].show.say = 'Export it anywhere.';

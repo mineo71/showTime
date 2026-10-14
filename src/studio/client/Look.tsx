@@ -1,7 +1,7 @@
-import { useEffect, useRef, type FC } from 'react';
+import type { FC } from 'react';
 import type { Edit } from '../edit';
 import type { StudioState } from '../server';
-import { Row, TextField } from './fields';
+import { ColorInput, Row, TextField } from './fields';
 
 export const Look: FC<{ state: StudioState; onEdit: (edit: Edit) => void }> = ({ state, onEdit }) => {
   const style = state.style;
@@ -21,7 +21,7 @@ export const Look: FC<{ state: StudioState; onEdit: (edit: Edit) => void }> = ({
         <>
           <Row label="Accent">
             <span className="color">
-              <ColorInput value={style.accent} onCommit={(accent) => setStyle({ accent })} />
+              <ColorInput field="accent" value={style.accent} onCommit={(accent) => setStyle({ accent })} />
               <code>{style.accent}</code>
             </span>
           </Row>
@@ -56,7 +56,7 @@ export const Look: FC<{ state: StudioState; onEdit: (edit: Edit) => void }> = ({
               field="watermark"
               value={style.watermark?.text}
               placeholder="acme.com"
-              onCommit={(v) => setStyle({ watermark: v === null ? null : { text: v } })}
+              onCommit={(v) => setStyle({ watermark: { text: v } })}
             />
           </Row>
           <Row label="Sounds">
@@ -89,22 +89,4 @@ export const Look: FC<{ state: StudioState; onEdit: (edit: Edit) => void }> = ({
       ) : null}
     </section>
   );
-};
-
-/**
- * A colour picker that saves once, when the pick is done (the native `change` event), not on every
- * step of a drag (React's onChange is the `input` event).
- */
-const ColorInput: FC<{ value: string; onCommit: (value: string) => void }> = ({ value, onCommit }) => {
-  const ref = useRef<HTMLInputElement>(null);
-  const commit = useRef(onCommit);
-  commit.current = onCommit;
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const done = () => commit.current(el.value);
-    el.addEventListener('change', done);
-    return () => el.removeEventListener('change', done);
-  }, []);
-  return <input ref={ref} type="color" data-field="accent" defaultValue={/^#[0-9a-f]{6}$/i.test(value) ? value : '#6366f1'} key={value} />;
 };

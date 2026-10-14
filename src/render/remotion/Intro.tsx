@@ -2,6 +2,7 @@ import type { FC } from 'react';
 import { AbsoluteFill, Easing, interpolate } from 'remotion';
 import { introFrames } from '../../timeline/frames';
 import type { Timeline } from '../../timeline/types';
+import { cssFamily } from './css';
 import { Logo } from './Logo';
 
 export const Intro: FC<{ timeline: Timeline; frame: number }> = ({ timeline: t, frame }) => {
@@ -13,7 +14,7 @@ export const Intro: FC<{ timeline: Timeline; frame: number }> = ({ timeline: t, 
     <AbsoluteFill
       style={{
         background: t.style.background,
-        fontFamily: t.style.titleFont ?? t.style.font,
+        fontFamily: cssFamily(t.style.titleFont ?? t.style.font),
         alignItems: 'center',
         justifyContent: 'center',
         color: '#fff',

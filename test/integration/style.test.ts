@@ -64,6 +64,26 @@ describe('look', () => {
     expect((await probeVideo(video)).width).toBe(1920);
   }, 300_000);
 
+  it('gives the renderer family names with digits in a form CSS accepts', async () => {
+    const { chromium } = await import('playwright');
+    const { cssFamily } = await import('../../src/render/remotion/css');
+    const browser = await chromium.launch();
+    try {
+      const page = await browser.newPage();
+      const applied = (v: string) =>
+        page.evaluate((value) => {
+          const el = document.createElement('div');
+          el.style.fontFamily = value;
+          return el.style.fontFamily;
+        }, v);
+      expect(await applied('Source Sans 3')).toBe('');
+      expect(await applied(cssFamily('Source Sans 3'))).not.toBe('');
+      expect(await applied(cssFamily('Inter, -apple-system, "Segoe UI", system-ui, sans-serif'))).not.toBe('');
+    } finally {
+      await browser.close();
+    }
+  });
+
   it('fails with the family named when a font file is not a font', async () => {
     await writeFile(path.join(loaded.dir, 'broken.ttf'), 'not a font');
     const broken = await withStyle({ fonts: [{ family: 'Broken', file: 'broken.ttf' }], captionFont: 'Broken' });

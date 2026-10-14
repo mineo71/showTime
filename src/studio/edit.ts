@@ -34,10 +34,10 @@ const StyleEdit = z
     watermark: nullable(
       z
         .object({
-          text: z.string(),
-          position: z.enum(['top-left', 'top-right', 'bottom-left', 'bottom-right']).optional(),
-          opacity: z.number().optional(),
-          size: z.number().optional(),
+          text: nullable(z.string()),
+          position: nullable(z.enum(['top-left', 'top-right', 'bottom-left', 'bottom-right'])),
+          opacity: nullable(z.number()),
+          size: nullable(z.number()),
         })
         .strict(),
     ),
@@ -125,7 +125,16 @@ export function applyEdit<T extends Json>(raw: T, edit: Edit): T & Json {
     }
     setOrDelete(step, 'show', merge(step.show, edit.show));
   } else if ('style' in edit) {
-    setOrDelete(next, 'style', merge(next.style, edit.style));
+    const { watermark, ...rest } = edit.style;
+    const style = merge(next.style, rest) ?? {};
+    // The watermark is edited field by field (its image stays); it goes when neither text nor image is left.
+    if (watermark === null) delete style.watermark;
+    else if (watermark !== undefined) {
+      const mark = merge(style.watermark, watermark);
+      if (mark && (mark.text !== undefined || mark.image !== undefined)) style.watermark = mark;
+      else delete style.watermark;
+    }
+    setOrDelete(next, 'style', Object.keys(style).length ? style : undefined);
   } else if ('meta' in edit) {
     setOrDelete(next, 'meta', merge(next.meta, edit.meta));
   } else {

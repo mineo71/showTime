@@ -1,6 +1,7 @@
 import type { FC } from 'react';
 import { AbsoluteFill, Easing, interpolate } from 'remotion';
 import type { Timeline } from '../../timeline/types';
+import { cssFamily } from './css';
 import { Logo } from './Logo';
 
 /** Closing card: logo, title, subtitle and the URL in an accent pill. `frame` counts from the outro start. */
@@ -9,7 +10,7 @@ export const Outro: FC<{ timeline: Timeline; frame: number }> = ({ timeline: t, 
   const o = t.outro;
   return (
     <AbsoluteFill
-      style={{ background: t.style.background, fontFamily: t.style.titleFont ?? t.style.font, alignItems: 'center', justifyContent: 'center', color: '#fff', textAlign: 'center' }}
+      style={{ background: t.style.background, fontFamily: cssFamily(t.style.titleFont ?? t.style.font), alignItems: 'center', justifyContent: 'center', color: '#fff', textAlign: 'center' }}
     >
       <div style={{ maxWidth: '86%', opacity: enter, transform: `translateY(${(1 - enter) * 24}px)` }}>
         <Logo src={t.logo} />

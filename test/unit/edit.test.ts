@@ -26,6 +26,16 @@ describe('applyEdit', () => {
     expect(applyEdit(before, { where: 'a#2', show: { spotlight: true } }).scenes[0].steps[1].show).toEqual({ spotlight: true });
   });
 
+  it('edits the watermark text without dropping its image or position', () => {
+    const withMark = { ...raw(), style: { watermark: { text: 'acme.com', image: 'brand/mark.svg', position: 'top-left' } } };
+    expect(applyEdit(withMark, { style: { watermark: { text: 'acme.io' } } }).style).toEqual({
+      watermark: { text: 'acme.io', image: 'brand/mark.svg', position: 'top-left' },
+    });
+    expect(applyEdit(withMark, { style: { watermark: { text: null } } }).style).toEqual({ watermark: { image: 'brand/mark.svg', position: 'top-left' } });
+    const textOnly = { ...raw(), style: { watermark: { text: 'acme.com' } } };
+    expect(applyEdit(textOnly, { style: { watermark: { text: null } } }).style).toBeUndefined();
+  });
+
   it('edits the sound pack', () => {
     expect(applyEdit(raw(), { audio: { sounds: 'mechanical' } }).audio).toEqual({ sounds: 'mechanical' });
   });

@@ -34,6 +34,16 @@ export function voiceProblems(v: { engine?: string; name?: string; command?: str
   return out;
 }
 
+/**
+ * A step's voice over the script's: its fields win, and switching engine starts afresh (only the
+ * speed carries over), so one engine's voice name or model never reaches another.
+ */
+export function voiceFor<T extends { engine?: string; speed?: number }>(base: T, override: Partial<T> | undefined): T {
+  if (!override) return base;
+  if (override.engine !== undefined && override.engine !== base.engine) return { speed: base.speed, ...override } as T;
+  return { ...base, ...override };
+}
+
 export const VoiceSchema = VoiceFields.extend({ engine: VoiceFields.shape.engine.default('system'), speed: VoiceFields.shape.speed.default(1) }).superRefine((v, ctx) => {
   for (const p of voiceProblems(v)) ctx.addIssue({ code: 'custom', path: [p.path], message: p.message });
 });

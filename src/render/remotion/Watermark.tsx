@@ -1,6 +1,7 @@
 import type { FC } from 'react';
 import { Img } from 'remotion';
 import type { Timeline } from '../../timeline/types';
+import { cssFamily } from './css';
 
 /** `style.watermark` in a corner of every frame, cards included. */
 export const Watermark: FC<{ timeline: Timeline }> = ({ timeline: t }) => {
@@ -19,7 +20,7 @@ export const Watermark: FC<{ timeline: Timeline }> = ({ timeline: t }) => {
         gap: Math.round(w.size * 0.4),
         opacity: w.opacity,
         color: '#fff',
-        fontFamily: t.style.captionFont ?? t.style.font,
+        fontFamily: cssFamily(t.style.captionFont ?? t.style.font),
         fontSize: w.size,
         fontWeight: 600,
         textShadow: '0 2px 10px rgba(0, 0, 0, 0.45)',

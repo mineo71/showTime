@@ -206,6 +206,11 @@ describe('studio page', () => {
       await expect.poll(async () => (await readFile(loaded.scriptPath, 'utf8')).includes('#123456'), { timeout: 20_000 }).toBe(true);
       // The 0.7 look: a click animation and a highlight for a step, a caption style and a sound pack.
       await page.locator('[data-where="report#1"]').click();
+      const untouched = await readFile(loaded.scriptPath, 'utf8');
+      await page.locator('[data-field=highlight]').focus();
+      await page.locator('[data-field=caption]').focus();
+      await page.waitForTimeout(1500);
+      expect(await readFile(loaded.scriptPath, 'utf8')).toBe(untouched);
       await page.locator('[data-field=click]').selectOption('burst');
       await page.locator('[data-field=spotlightKind]').selectOption('glow');
       await expect.poll(async () => (await readFile(loaded.scriptPath, 'utf8')).includes('"click": "burst"'), { timeout: 20_000 }).toBe(true);

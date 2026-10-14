@@ -2,7 +2,7 @@ import { existsSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { applyConfig, findConfig, readConfig, withLogoFrom, withMusicFrom, withStyleFrom } from './config';
-import { parseScript, ScriptError, voiceProblems, type Script } from './schema';
+import { parseScript, ScriptError, voiceFor, voiceProblems, type Script } from './schema';
 
 export interface LoadedScript {
   script: Script;
@@ -60,7 +60,7 @@ export async function parseLoaded(json: unknown, file: string): Promise<LoadedSc
   for (const scene of script.scenes) {
     scene.steps.forEach((step, i) => {
       if (!step.show?.voice) return;
-      const problem = voiceProblems({ ...script.audio.voice, ...step.show.voice })[0];
+      const problem = voiceProblems(voiceFor(script.audio.voice, step.show.voice as Partial<typeof script.audio.voice>))[0];
       if (problem) throw new ScriptError(`${scene.id}#${i + 1} show.voice: ${problem.message}`);
     });
   }

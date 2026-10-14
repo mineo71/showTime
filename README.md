@@ -150,7 +150,7 @@ again.
     <td valign="top">
       <img src="docs/media/styles.jpg" alt="One click in four looks: ripple, burst with a glow, pulse with a ring, double ring with a dimmed page, an outline caption and a watermark" /><br />
       <b>🎨 Your look</b><br />
-      <sub>Five click animations, a highlight colour per step, dim, ring or glow spotlights, five caption styles, your own fonts (embedded in the video) and a watermark. All of it re-renders without a new take.</sub>
+      <sub>Four click animations (or none), a highlight colour per step, dim, ring or glow spotlights, five caption styles, your own fonts (embedded in the video) and a watermark. All of it re-renders without a new take.</sub>
     </td>
     <td valign="top">
 <pre lang="json">

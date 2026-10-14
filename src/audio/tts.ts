@@ -5,7 +5,7 @@ import { mkdir, rename, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { workPaths } from '../paths';
 import type { LoadedScript } from '../script/load';
-import type { Voice } from '../script/schema';
+import { voiceFor, type Voice } from '../script/schema';
 import { stepKey } from '../timeline/narration';
 import { normalizeVoice } from './decode';
 import { wavDurationMs } from './wav';
@@ -161,7 +161,7 @@ export async function ensureVoices(
       const text = step.show?.say;
       if (!text) continue;
       // A step may change the voice for its own line (a second narrator, another language).
-      const voice = { ...loaded.script.audio.voice, ...step.show?.voice } as Voice;
+      const voice = voiceFor(loaded.script.audio.voice, step.show?.voice as Partial<Voice> | undefined) as Voice;
       const where = stepKey(scene.id, index);
       const key = voiceKey(voice, text);
       const file = path.join(dir, `voice-${key}.wav`);

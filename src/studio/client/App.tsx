@@ -82,7 +82,7 @@ export const App = () => {
       <main className="work">
         <Preview state={state} player={player} onFrame={setFrame} />
         <aside className="side">
-          <Inspector key={step?.where ?? 'none'} step={step} take={state.take} onEdit={edit} />
+          <Inspector key={step?.where ?? 'none'} step={step} take={state.take} accent={state.style?.accent} onEdit={edit} />
           <Look state={state} onEdit={edit} />
         </aside>
       </main>
