@@ -220,6 +220,8 @@ export async function startStudio(scriptFile: string, opts: StudioOptions = {}):
     version: 0,
   };
   let loaded: LoadedScript | null = null;
+  /** the file on disk is not a valid script right now (`loaded` is the last good one) */
+  let scriptInvalid = false;
   let lastText: string | null = null;
   const streams = new Set<ServerResponse>();
 
@@ -264,6 +266,7 @@ export async function startStudio(scriptFile: string, opts: StudioOptions = {}):
       text = await readFile(file, 'utf8');
     } catch {
       lastText = null;
+      scriptInvalid = true;
       state.error = `Cannot read ${file}.`;
       return changed();
     }
@@ -272,12 +275,15 @@ export async function startStudio(scriptFile: string, opts: StudioOptions = {}):
     try {
       raw = JSON.parse(text);
     } catch (err) {
+      scriptInvalid = true;
       state.error = `Invalid JSON in ${file}: ${message(err)}`;
       return changed();
     }
     try {
       loaded = await parseLoaded(raw, file, { locale });
+      scriptInvalid = false;
     } catch (err) {
+      scriptInvalid = true;
       state.error = message(err);
       return changed();
     }
@@ -360,7 +366,8 @@ export async function startStudio(scriptFile: string, opts: StudioOptions = {}):
   function startJob(kind: Job['kind'], work: (job: Job) => Promise<string | null>) {
     if (state.job?.status === 'running') throw new HttpError(409, `A ${state.job.kind} is already running.`);
     // An invalid script is not run in its last good version: the person would not know which one ran.
-    if (!loaded || state.error) throw new HttpError(409, state.error ?? 'The script is not loaded yet.');
+    // (A preview that failed, say on a voice, doesn't stop a take.)
+    if (!loaded || scriptInvalid) throw new HttpError(409, state.error ?? 'The script is not loaded yet.');
     const job: Job = { kind, status: 'running', progress: 0, lines: [], result: null, error: null };
     state.job = job;
     pushJob();

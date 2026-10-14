@@ -193,6 +193,24 @@ describe('studio server', () => {
     }
   });
 
+  it('still records when only the preview failed (a voice that does not work), not the script', async () => {
+    const good = await readFile(loaded.scriptPath, 'utf8');
+    const raw = JSON.parse(good);
+    raw.scenes[0].steps[0].show = { say: 'Hello there.' };
+    raw.audio = { voice: { engine: 'command', command: 'echo "no voice model" >&2; exit 3' } };
+    await writeFile(loaded.scriptPath, JSON.stringify(raw, null, 2));
+    try {
+      await expect.poll(async () => (await (await api('/api/state')).json()).error ?? '', { timeout: 20_000 }).toMatch(/no voice model|exit/);
+      // --net record on a script without replay fails at once: enough to see the job was let through.
+      const res = await api('/api/record', { method: 'POST', body: JSON.stringify({ net: 'record' }) });
+      expect(res.status).toBe(202);
+      await expect.poll(async () => (await (await api('/api/state')).json()).job?.status, { timeout: 20_000 }).toBe('failed');
+    } finally {
+      await writeFile(loaded.scriptPath, good);
+      await expect.poll(async () => (await (await api('/api/state')).json()).error, { timeout: 20_000 }).toBeNull();
+    }
+  });
+
   it('picks up a brand file created after it started, and its removal', async () => {
     const brand = path.join(loaded.dir, 'showtime.config.json');
     await writeFile(brand, JSON.stringify({ style: { radius: 31 } }));

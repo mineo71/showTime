@@ -56,7 +56,7 @@ describe('locales on the command line', () => {
   it('make --locales writes one video per locale, after checking every locale exists', async () => {
     const { dir, file } = await i18n();
     const bad = await cli(['make', file, '--locales', 'en,de']);
-    expect(bad.stderr).toMatch(/--locale de is not one of: en, uk/);
+    expect(bad.stderr).toMatch(/--locales: de is not one of: en, uk/);
     expect(existsSync(path.join(dir, '.showtime'))).toBe(false);
     expect((await cli(['make', file, '--locales', 'all', '-o', 'x.mp4'])).stderr).toMatch(/--out cannot be used with --locales/);
     expect((await cli(['check', file, '--locale', 'en', '--locales', 'uk'])).stderr).toMatch(/unknown option '--locales'/);
