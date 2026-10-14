@@ -7,10 +7,11 @@ import type { LoadedScript } from '../script/load';
 import type { TakeEvents } from '../timeline/types';
 import { openSession, prepare, type Session } from './browser';
 import { startCapture, type Frame } from './capture';
-import type { RunOptions } from './check';
+import { announceNet, warnMisses, type RunOptions } from './check';
 import { encodeFrames } from './encode';
 import { EventLog } from './events';
 import { withHooks } from './hooks';
+import { netMode } from './replay';
 import { withServer } from './server';
 import { describeStep, runStep, StepError, type StepContext } from './steps';
 import { sleep } from './time';
@@ -60,6 +61,7 @@ async function shoot(session: Session, loaded: LoadedScript, framesDir: string, 
 export async function record(loaded: LoadedScript, opts: RecordOptions = {}): Promise<TakeEvents> {
   const { script } = loaded;
   await assertFfmpeg();
+  netMode(script, opts.net);
   const paths = workPaths(loaded);
   // Record into take.tmp; the previous take is replaced only once this one is complete.
   const tmp = paths.takeTmp;
@@ -73,9 +75,11 @@ export async function record(loaded: LoadedScript, opts: RecordOptions = {}): Pr
     loaded.dir,
     async () => {
       const session = await openSession(script, opts);
+      announceNet(session.replay?.report(), opts);
       let shot: Shot;
       try {
         shot = await shoot(session, loaded, frames, opts);
+        await session.replay?.save();
       } catch (err) {
         if (err instanceof StepError) {
           const failure = path.join(tmp, 'failure.png');
@@ -88,6 +92,7 @@ export async function record(loaded: LoadedScript, opts: RecordOptions = {}): Pr
       } finally {
         await session.close();
       }
+      warnMisses(session.replay?.report() ?? null, opts);
 
       opts.log?.('Encoding raw.mp4…');
       const raw = path.join(tmp, 'raw.mp4');

@@ -2,6 +2,7 @@ import { chromium, type Browser, type BrowserContext, type Page, type Request, t
 import { ScriptError, type Mock, type Script } from '../script/schema';
 import type { Pt } from '../timeline/types';
 import { EventLog } from './events';
+import { attachNet, type NetMode, type NetSession } from './replay';
 import { runStep, STEP_TIMEOUT_MS, type StepContext } from './steps';
 import { sleep } from './time';
 
@@ -15,6 +16,8 @@ export interface Session {
   context: BrowserContext;
   page: Page;
   net: NetworkTracker;
+  /** recorded or replayed traffic (script.replay), null when live */
+  replay: NetSession | null;
   close(): Promise<void>;
 }
 
@@ -80,7 +83,7 @@ function styleScript(selectors: string[], declarations: string): string {
 })();`;
 }
 
-export async function openSession(script: Script, opts: { headed?: boolean } = {}): Promise<Session> {
+export async function openSession(script: Script, opts: { headed?: boolean; net?: NetMode } = {}): Promise<Session> {
   const { app } = script;
   const browser = await chromium.launch({
     headless: !opts.headed,
@@ -101,7 +104,9 @@ export async function openSession(script: Script, opts: { headed?: boolean } = {
     if (app.hide.length) await context.addInitScript({ content: hideScript(app.hide) });
     // Starts the page clock at app.clock and lets it run: frozen time would stall Date-based debounce.
     if (app.clock) await context.clock.install({ time: app.clock });
-    // Playwright tries the most recently added route first; reversed, the first matching mock wins.
+    // Replay routes go first: Playwright tries the most recently added route first, so mocks win.
+    const replay = await attachNet(context, script, opts.net);
+    // Reversed, the first matching mock wins.
     for (const mock of [...app.mock].reverse()) await context.route(mock.url, (route) => answer(route, mock));
     const page = await context.newPage();
     page.setDefaultTimeout(STEP_TIMEOUT_MS);
@@ -129,7 +134,17 @@ export async function openSession(script: Script, opts: { headed?: boolean } = {
         );
       }
     }
-    return { browser, context, page, net: trackNetwork(page), close: () => browser.close() };
+    return {
+      browser,
+      context,
+      page,
+      net: trackNetwork(page),
+      replay,
+      close: () => {
+        replay?.dispose();
+        return browser.close();
+      },
+    };
   } catch (err) {
     await browser.close();
     throw err;

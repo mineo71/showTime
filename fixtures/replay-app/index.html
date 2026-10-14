@@ -1,0 +1,38 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Replay lab</title>
+    <style>body { font: 16px system-ui; padding: 24px; } button { margin: 6px 0; display: block; }</style>
+  </head>
+  <body>
+    <button id="count">Count</button> <p id="count-out"></p>
+    <button id="echo">Echo</button> <p id="echo-out"></p>
+    <button id="talk">Talk</button> <pre id="talk-out"></pre>
+    <script>
+      document.getElementById('count').onclick = async () => {
+        const r = await fetch('/api/count');
+        document.getElementById('count-out').textContent = `count ${(await r.json()).n}`;
+      };
+      document.getElementById('echo').onclick = async () => {
+        const r = await fetch('/api/echo', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ word: 'hello' }) });
+        const j = await r.json();
+        document.getElementById('echo-out').textContent = `echo ${j.got.word} ${j.n}`;
+      };
+      document.getElementById('talk').onclick = () => {
+        const out = document.getElementById('talk-out');
+        const ws = new WebSocket(`${location.origin.replace('http', 'ws')}/ws?token=secret123&language=en`);
+        ws.binaryType = 'arraybuffer';
+        ws.onopen = () => {
+          ws.send(new Uint8Array(100));
+          ws.send(new Uint8Array(50));
+          setTimeout(() => ws.send('finalize'), 100);
+        };
+        ws.onmessage = (e) => {
+          out.textContent += `${e.data}\n`;
+          if (String(e.data).startsWith('final')) out.dataset.done = '1';
+        };
+      };
+    </script>
+  </body>
+</html>
