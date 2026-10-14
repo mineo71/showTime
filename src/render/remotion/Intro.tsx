@@ -13,7 +13,7 @@ export const Intro: FC<{ timeline: Timeline; frame: number }> = ({ timeline: t, 
     <AbsoluteFill
       style={{
         background: t.style.background,
-        fontFamily: t.style.font,
+        fontFamily: t.style.titleFont ?? t.style.font,
         alignItems: 'center',
         justifyContent: 'center',
         color: '#fff',

@@ -8,7 +8,9 @@ import { BrowserBar } from './BrowserBar';
 import { Cursor } from './Cursor';
 import { Intro } from './Intro';
 import { Outro } from './Outro';
+import { Fonts } from './Fonts';
 import { Captions, Ripples, Spotlights, Subtitles } from './Overlays';
+import { Watermark } from './Watermark';
 
 export type ShowtimeVideoProps = {
   timeline: Timeline;
@@ -23,8 +25,10 @@ const SHADOW = '0 30px 80px rgba(0, 0, 0, 0.45), 0 8px 24px rgba(0, 0, 0, 0.25)'
 /** The soundtrack plays across every frame; the picture switches between cards and the take. */
 export const ShowtimeVideo: FC<ShowtimeVideoProps> = ({ timeline: t, assetBase }) => (
   <>
+    <Fonts fonts={t.fonts ?? []} />
     {t.audio ? <Html5Audio src={media(t.audio.src, assetBase)} /> : null}
     <Picture timeline={t} assetBase={assetBase} />
+    <Watermark timeline={t} />
   </>
 );
 

@@ -4,6 +4,7 @@ import { mixSoundtrack } from './audio/soundtrack';
 import { ensureVoices, type VoiceClip } from './audio/tts';
 import { ANIMATION_WIDTH, defaultOutput, formatOf, toGif, toWebp, type Format } from './convert';
 import { probeVideo } from './ffmpeg';
+import { fontDataUri, imageDataUri } from './assets';
 import { logoDataUri } from './logo';
 import { stillsFor, workPaths } from './paths';
 import { renderStills, renderVideo } from './render/render';
@@ -30,7 +31,20 @@ export async function timelineFor(
   const events = await loadTake(loaded);
   const clips = opts.voices === false ? {} : await ensureVoices(loaded, { log: opts.log });
   const { logo } = loaded.script.meta;
+  const { fonts, watermark } = loaded.script.style;
   const timeline = buildTimeline(loaded.script, events, {
+    fonts: await Promise.all(
+      fonts.map(async (f, i) => ({ family: f.family, weight: f.weight, style: f.style, src: await fontDataUri(f.file, `style.fonts[${i}].file`) })),
+    ),
+    watermark: watermark
+      ? {
+          text: watermark.text,
+          image: watermark.image ? await imageDataUri(watermark.image, 'style.watermark.image') : undefined,
+          position: watermark.position,
+          opacity: watermark.opacity,
+          size: watermark.size,
+        }
+      : undefined,
     aspect: opts.aspect,
     logo: logo ? await logoDataUri(logo) : undefined,
     voices: Object.fromEntries(Object.entries(clips).map(([where, c]) => [where, c.durationMs])),

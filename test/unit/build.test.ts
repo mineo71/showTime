@@ -109,7 +109,7 @@ describe('buildTimeline', () => {
   });
 
   it('builds padded spotlights from the action to settle', () => {
-    expect(t.spotlights).toEqual([{ startMs: 7000, endMs: 8100, rect: { x: 592, y: 392, width: 316, height: 56 } }]);
+    expect(t.spotlights).toEqual([{ startMs: 7000, endMs: 8100, rect: { x: 592, y: 392, width: 316, height: 56 }, kind: 'dim', color: '#6366f1' }]);
   });
 
   it('zooms on click and type, separately when far apart', () => {
@@ -269,5 +269,35 @@ describe('buildTimeline: clips', () => {
       { index: 0, atMs: Math.round(sourceToOutput(t.segments, 6400)) + 250, volume: 0.5 },
       { index: 1, atMs: 800, volume: 1 },
     ]);
+  });
+});
+
+describe('buildTimeline: highlights and click animations', () => {
+  it('styles each click by its step, with the defaults elsewhere', () => {
+    const s = script();
+    s.scenes[0].steps[0] = { do: 'click', target: '#a', show: { click: 'burst', highlight: '#ef4444' } };
+    const t = buildTimeline(s, events);
+    expect(t.clickFx).toEqual([
+      { tMs: 1400, x: 160, y: 120, kind: 'burst', color: '#ef4444' },
+      { tMs: 7000, x: 750, y: 420, kind: 'ripple', color: '#6366f1' },
+    ]);
+    const quiet = script({ click: 'none' });
+    quiet.scenes[0].steps[0] = { do: 'click', target: '#a', show: { click: 'pulse' } };
+    expect(buildTimeline(quiet, events).clickFx.map((c) => c.kind)).toEqual(['pulse']);
+  });
+
+  it('gives spotlights a kind and a colour, and carries fonts and the watermark', () => {
+    const t = buildTimeline(script({ accent: '#22c55e' }), events);
+    expect(t.spotlights[0]).toMatchObject({ kind: 'dim', color: '#22c55e' });
+    const s = script();
+    s.scenes[0].steps[2] = { do: 'type', target: '#q', text: 'hi', pace: 'human', clear: false, show: { spotlight: 'glow', highlight: '#f59e0b' } };
+    const fonts = [{ family: 'Brand', src: 'data:font/woff2;base64,AA' }];
+    const watermark = { text: 'acme.com', position: 'top-left' as const, opacity: 0.5, size: 24 };
+    const g = buildTimeline(s, events, { fonts, watermark });
+    expect(g.spotlights[0]).toMatchObject({ kind: 'glow', color: '#f59e0b' });
+    expect(g.fonts).toEqual(fonts);
+    expect(g.watermark).toEqual(watermark);
+    expect(t.fonts).toEqual([]);
+    expect(t.watermark).toBeNull();
   });
 });

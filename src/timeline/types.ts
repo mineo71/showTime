@@ -93,6 +93,35 @@ export interface Spotlight {
   startMs: number;
   endMs: number;
   rect: Rect;
+  /** dim: everything else darkens; ring: a ring only; glow: a soft coloured glow */
+  kind: 'dim' | 'ring' | 'glow';
+  color: string;
+}
+
+/** A click as drawn: where, when, which animation and colour (source ms, CSS px). */
+export interface ClickFx {
+  tMs: number;
+  x: number;
+  y: number;
+  kind: 'ripple' | 'pulse' | 'burst' | 'ring';
+  color: string;
+}
+
+export interface FontFile {
+  family: string;
+  /** data URI */
+  src: string;
+  weight?: number | string;
+  style?: 'normal' | 'italic';
+}
+
+export interface Watermark {
+  text?: string;
+  /** data URI */
+  image?: string;
+  position: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right';
+  opacity: number;
+  size: number;
 }
 
 /** A subtitle cue, in output ms from the start of the video. */
@@ -142,6 +171,11 @@ export interface Timeline {
   clicks: Click[];
   captions: Caption[];
   spotlights: Spotlight[];
+  /** click animations; `clicks` still drives the cursor press */
+  clickFx: ClickFx[];
+  /** font files embedded for captions, cards and the watermark */
+  fonts: FontFile[];
+  watermark: Watermark | null;
   narration: NarrationLine[];
   subtitles: Cue[];
   /** Subtitles drawn on the video. */

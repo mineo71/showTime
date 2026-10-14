@@ -7,7 +7,7 @@ import { CAPTION_FADE_MS, SPOTLIGHT_FADE_MS } from './fades';
 import { soundEvents, stepKey, subtitleCues, withNarration, type Span, type Typing } from './narration';
 import { readingMs } from './reading';
 import { buildSegments, outputToSource, sourceToOutput, type SpeedSpan } from './timemap';
-import type { Aspect, CameraKey, Caption, NarrationLine, Rect, Spotlight, StepEvent, TakeEvents, Timeline } from './types';
+import type { Aspect, CameraKey, Caption, ClickFx, FontFile, NarrationLine, Rect, Spotlight, StepEvent, TakeEvents, Timeline, Watermark } from './types';
 
 export const AUTO_SPEED_MIN_IDLE_MS = 800;
 export const AUTO_SPEED_TARGET_MS = 600;
@@ -30,6 +30,10 @@ export interface BuildOptions {
   logo?: string;
   /** Length of each synthesized `show.say` line, by step (`scene#n`); lines without one are left out. */
   voices?: Record<string, number>;
+  /** `style.fonts` as data URIs */
+  fonts?: FontFile[];
+  /** `style.watermark` with its image as a data URI */
+  watermark?: Watermark;
 }
 
 function stepOf(script: Script, e: StepEvent): Step {
@@ -131,7 +135,13 @@ export function buildTimeline(script: Script, ev: TakeEvents, opts: BuildOptions
       drafts.push({ startMs: e.startMs, endMs: Math.max(e.settledMs, readEnd(e.startMs, step.show.caption)), text: step.show.caption, target: e.target });
     }
     if (step.show?.spotlight && e.target) {
-      spotlights.push({ startMs: e.actionMs, endMs: e.settledMs, rect: pad(e.target, SPOTLIGHT_PAD) });
+      spotlights.push({
+        startMs: e.actionMs,
+        endMs: e.settledMs,
+        rect: pad(e.target, SPOTLIGHT_PAD),
+        kind: step.show.spotlight === true ? 'dim' : step.show.spotlight,
+        color: step.show.highlight ?? style.accent,
+      });
     }
   }
 
@@ -177,6 +187,12 @@ export function buildTimeline(script: Script, ev: TakeEvents, opts: BuildOptions
     durationMs: l.durationMs,
   }));
   const subtitles = script.audio.subtitles === 'off' ? [] : narration.flatMap((n) => subtitleCues(n.text, n.atMs, n.durationMs));
+  // Each click takes its step's animation and colour (a click is logged when its step acts).
+  const clickFx: ClickFx[] = ev.clicks.flatMap((c) => {
+    const step = pairs.find(({ e }) => e.startMs <= c.tMs && c.tMs <= e.settledMs)?.step;
+    const kind = step?.show?.click ?? style.click;
+    return kind === 'none' ? [] : [{ tMs: c.tMs, x: c.x, y: c.y, kind, color: step?.show?.highlight ?? style.accent }];
+  });
   const clips = script.audio.clips.flatMap((clip, index) => {
     const at = pairs.find(({ e }) => stepKey(e.sceneId, e.index) === clip.at);
     return at ? [{ index, atMs: Math.round(sourceToOutput(segments, at.e.startMs)) + clip.offsetMs, volume: clip.volume }] : [];
@@ -205,6 +221,9 @@ export function buildTimeline(script: Script, ev: TakeEvents, opts: BuildOptions
     clicks: ev.clicks,
     captions,
     spotlights,
+    clickFx,
+    fonts: opts.fonts ?? [],
+    watermark: opts.watermark ?? null,
     narration,
     subtitles,
     subtitlesBurned,
