@@ -1,6 +1,7 @@
 import { execFile } from 'node:child_process';
 import { existsSync } from 'node:fs';
-import { readFile, writeFile } from 'node:fs/promises';
+import { readdir, readFile, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { hasAudio, probeVideo } from '../../src/ffmpeg';
@@ -62,6 +63,13 @@ describe('render', () => {
     expect(await pixelsDiffering(a, b, band)).toBeGreaterThan(500);
     // and nothing outside the window changed
     expect(await pixelsDiffering(a, b, { x: 860, y: bottom + 4, width: 200, height: 20 })).toBe(0);
+  });
+
+  it('leaves no Remotion bundle behind in the temp folder', async () => {
+    const bundles = async () => (await readdir(tmpdir())).filter((n) => n.startsWith('remotion-webpack-bundle-')).length;
+    const before = await bundles();
+    await renderQaFrames(loaded);
+    expect(await bundles()).toBe(before);
   });
 
   it('renders QA stills: intro + one per step, plus a contact sheet', async () => {

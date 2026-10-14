@@ -1,3 +1,4 @@
+import { rm } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { bundle } from '@remotion/bundler';
@@ -16,6 +17,14 @@ async function prepare(timeline: Timeline, publicDir: string) {
   return { serveUrl, inputProps, composition };
 }
 
+/**
+ * Delete a render bundle. Each one is a webpack build of ~30 MB in the temp folder that Remotion
+ * leaves behind; its `public` folder is a link to the work folder, which rm unlinks, never follows.
+ */
+export async function removeBundle(dir: string): Promise<void> {
+  await rm(dir, { recursive: true, force: true }).catch(() => undefined);
+}
+
 export async function renderVideo(
   timeline: Timeline,
   publicDir: string,
@@ -25,25 +34,33 @@ export async function renderVideo(
   range?: { from: number; to: number },
 ): Promise<void> {
   const r = await prepare(timeline, publicDir);
-  await renderMedia({
-    ...r,
-    frameRange: range ? [range.from, range.to] : null,
-    codec: 'h264',
-    crf: 18,
-    outputLocation: out,
-    overwrite: true,
-    logLevel: 'error',
-    onProgress: ({ progress }) => onProgress?.(progress),
-  });
+  try {
+    await renderMedia({
+      ...r,
+      frameRange: range ? [range.from, range.to] : null,
+      codec: 'h264',
+      crf: 18,
+      outputLocation: out,
+      overwrite: true,
+      logLevel: 'error',
+      onProgress: ({ progress }) => onProgress?.(progress),
+    });
+  } finally {
+    await removeBundle(r.serveUrl);
+  }
 }
 
 export async function renderStills(timeline: Timeline, publicDir: string, outDir: string, shots: Shot[]): Promise<string[]> {
   const r = await prepare(timeline, publicDir);
-  const files: string[] = [];
-  for (const shot of shots) {
-    const output = path.join(outDir, `${shot.name}.png`);
-    await renderStill({ ...r, frame: shot.frame, output, imageFormat: 'png', overwrite: true, logLevel: 'error' });
-    files.push(output);
+  try {
+    const files: string[] = [];
+    for (const shot of shots) {
+      const output = path.join(outDir, `${shot.name}.png`);
+      await renderStill({ ...r, frame: shot.frame, output, imageFormat: 'png', overwrite: true, logLevel: 'error' });
+      files.push(output);
+    }
+    return files;
+  } finally {
+    await removeBundle(r.serveUrl);
   }
-  return files;
 }

@@ -1,4 +1,4 @@
-node_modules/
+node_modules
 .showtime/
 *.mp4
 !docs/media/*.mp4

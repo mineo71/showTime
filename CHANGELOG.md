@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- Every render and `frames` run left a Remotion bundle (about 30 MB) in the system temp folder, and
+  they piled up until the disk filled. They are now removed after each render. To reclaim space
+  from earlier versions, delete the `remotion-webpack-bundle-*` folders in your temp folder.
+
 ## 0.9.0 — 2026-10-14
 
 - New actions: `dblclick`; `click` with `button` (`right` for context menus, `middle`) and
