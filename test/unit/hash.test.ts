@@ -43,6 +43,12 @@ describe('actionHash', () => {
     expect(actionHash(styled)).toBe(actionHash(plain));
   });
 
+  it('ignores replay, caption length and freezes', () => {
+    const plain = make({ do: 'click', target: 'text=Go' });
+    const more = make({ do: 'click', target: 'text=Go', show: { captionMs: 3000, freezeMs: 500 } }, { replay: { file: 'n.json', match: ['**/api/**'] } });
+    expect(actionHash(more)).toBe(actionHash(plain));
+  });
+
   it('changes when an action changes', () => {
     expect(actionHash(make({ do: 'click', target: 'text=Stop' }))).not.toBe(actionHash(base));
   });

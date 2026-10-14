@@ -350,6 +350,40 @@
       ],
       "additionalProperties": false
     },
+    "locales": {
+      "description": "Languages this script is made in; any value may be { \"<locale>\": … } and strings may use {locale}",
+      "minItems": 1,
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[A-Za-z]{2,3}([-_][A-Za-z0-9]{2,8})?$"
+      }
+    },
+    "replay": {
+      "description": "Record API traffic once, then replay it: free, offline, the same every time",
+      "type": "object",
+      "properties": {
+        "file": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Recorded traffic, relative to the script"
+        },
+        "match": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "URL globs to record and replay; ws:// and wss:// globs are WebSockets"
+        }
+      },
+      "required": [
+        "file",
+        "match"
+      ],
+      "additionalProperties": false
+    },
     "setup": {
       "default": [],
       "type": "array",
@@ -464,6 +498,18 @@
                   },
                   "hold": {
                     "description": "Extra real-time ms after the step",
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 30000
+                  },
+                  "captionMs": {
+                    "description": "Keep the caption on screen at least this long (output ms)",
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 60000
+                  },
+                  "freezeMs": {
+                    "description": "Hold a still frame this long at the end of the step (output ms, no new take)",
                     "type": "integer",
                     "minimum": 0,
                     "maximum": 30000
@@ -599,6 +645,18 @@
                   },
                   "hold": {
                     "description": "Extra real-time ms after the step",
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 30000
+                  },
+                  "captionMs": {
+                    "description": "Keep the caption on screen at least this long (output ms)",
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 60000
+                  },
+                  "freezeMs": {
+                    "description": "Hold a still frame this long at the end of the step (output ms, no new take)",
                     "type": "integer",
                     "minimum": 0,
                     "maximum": 30000
@@ -762,6 +820,18 @@
                     "minimum": 0,
                     "maximum": 30000
                   },
+                  "captionMs": {
+                    "description": "Keep the caption on screen at least this long (output ms)",
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 60000
+                  },
+                  "freezeMs": {
+                    "description": "Hold a still frame this long at the end of the step (output ms, no new take)",
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 30000
+                  },
                   "speed": {
                     "description": "Playback speed for this step",
                     "type": "number",
@@ -897,6 +967,18 @@
                     "minimum": 0,
                     "maximum": 30000
                   },
+                  "captionMs": {
+                    "description": "Keep the caption on screen at least this long (output ms)",
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 60000
+                  },
+                  "freezeMs": {
+                    "description": "Hold a still frame this long at the end of the step (output ms, no new take)",
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 30000
+                  },
                   "speed": {
                     "description": "Playback speed for this step",
                     "type": "number",
@@ -1028,6 +1110,18 @@
                   },
                   "hold": {
                     "description": "Extra real-time ms after the step",
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 30000
+                  },
+                  "captionMs": {
+                    "description": "Keep the caption on screen at least this long (output ms)",
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 60000
+                  },
+                  "freezeMs": {
+                    "description": "Hold a still frame this long at the end of the step (output ms, no new take)",
                     "type": "integer",
                     "minimum": 0,
                     "maximum": 30000
@@ -1170,6 +1264,18 @@
                     "minimum": 0,
                     "maximum": 30000
                   },
+                  "captionMs": {
+                    "description": "Keep the caption on screen at least this long (output ms)",
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 60000
+                  },
+                  "freezeMs": {
+                    "description": "Hold a still frame this long at the end of the step (output ms, no new take)",
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 30000
+                  },
                   "speed": {
                     "description": "Playback speed for this step",
                     "type": "number",
@@ -1307,6 +1413,18 @@
                   },
                   "hold": {
                     "description": "Extra real-time ms after the step",
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 30000
+                  },
+                  "captionMs": {
+                    "description": "Keep the caption on screen at least this long (output ms)",
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 60000
+                  },
+                  "freezeMs": {
+                    "description": "Hold a still frame this long at the end of the step (output ms, no new take)",
                     "type": "integer",
                     "minimum": 0,
                     "maximum": 30000
@@ -1456,6 +1574,18 @@
                     "minimum": 0,
                     "maximum": 30000
                   },
+                  "captionMs": {
+                    "description": "Keep the caption on screen at least this long (output ms)",
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 60000
+                  },
+                  "freezeMs": {
+                    "description": "Hold a still frame this long at the end of the step (output ms, no new take)",
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 30000
+                  },
                   "speed": {
                     "description": "Playback speed for this step",
                     "type": "number",
@@ -1586,6 +1716,18 @@
                   },
                   "hold": {
                     "description": "Extra real-time ms after the step",
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 30000
+                  },
+                  "captionMs": {
+                    "description": "Keep the caption on screen at least this long (output ms)",
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 60000
+                  },
+                  "freezeMs": {
+                    "description": "Hold a still frame this long at the end of the step (output ms, no new take)",
                     "type": "integer",
                     "minimum": 0,
                     "maximum": 30000
@@ -2103,6 +2245,18 @@
                           "minimum": 0,
                           "maximum": 30000
                         },
+                        "captionMs": {
+                          "description": "Keep the caption on screen at least this long (output ms)",
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 60000
+                        },
+                        "freezeMs": {
+                          "description": "Hold a still frame this long at the end of the step (output ms, no new take)",
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 30000
+                        },
                         "speed": {
                           "description": "Playback speed for this step",
                           "type": "number",
@@ -2234,6 +2388,18 @@
                         },
                         "hold": {
                           "description": "Extra real-time ms after the step",
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 30000
+                        },
+                        "captionMs": {
+                          "description": "Keep the caption on screen at least this long (output ms)",
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 60000
+                        },
+                        "freezeMs": {
+                          "description": "Hold a still frame this long at the end of the step (output ms, no new take)",
                           "type": "integer",
                           "minimum": 0,
                           "maximum": 30000
@@ -2397,6 +2563,18 @@
                           "minimum": 0,
                           "maximum": 30000
                         },
+                        "captionMs": {
+                          "description": "Keep the caption on screen at least this long (output ms)",
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 60000
+                        },
+                        "freezeMs": {
+                          "description": "Hold a still frame this long at the end of the step (output ms, no new take)",
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 30000
+                        },
                         "speed": {
                           "description": "Playback speed for this step",
                           "type": "number",
@@ -2532,6 +2710,18 @@
                           "minimum": 0,
                           "maximum": 30000
                         },
+                        "captionMs": {
+                          "description": "Keep the caption on screen at least this long (output ms)",
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 60000
+                        },
+                        "freezeMs": {
+                          "description": "Hold a still frame this long at the end of the step (output ms, no new take)",
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 30000
+                        },
                         "speed": {
                           "description": "Playback speed for this step",
                           "type": "number",
@@ -2663,6 +2853,18 @@
                         },
                         "hold": {
                           "description": "Extra real-time ms after the step",
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 30000
+                        },
+                        "captionMs": {
+                          "description": "Keep the caption on screen at least this long (output ms)",
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 60000
+                        },
+                        "freezeMs": {
+                          "description": "Hold a still frame this long at the end of the step (output ms, no new take)",
                           "type": "integer",
                           "minimum": 0,
                           "maximum": 30000
@@ -2805,6 +3007,18 @@
                           "minimum": 0,
                           "maximum": 30000
                         },
+                        "captionMs": {
+                          "description": "Keep the caption on screen at least this long (output ms)",
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 60000
+                        },
+                        "freezeMs": {
+                          "description": "Hold a still frame this long at the end of the step (output ms, no new take)",
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 30000
+                        },
                         "speed": {
                           "description": "Playback speed for this step",
                           "type": "number",
@@ -2942,6 +3156,18 @@
                         },
                         "hold": {
                           "description": "Extra real-time ms after the step",
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 30000
+                        },
+                        "captionMs": {
+                          "description": "Keep the caption on screen at least this long (output ms)",
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 60000
+                        },
+                        "freezeMs": {
+                          "description": "Hold a still frame this long at the end of the step (output ms, no new take)",
                           "type": "integer",
                           "minimum": 0,
                           "maximum": 30000
@@ -3091,6 +3317,18 @@
                           "minimum": 0,
                           "maximum": 30000
                         },
+                        "captionMs": {
+                          "description": "Keep the caption on screen at least this long (output ms)",
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 60000
+                        },
+                        "freezeMs": {
+                          "description": "Hold a still frame this long at the end of the step (output ms, no new take)",
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 30000
+                        },
                         "speed": {
                           "description": "Playback speed for this step",
                           "type": "number",
@@ -3221,6 +3459,18 @@
                         },
                         "hold": {
                           "description": "Extra real-time ms after the step",
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 30000
+                        },
+                        "captionMs": {
+                          "description": "Keep the caption on screen at least this long (output ms)",
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 60000
+                        },
+                        "freezeMs": {
+                          "description": "Hold a still frame this long at the end of the step (output ms, no new take)",
                           "type": "integer",
                           "minimum": 0,
                           "maximum": 30000

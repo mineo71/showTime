@@ -73,6 +73,7 @@ describe('parseEdit', () => {
     expect(parseEdit({ where: 'a#1', show: { highlight: '#f00', spotlight: 'ring', click: 'burst' } })).toBeTruthy();
     expect(parseEdit({ style: { click: 'pulse', captionStyle: 'bar', captionFont: 'Georgia', watermark: { text: 'acme.com' } } })).toBeTruthy();
     expect(parseEdit({ audio: { sounds: 'pop' } })).toEqual({ audio: { sounds: 'pop' } });
+    expect(parseEdit({ where: 'a#1', show: { captionMs: 2400, freezeMs: null } })).toEqual({ where: 'a#1', show: { captionMs: 2400, freezeMs: null } });
     expect(() => parseEdit({ style: { watermark: { image: '/etc/passwd' } } })).toThrow(/Invalid edit/);
     expect(() => parseEdit({ audio: { music: { file: '/x.mp3' } } })).toThrow(/Invalid edit/);
   });

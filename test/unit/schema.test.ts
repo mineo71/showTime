@@ -241,3 +241,19 @@ describe('0.7 look and sound', () => {
     expect(() => parseScript({ ...minimal, audio: { sounds: 'loud' } })).toThrow(/audio\.sounds/);
   });
 });
+
+describe('0.8 fields', () => {
+  it('accepts replay, locales, caption length and freezes', () => {
+    const s = parseScript({
+      ...withSteps([{ do: 'click', target: '#a', show: { captionMs: 2500, freezeMs: 800 } }]),
+      locales: ['en', 'uk'],
+      replay: { file: 'net.json', match: ['**/api/**', 'wss://api.example.com/**'] },
+    });
+    expect(s.locales).toEqual(['en', 'uk']);
+    expect(s.replay).toEqual({ file: 'net.json', match: ['**/api/**', 'wss://api.example.com/**'] });
+    expect(s.scenes[0].steps[0].show).toMatchObject({ captionMs: 2500, freezeMs: 800 });
+    expect(() => parseScript({ ...minimal, locales: ['en', 'en'] })).toThrow(/locales/);
+    expect(() => parseScript({ ...minimal, replay: { file: 'x.json', match: [] } })).toThrow(/replay\.match/);
+    expect(() => parseScript(withSteps([{ do: 'click', target: '#a', show: { freezeMs: -1 } }]))).toThrow(/freezeMs/);
+  });
+});

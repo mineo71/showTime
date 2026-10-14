@@ -192,6 +192,50 @@ describe('audio paths and brand audio', () => {
   });
 });
 
+describe('locales', () => {
+  const localized = {
+    ...base,
+    locales: ['en', 'uk'],
+    app: { url: 'http://x/{locale}' },
+    scenes: [{ id: 'a', steps: [{ do: 'click', target: { en: 'text=Go', uk: 'text=Вперед' } }] }],
+    replay: { file: 'net/{locale}.json', match: ['**/api/**'] },
+  };
+
+  it('loads the first locale by default, or the one asked for, named by it', async () => {
+    const { dir, file } = await scriptIn(JSON.stringify(localized));
+    const en = await loadScript(file);
+    expect(en.locale).toBe('en');
+    expect(en.name).toBe('demo.en');
+    expect(en.script.app.url).toBe('http://x/en');
+    const uk = await loadScript(file, { locale: 'uk' });
+    expect(uk.name).toBe('demo.uk');
+    expect(uk.script.scenes[0].steps[0]).toMatchObject({ target: 'text=Вперед' });
+    expect(uk.script.replay?.file).toBe(join(dir, 'net', 'uk.json'));
+    expect(workPaths(uk).video).toBe(join(dir, 'demo.uk.mp4'));
+  });
+
+  it('refuses a locale the script does not list, and a locale on a script without locales', async () => {
+    const { file } = await scriptIn(JSON.stringify(localized));
+    await expect(loadScript(file, { locale: 'de' })).rejects.toThrow(/--locale de is not one of: en, uk/);
+    const plain = await scriptIn(JSON.stringify(base));
+    await expect(loadScript(plain.file, { locale: 'uk' })).rejects.toThrow(/has no "locales"/);
+    const p = await loadScript(plain.file);
+    expect(p.locale).toBeNull();
+    expect(p.name).toBe('demo');
+  });
+
+  it('localizes the brand file too, resolving its paths per locale', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'showtime-loc-'));
+    await mkdir(join(root, 'brand'));
+    await writeFile(join(root, 'brand', 'en.svg'), '<svg xmlns="http://www.w3.org/2000/svg"/>');
+    await writeFile(join(root, 'brand', 'uk.svg'), '<svg xmlns="http://www.w3.org/2000/svg"/>');
+    await writeFile(join(root, 'showtime.config.json'), JSON.stringify({ meta: { logo: { en: 'brand/en.svg', uk: 'brand/uk.svg' } } }));
+    const file = join(root, 'a.json');
+    await writeFile(file, JSON.stringify(localized));
+    expect((await loadScript(file, { locale: 'uk' })).script.meta.logo).toBe(join(root, 'brand', 'uk.svg'));
+  });
+});
+
 describe('workPaths', () => {
   it('keeps everything under .showtime/<name> next to the script', async () => {
     const { dir, file } = await scriptIn(JSON.stringify(base));

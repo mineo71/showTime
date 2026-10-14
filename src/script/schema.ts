@@ -63,6 +63,8 @@ export const ShowSchema = z
     click: z.enum(CLICK_KINDS).optional().describe('Click animation for this step'),
     voice: VoiceFields.partial().optional().describe('Changes to audio.voice for this step\'s line'),
     hold: z.number().int().min(0).max(30_000).optional().describe('Extra real-time ms after the step'),
+    captionMs: z.number().int().min(0).max(60_000).optional().describe('Keep the caption on screen at least this long (output ms)'),
+    freezeMs: z.number().int().min(0).max(30_000).optional().describe('Hold a still frame this long at the end of the step (output ms, no new take)'),
     speed: z.number().min(0.25).max(16).optional().describe('Playback speed for this step'),
     say: z
       .string()
@@ -323,6 +325,20 @@ export const ScriptSchema = z
     app: AppSchema,
     hooks: HooksSchema.prefault({}),
     server: ServerSchema.optional().describe('Start the app for check and record (reused when it already answers)'),
+    locales: z
+      .array(z.string().regex(/^[A-Za-z]{2,3}([-_][A-Za-z0-9]{2,8})?$/, 'a language code such as en, uk or pt-BR'))
+      .min(1)
+      .refine((l) => new Set(l).size === l.length, { message: 'locales must not repeat' })
+      .optional()
+      .describe('Languages this script is made in; any value may be { "<locale>": … } and strings may use {locale}'),
+    replay: z
+      .object({
+        file: z.string().min(1).describe('Recorded traffic, relative to the script'),
+        match: z.array(z.string().min(1)).min(1).describe('URL globs to record and replay; ws:// and wss:// globs are WebSockets'),
+      })
+      .strict()
+      .optional()
+      .describe('Record API traffic once, then replay it: free, offline, the same every time'),
     setup: z.array(StepSchema).default([]),
     style: StyleSchema.prefault({}),
     audio: AudioSchema.prefault({}),

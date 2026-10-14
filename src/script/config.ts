@@ -33,13 +33,21 @@ export function findConfig(dir: string): string | null {
   }
 }
 
-/** Read a brand file; paths inside it (meta.logo, audio.music.file) resolve against its folder. */
-export async function readConfig(file: string): Promise<BrandConfig> {
+/**
+ * Read a brand file; paths inside it (meta.logo, audio.music.file, …) resolve against its folder.
+ * `prepare` (localizing) runs on the raw JSON first.
+ */
+export async function readConfig(file: string, prepare: (raw: unknown) => unknown = (r) => r): Promise<BrandConfig> {
   let raw: unknown;
   try {
     raw = JSON.parse(await readFile(file, 'utf8'));
   } catch (err) {
     throw new ScriptError(`Invalid JSON in ${file}: ${(err as Error).message}`);
+  }
+  try {
+    raw = prepare(raw);
+  } catch (err) {
+    throw new ScriptError(`${file}: ${(err as Error).message}`);
   }
   const parsed = ConfigSchema.safeParse(raw);
   if (!parsed.success) throw new ScriptError(`Invalid ${file}:\n${formatIssues(parsed.error.issues)}`);

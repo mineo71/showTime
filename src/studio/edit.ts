@@ -16,6 +16,8 @@ const ShowEdit = z
     hold: nullable(z.number().int()),
     highlight: nullable(z.string()),
     click: nullable(z.enum(CLICK_KINDS)),
+    captionMs: nullable(z.number().int()),
+    freezeMs: nullable(z.number().int()),
   })
   .strict();
 
