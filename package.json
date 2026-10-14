@@ -1,6 +1,6 @@
 {
   "name": "@mineo71/showtime",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "Product demos, directed by AI: Claude writes a JSON script, showTime records your web app and renders a polished MP4",
   "keywords": [
     "demo",

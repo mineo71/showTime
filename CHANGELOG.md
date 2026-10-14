@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.7.0 — 2026-10-14
 
 - Sound packs: `audio.sounds` takes `soft` (what `true` means), `mechanical`, `pop`, `tap` or
   `typewriter`, or `{ pack, click, key, volume }` with your own files.
