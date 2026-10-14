@@ -2,7 +2,7 @@ import type { FC } from 'react';
 import { AbsoluteFill, Easing, Freeze, Html5Audio, interpolate, OffthreadVideo, Sequence, staticFile, useCurrentFrame } from 'remotion';
 import { cameraAt, cameraTransform } from '../../timeline/camera';
 import { introFrames, segmentPlan, sourceMsAtFrame, videoEndFrame } from '../../timeline/frames';
-import { BROWSER_BAR, viewLayout } from '../../timeline/layout';
+import { BROWSER_BAR, captionBottom, viewLayout } from '../../timeline/layout';
 import type { Timeline } from '../../timeline/types';
 import { BrowserBar } from './BrowserBar';
 import { Cursor } from './Cursor';
@@ -123,7 +123,7 @@ const Picture: FC<ShowtimeVideoProps> = ({ timeline: t, assetBase }) => {
           timeline={t}
           srcMs={src}
           top={bands ? above : { top: win.y + Math.round(H * 0.03) }}
-          bottom={bands ? below : { bottom: Math.max(Math.round(H * 0.075), H - (win.y + win.height) + Math.round(H * 0.03)) }}
+          bottom={bands ? below : { bottom: captionBottom(t.output, win, t.subtitleBand) }}
           fontSize={bands ? 46 : 36}
         />
         <Subtitles

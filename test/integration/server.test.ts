@@ -9,6 +9,7 @@ import { FIXTURES } from '../helpers/serve';
 
 const ROOT = fileURLToPath(new URL('../..', import.meta.url));
 const SERVE = path.join(ROOT, 'scripts', 'serve.mjs');
+const SLOW = path.join(ROOT, 'test', 'helpers', 'slow-server.cjs');
 
 async function freePort(): Promise<number> {
   return new Promise((resolve) => {
@@ -76,4 +77,48 @@ describe('server', () => {
     expect(report.ok).toBe(true);
     expect(await answers(`http://127.0.0.1:${port}/demo-app/`)).toBe(false);
   });
+
+  it('stops servers the command put in the background, even ones that ignore SIGTERM', async () => {
+    const a = await freePort();
+    const urlA = `http://127.0.0.1:${a}/`;
+    const seen = await withServer({ run: `node "${SLOW}" ${a} &`, timeoutMs: 20_000 }, urlA, ROOT, async () => answers(urlA));
+    expect(seen).toBe(true);
+    await expect.poll(() => answers(urlA), { timeout: 8000 }).toBe(false);
+
+    const b = await freePort();
+    const urlB = `http://127.0.0.1:${b}/`;
+    await withServer({ run: `node "${SLOW}" ${b} 0 stubborn & wait`, timeoutMs: 20_000 }, urlB, ROOT, async () => undefined);
+    await expect.poll(() => answers(urlB), { timeout: 10_000 }).toBe(false);
+  }, 30_000);
+
+  it('stops the server when showtime is interrupted with Ctrl+C', async () => {
+    const port = await freePort();
+    const url = `http://127.0.0.1:${port}/`;
+    const { spawn } = await import('node:child_process');
+    const child = spawn(process.execPath, ['--import', 'tsx', path.join(ROOT, 'test', 'helpers', 'server-child.ts'), `node "${SLOW}" ${port}`, url], {
+      cwd: ROOT,
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    let out = '';
+    child.stdout.on('data', (d) => (out += d));
+    child.stderr.on('data', (d) => (out += d));
+    await expect.poll(() => out, { timeout: 30_000 }).toContain('ready');
+    child.kill('SIGINT');
+    await new Promise((resolve) => child.on('exit', resolve));
+    await expect.poll(() => answers(url), { timeout: 8000 }).toBe(false);
+  }, 60_000);
+
+  it('reuses a running server that is slow to answer its first request', async () => {
+    const port = await freePort();
+    const url = `http://127.0.0.1:${port}/`;
+    const { spawn } = await import('node:child_process');
+    const own = spawn(process.execPath, [SLOW, String(port), '3500'], { stdio: 'ignore' });
+    try {
+      await new Promise((r) => setTimeout(r, 500));
+      const res = await withServer({ run: 'node -e "process.exit(9)"', timeoutMs: 20_000 }, url, ROOT, async () => 'worked');
+      expect(res).toBe('worked');
+    } finally {
+      own.kill();
+    }
+  }, 30_000);
 });

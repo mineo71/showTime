@@ -201,16 +201,28 @@ withRenderFlags(program.command('make <script>').description('check → record �
     checkScenes(loaded, options.scenes);
     const log = o.json ? undefined : say;
     const { check } = await import('../runner/check');
-    const report = await check(loaded, { headed: o.headed });
-    if (!report.ok) {
+    const { record } = await import('../runner/record');
+    const { withServer } = await import('../runner/server');
+    // One server for the rehearsal and the take: check and record find it running and reuse it.
+    const shot = await withServer(
+      loaded.script.server,
+      loaded.script.app.url,
+      loaded.dir,
+      async () => {
+        const report = await check(loaded, { headed: o.headed });
+        if (!report.ok) return { report, take: null };
+        log?.(`✓ check passed (${report.steps.length} steps)`);
+        return { report, take: takeSummary(loaded, await record(loaded, { headed: o.headed, log })) };
+      },
+      log,
+    );
+    const { report, take } = shot;
+    if (!take) {
       if (o.json) emit({ check: report });
       else say(formatCheck(report));
       process.exitCode = 1;
       return;
     }
-    log?.(`✓ check passed (${report.steps.length} steps)`);
-    const { record } = await import('../runner/record');
-    const take = takeSummary(loaded, await record(loaded, { headed: o.headed, log }));
     log?.(`✓ take: ${(take.durationMs / 1000).toFixed(1)} s`);
     const video = await render(loaded, o);
     if (o.json) emit({ check: report, take, video });

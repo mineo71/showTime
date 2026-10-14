@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BROWSER_BAR, OUTPUT_SIZES, projectRect, viewLayout, windowLayout, type View } from '../../src/timeline/layout';
+import { BROWSER_BAR, captionBottom, OUTPUT_SIZES, projectRect, viewLayout, windowLayout, type View } from '../../src/timeline/layout';
 
 const stage = { width: 1440, height: 900 };
 const win = { x: 100, y: 50, width: 1440, height: 900, bar: 0 };
@@ -96,5 +96,15 @@ describe('viewLayout with a band reserved under the window', () => {
   it('ignores the band in 9:16, which has bands already', () => {
     const out = OUTPUT_SIZES['9:16'];
     expect(viewLayout(out, stage, 0.06, BROWSER_BAR, '9:16', 119)).toEqual(viewLayout(out, stage, 0.06, BROWSER_BAR, '9:16'));
+  });
+});
+
+describe('captionBottom', () => {
+  it('keeps the 0.5 inset without a subtitle band, and clears the window bottom with one', () => {
+    const out = OUTPUT_SIZES['16:9'];
+    const plain = viewLayout(out, stage, 0.06, BROWSER_BAR, '16:9');
+    expect(captionBottom(out, plain, 0)).toBe(Math.round(1080 * 0.075));
+    const banded = viewLayout(out, stage, 0.06, BROWSER_BAR, '16:9', 119);
+    expect(captionBottom(out, banded, 119)).toBe(1080 - (banded.y + banded.height) + Math.round(1080 * 0.03));
   });
 });

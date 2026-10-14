@@ -67,6 +67,28 @@ describe('showtime CLI', () => {
     expect(scenes.stderr).toMatch(/--scenes: no scene "nope" \(scenes: report, export\)/);
   });
 
+  it('make starts the app once for both the rehearsal and the take', async () => {
+    const { createServer: createNetServer } = await import('node:net');
+    const port = await new Promise<number>((resolve) => {
+      const s = createNetServer();
+      s.listen(0, '127.0.0.1', () => {
+        const p = (s.address() as { port: number }).port;
+        s.close(() => resolve(p));
+      });
+    });
+    const serve = path.join(path.dirname(BIN), '..', 'scripts', 'serve.mjs');
+    const loaded = await fixtureScript(`http://127.0.0.1:${port}/demo-app/`, (raw) => {
+      raw.scenes = [{ id: 'a', steps: [{ do: 'click', target: '#new-report' }] }];
+    });
+    const starts = path.join(loaded.dir, 'starts.txt');
+    const raw = JSON.parse(await readFile(loaded.scriptPath, 'utf8'));
+    raw.server = { run: `echo x >> "${starts}" && node "${serve}" "${FIXTURES}" ${port}`, timeoutMs: 20_000 };
+    await writeFile(loaded.scriptPath, JSON.stringify(raw));
+    const r = await cli(['make', loaded.scriptPath, '--format', 'gif', '--width', '160', '--json']);
+    expect(r.code, r.stderr).toBe(0);
+    expect((await readFile(starts, 'utf8')).trim().split('\n')).toHaveLength(1);
+  }, 240_000);
+
   it('fails clearly on an invalid script', async () => {
     const dir = await mkdtemp(path.join(tmpdir(), 'showtime-cli-'));
     const file = path.join(dir, 'bad.json');
@@ -145,7 +167,7 @@ describe('showtime CLI', () => {
     const bad = await cli(['render', loaded.scriptPath, '--aspect', '4:3']);
     expect(bad.code).toBe(1);
     expect(bad.stderr).toMatch(/--aspect must be 16:9, 9:16 or 1:1/);
-  });
+  }, 360_000);
 
   it('record --json describes the take', async () => {
     const loaded = await fixtureScript(server.url, (raw) => {

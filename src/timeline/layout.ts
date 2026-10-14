@@ -100,3 +100,12 @@ export function projectRect(
     height: r2((r.height / stage.height) * h),
   };
 }
+
+/**
+ * How far above the output's bottom edge bottom captions sit: the usual inset, or (with a subtitle
+ * band under the window) just above the window's bottom edge.
+ */
+export function captionBottom(output: { width: number; height: number }, view: Box, subtitleBand: number): number {
+  const inset = Math.round(output.height * 0.075);
+  return subtitleBand > 0 ? output.height - (view.y + view.height) + Math.round(output.height * 0.03) : inset;
+}

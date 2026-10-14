@@ -443,7 +443,10 @@ command in the script's folder (120 s timeout); `request` is an HTTP call that m
 Before `check` and `record`, showTime requests `url` (default `app.url`). If something answers, it
 is used as is. Otherwise `run` starts in the script's folder, showTime waits until the URL answers
 (`timeoutMs`, default 60 s) and stops the command and everything it started when the work ends.
-Hooks run inside: server up → `before` → work → `after` → server down.
+Hooks run inside: server up → `before` → work → `after` → server down. `make` keeps one server up
+for both the rehearsal and the take, and Ctrl+C stops it too. Keep `run` in the foreground: a
+command that daemonizes (`docker compose up -d`, `pm2 start`) leaves its servers outside showTime's
+reach.
 
 </details>
 
