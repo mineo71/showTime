@@ -5,7 +5,8 @@
 - Network replay: `replay: { file, match }` records the answers of matching HTTP requests and
   WebSockets on the first run and serves them back after that, so rehearsals and takes stop
   spending API quota and come out the same every time. `--net auto|live|record|replay` on `check`,
-  `record` and `make`. No request headers are stored; credential-like query values are stripped.
+  `record` and `make`. No request headers or client text messages are stored; credential-like
+  query values are stripped. Event streams stay live. Each locale keeps its own file.
 - Locales: `locales: ["en", "uk"]`, any value written as `{ "en": …, "uk": … }`, `{locale}` in
   strings. `--locale` on every command; `make --locales all|en,uk` and `render --locales …` write
   `<name>.<locale>.mp4` for each. The studio opens one locale (`--locale`) and edits only its values.

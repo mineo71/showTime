@@ -136,6 +136,7 @@ For a video per language, add `"locales": ["en", "uk"]` and write the values tha
 in any text becomes the code (`"url": "http://localhost:3000/{locale}"`). Rehearse each one
 (`showtime check demo.json --locale uk`), then `showtime make demo.json --locales all` writes
 `demo.en.mp4`, `demo.uk.mp4`, … Pick a voice that speaks the language (`showtime voices --lang uk`).
+With `replay`, each locale records its own file (`demo.net.uk.json`).
 
 ## Example
 

@@ -214,6 +214,16 @@ describe('locales', () => {
     expect(workPaths(uk).video).toBe(join(dir, 'demo.uk.mp4'));
   });
 
+  it('keeps one replay file per locale unless the file names {locale} itself', async () => {
+    const { dir, file } = await scriptIn(JSON.stringify({ ...localized, replay: { file: 'lab.net.json', match: ['**/api/**'] } }));
+    expect((await loadScript(file, { locale: 'uk' })).script.replay?.file).toBe(join(dir, 'lab.net.uk.json'));
+    expect((await loadScript(file)).script.replay?.file).toBe(join(dir, 'lab.net.en.json'));
+    const shared = await scriptIn(JSON.stringify({ ...localized, replay: { file: { en: 'one.json', uk: 'one.json' }, match: ['**/api/**'] } }));
+    expect((await loadScript(shared.file, { locale: 'uk' })).script.replay?.file).toBe(join(shared.dir, 'one.json'));
+    const plain = await scriptIn(JSON.stringify({ ...base, replay: { file: 'lab.net.json', match: ['**/api/**'] } }));
+    expect((await loadScript(plain.file)).script.replay?.file).toBe(join(plain.dir, 'lab.net.json'));
+  });
+
   it('refuses a locale the script does not list, and a locale on a script without locales', async () => {
     const { file } = await scriptIn(JSON.stringify(localized));
     await expect(loadScript(file, { locale: 'de' })).rejects.toThrow(/--locale de is not one of: en, uk/);

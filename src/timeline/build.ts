@@ -107,9 +107,13 @@ export function buildTimeline(script: Script, ev: TakeEvents, opts: BuildOptions
   for (const { e, step } of pairs) {
     if (step.do === 'pause') spans.push({ startMs: e.startMs, endMs: e.endMs, speed: 1 });
   }
-  // Freezes hold a step's last frame just before it settles, so its caption, zoom and spotlight stay.
+  // Freezes hold a frame near the step's end, clear of fades: source time stands still in a hold,
+  // so one inside a caption or spotlight fade would keep it half-faded for the whole freeze.
+  const fade = Math.max(CAPTION_FADE_MS, SPOTLIGHT_FADE_MS) + 1;
   const freezes = pairs.flatMap(({ e, step }) =>
-    step.show?.freezeMs ? [{ atMs: Math.max(e.startMs, e.settledMs - 1), holdMs: step.show.freezeMs }] : [],
+    step.show?.freezeMs
+      ? [{ atMs: Math.max(e.startMs, Math.min(e.settledMs - 1, Math.max(e.actionMs + fade, e.settledMs - fade))), holdMs: step.show.freezeMs }]
+      : [],
   );
   const base = insertHolds(buildSegments(ev.video.durationMs, spans), freezes);
   /** Source time at which a caption shown from `startMs` has been up for `ms` of output. */

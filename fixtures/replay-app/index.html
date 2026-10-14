@@ -9,6 +9,7 @@
     <button id="count">Count</button> <p id="count-out"></p>
     <button id="echo">Echo</button> <p id="echo-out"></p>
     <button id="talk">Talk</button> <pre id="talk-out"></pre>
+    <button id="stream">Stream</button> <p id="stream-out"></p>
     <script>
       document.getElementById('count').onclick = async () => {
         const r = await fetch('/api/count');
@@ -24,13 +25,25 @@
         const ws = new WebSocket(`${location.origin.replace('http', 'ws')}/ws?token=secret123&language=en`);
         ws.binaryType = 'arraybuffer';
         ws.onopen = () => {
+          // Some speech APIs take the key in the first message.
+          ws.send(JSON.stringify({ api_key: 'secret123', language: 'en' }));
           ws.send(new Uint8Array(100));
           ws.send(new Uint8Array(50));
           setTimeout(() => ws.send('finalize'), 100);
         };
         ws.onmessage = (e) => {
           out.textContent += `${e.data}\n`;
-          if (String(e.data).startsWith('final')) out.dataset.done = '1';
+          if (String(e.data).startsWith('final')) {
+            out.dataset.done = '1';
+            ws.close();
+          }
+        };
+        ws.onclose = () => (out.dataset.closed = '1');
+      };
+      document.getElementById('stream').onclick = () => {
+        const events = new EventSource('/sse');
+        events.onmessage = (e) => {
+          if (Number(e.data) === 3) document.getElementById('stream-out').textContent = 'three events';
         };
       };
     </script>

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { parseScript } from '../../src/script/schema';
 import { buildTimeline } from '../../src/timeline/build';
+import { CAPTION_FADE_MS, SPOTLIGHT_FADE_MS } from '../../src/timeline/fades';
 import { NARRATION_GAP_MS } from '../../src/timeline/narration';
 import { outputDurationMs, sourceToOutput } from '../../src/timeline/timemap';
 import type { TakeEvents } from '../../src/timeline/types';
@@ -106,13 +107,27 @@ describe('buildTimeline', () => {
   it('freezes a step\'s last frame for freezeMs, its caption staying up through it', () => {
     const s = script();
     s.scenes[0].steps[0] = { do: 'click', target: '#a', show: { caption: 'Open it', freezeMs: 2000 } };
+    s.scenes[0].steps[2] = { do: 'type', target: '#q', text: 'hi', pace: 'human', clear: false, show: { spotlight: true, caption: 'Search', freezeMs: 1000 } };
     const frozen = buildTimeline(s, events);
-    expect(frozen.segments.filter((x) => x.speed === 0)).toEqual([{ srcStartMs: 1899, srcEndMs: 1899, speed: 0, holdMs: 2000 }]);
-    expect(outputDurationMs(frozen.segments) - outputDurationMs(t.segments)).toBeCloseTo(2000, 0);
-    const c = frozen.captions[0];
-    expect(c.startMs <= 1899 && c.endMs > 1899).toBe(true);
+    const holds = frozen.segments.filter((x) => x.speed === 0);
+    expect(holds.map((h) => h.holdMs)).toEqual([2000, 1000]);
+    expect(outputDurationMs(frozen.segments) - outputDurationMs(t.segments)).toBeCloseTo(3000, 0);
+    // Source time stands still in a hold: it must not sit in a fade, or the caption and the
+    // spotlight would stay half-faded for the whole freeze.
+    const [first, second] = holds.map((h) => h.srcStartMs);
+    const fading = (x: { startMs: number; endMs: number }, at: number, ms: number) => (at >= x.startMs && at <= x.startMs + ms) || (at >= x.endMs - ms && at <= x.endMs);
+    for (const at of [first, second]) {
+      const c = frozen.captions.find((x) => x.startMs <= at && at < x.endMs)!;
+      expect(c, `a caption at ${at}`).toBeDefined();
+      expect(fading(c, at, CAPTION_FADE_MS)).toBe(false);
+    }
+    const spot = frozen.spotlights[0];
+    expect(second > spot.startMs && second < spot.endMs && !fading(spot, second, SPOTLIGHT_FADE_MS)).toBe(true);
+    // within the step, after its action
+    expect(first).toBeGreaterThan(1400);
+    expect(first).toBeLessThan(1900);
     // the zoom on the clicked button holds through the freeze too
-    const cam = frozen.camera.filter((k) => k.tMs <= 1899).at(-1)!;
+    const cam = frozen.camera.filter((k) => k.tMs <= first).at(-1)!;
     expect(cam.scale).toBeGreaterThan(1);
   });
 

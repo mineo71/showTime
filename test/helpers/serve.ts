@@ -52,7 +52,8 @@ export async function serveDir(dir: string, port = 0): Promise<Served> {
   attachWs(server, '/ws', (conn) => {
     conn.onMessage((m) => {
       hits++;
-      if (typeof m === 'string') conn.send(m === 'finalize' ? `final #${++counter}` : `echo ${m}`);
+      // A settings message (JSON, maybe with a key) is acknowledged, never echoed.
+      if (typeof m === 'string') conn.send(m.startsWith('{') ? 'ready' : m === 'finalize' ? `final #${++counter}` : `echo ${m}`);
       else conn.send(`heard ${m.length} #${++counter}`);
     });
   });

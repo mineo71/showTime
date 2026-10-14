@@ -39,6 +39,15 @@ describe('applyEdit', () => {
     expect(() => applyEdit(multi, { where: 'a#1', show: { caption: null } }, 'uk')).toThrow(/show\.caption is written per locale \(en, uk\)/);
   });
 
+  it('keeps the other locales\' text when a shared value is edited in a later locale', () => {
+    const multi = { ...raw(), locales: ['en', 'uk'], meta: { title: 'Hello' } };
+    expect(applyEdit(multi, { where: 'a#1', show: { caption: 'Привіт', zoom: 2 } }, 'uk').scenes[0].steps[0].show).toEqual({ caption: { en: 'Hi', uk: 'Привіт' }, zoom: 2 });
+    expect(applyEdit(multi, { meta: { title: 'Вітаю' } }, 'uk').meta).toEqual({ title: { en: 'Hello', uk: 'Вітаю' } });
+    // In the first locale a shared value stays shared, and a new one is written plain.
+    expect(applyEdit(multi, { where: 'a#1', show: { caption: 'Hey' } }, 'en').scenes[0].steps[0].show).toEqual({ caption: 'Hey' });
+    expect(applyEdit(multi, { where: 'a#2', show: { caption: 'Нове' } }, 'uk').scenes[0].steps[1].show).toEqual({ caption: 'Нове' });
+  });
+
   it('edits the watermark text without dropping its image or position', () => {
     const withMark = { ...raw(), style: { watermark: { text: 'acme.com', image: 'brand/mark.svg', position: 'top-left' } } };
     expect(applyEdit(withMark, { style: { watermark: { text: 'acme.io' } } }).style).toEqual({

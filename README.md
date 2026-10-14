@@ -261,8 +261,9 @@ with the edited video playing, a timeline of the steps and an inspector:
 - Pick a step and change its caption, narration line, zoom, spotlight or speed; the preview updates
   in about a second and the change is saved to the JSON. The studio writes the file with one step
   per line, so the first save may reformat it; after that each edit is a one-line diff.
-- Drag a step's right edge on the timeline to speed it up or slow it down (0.25–16×), and a
-  caption's right edge to keep it up longer or shorter. A freeze (a still frame at the end of a
+- Drag a step's right edge on the timeline to speed it up or slow it down (0.25–16×; a step held
+  for a narration line can't get shorter than the line), and a caption's right edge to keep it up
+  longer or shorter. A freeze (a still frame at the end of a
   step) is set in the inspector and shows striped on the timeline. None of these need a new take.
 - Switch the preview between 16:9, 9:16 and 1:1, and render MP4, GIF or WebP from the page.
 - The page reloads on its own when the file changes on disk, so you can keep it open while your
@@ -501,8 +502,10 @@ reach.
 
 `match` are URL globs: `ws://` and `wss://` ones route WebSockets, the rest HTTP. The first run
 records what those requests answered into `file` (relative to the script); later runs serve the
-answers from it, after the latency they had, without touching the network. `--net` on `check`,
-`record` and `make` picks the mode:
+answers from it, after the latency they had, without touching the network. Event streams
+(`text/event-stream`) stay live and are never recorded; other streamed bodies replay in one piece. `--net` on `check`,
+`record` and `make` picks the mode (with `locales`, each locale keeps its own file,
+`pitch.net.uk.json`, unless `file` names `{locale}`):
 
 | `--net` | |
 |---|---|
@@ -514,10 +517,11 @@ answers from it, after the latency they had, without touching the network. `--ne
 The file is written only when the run succeeds (`check --until` writes none). HTTP answers are
 matched by method, URL and request body, in the order they were recorded. A WebSocket is played
 back without its server: each recorded server message is sent once the page has sent as many
-messages as it had then, and a text command such as `finalize` releases the answers that followed
-it. No request headers are stored, and credential-like query values (`token`, `key`, `api_key`,
-`sig`, `secret`, …) become `…`. The file still holds the API's answers: review it before you commit
-it.
+messages as it had then; the answers to a text command such as `finalize` wait for it (matched by
+text, or by its JSON keys when values such as ids change), and when the page goes quiet the rest
+goes out. No request headers or client text messages are stored, and credential-like query values
+(`token`, `api_key`, `X-Amz-Signature`, `jwt`, …) become `…`. The file still holds the API's
+answers: review it before you commit it.
 
 </details>
 
@@ -539,7 +543,8 @@ uses its own value, and a missing one is an error that names the place. `{locale
 becomes the code. Each locale is its own script with its own take and outputs (`pitch.en.mp4`,
 `.showtime/pitch.uk/`). `--locale uk` picks one on every command (default: the first);
 `make --locales all` (or `en,uk`) and `render --locales …` run them one after the other. In the
-studio, editing a value written per locale changes only the open locale.
+studio, editing a value written per locale changes only the open locale, and editing shared text
+(a caption, a line) in a later locale keeps the old text for the others.
 
 </details>
 

@@ -51,8 +51,8 @@ export interface StepInfo {
   endFrame: number | null;
   /** source ms from the step's start to its settled end (what `show.speed` applies to), when there is a take */
   srcMs: number | null;
-  /** output ms of the holds (narration, freeze) inside it */
-  holdMs: number;
+  /** output ms of narration holds inside it (its freeze not counted) */
+  narrationMs: number;
 }
 
 export interface Job {
@@ -77,6 +77,8 @@ export interface StudioState {
   style: Style | null;
   /** audio.sounds as resolved (brand file applied) */
   sounds: Audio['sounds'] | null;
+  /** the intro card's text in the open locale */
+  meta: { title?: string; subtitle?: string } | null;
   steps: StepInfo[];
   timeline: Timeline | null;
   job: Job | null;
@@ -207,6 +209,7 @@ export async function startStudio(scriptFile: string, opts: StudioOptions = {}):
     script: null,
     style: null,
     sounds: null,
+    meta: null,
     steps: [],
     timeline: null,
     job: null,
@@ -247,7 +250,7 @@ export async function startStudio(scriptFile: string, opts: StudioOptions = {}):
         startFrame: null,
         endFrame: null,
         srcMs: null,
-        holdMs: 0,
+        narrationMs: 0,
       })),
     );
 
@@ -276,6 +279,7 @@ export async function startStudio(scriptFile: string, opts: StudioOptions = {}):
     }
     state.script = raw as Json;
     state.style = loaded.script.style;
+    state.meta = { title: loaded.script.meta.title, subtitle: loaded.script.meta.subtitle };
     state.sounds = loaded.script.audio.sounds;
     state.error = null;
     state.steps = stepsOf(loaded, raw as Json);
@@ -297,21 +301,21 @@ export async function startStudio(scriptFile: string, opts: StudioOptions = {}):
       if (src) timeline.audio = { src: `${src}?v=${state.version + 1}` };
       const frames = new Map(stepFrames(timeline, steps).map((f) => [f.where, f]));
       const holds = timeline.segments.filter((g) => g.speed === 0);
+      const freezeOf = new Map(state.steps.map((s) => [s.where, typeof s.show.freezeMs === 'number' ? s.show.freezeMs : 0]));
       const spans = new Map(
-        steps.map((e) => [
-          stepKey(e.sceneId, e.index),
-          {
-            srcMs: e.settledMs - e.startMs,
-            holdMs: holds.filter((h) => h.srcStartMs >= e.startMs && h.srcStartMs < e.settledMs).reduce((n, h) => n + (h.holdMs ?? 0), 0),
-          },
-        ]),
+        steps.map((e) => {
+          const where = stepKey(e.sceneId, e.index);
+          // A freeze and a narration hold at one point merge: the narration part is what's left.
+          const held = holds.filter((h) => h.srcStartMs >= e.startMs && h.srcStartMs < e.settledMs).reduce((n, h) => n + (h.holdMs ?? 0), 0);
+          return [where, { srcMs: e.settledMs - e.startMs, narrationMs: Math.max(0, held - (freezeOf.get(where) ?? 0)) }];
+        }),
       );
       state.steps = state.steps.map((s) => ({
         ...s,
         startFrame: frames.get(s.where)?.startFrame ?? null,
         endFrame: frames.get(s.where)?.endFrame ?? null,
         srcMs: spans.get(s.where)?.srcMs ?? null,
-        holdMs: spans.get(s.where)?.holdMs ?? 0,
+        narrationMs: spans.get(s.where)?.narrationMs ?? 0,
       }));
       state.timeline = timeline;
     } catch (err) {

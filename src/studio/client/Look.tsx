@@ -5,7 +5,7 @@ import { ColorInput, Row, TextField } from './fields';
 
 export const Look: FC<{ state: StudioState; onEdit: (edit: Edit) => void }> = ({ state, onEdit }) => {
   const style = state.style;
-  const meta = (state.script?.meta ?? {}) as { title?: string; subtitle?: string };
+  const meta = state.meta ?? {};
   const setStyle = (changes: Record<string, unknown>) => onEdit({ style: changes } as Edit);
   const setMeta = (changes: Record<string, unknown>) => onEdit({ meta: changes } as Edit);
   return (

@@ -3,7 +3,7 @@ import { introFrames, totalFrames, videoEndFrame } from '../../timeline/frames';
 import { sourceToOutput } from '../../timeline/timemap';
 import type { Edit } from '../edit';
 import type { StudioState } from '../server';
-import { captionMsFor, speedFor } from './drag';
+import { captionMsFor, dragRange, speedFor } from './drag';
 
 const ICONS: Array<[key: string, icon: string, label: string]> = [
   ['caption', '❝', 'caption'],
@@ -45,8 +45,11 @@ export const Timeline: FC<{
     onSeek(Math.round(((e.clientX - r.left) / r.width) * (total - 1)));
   };
 
-  /** The right-edge handle of a block `frames` long; `done` gets the length it was dragged to. */
-  const grip = (kind: Drag['kind'], where: string, frames: number, done: (frames: number) => void) => {
+  /**
+   * The right-edge handle of a block `frames` long, draggable within `range`; `done` gets the length
+   * it was dragged to.
+   */
+  const grip = (kind: Drag['kind'], where: string, frames: number, range: { min: number; max: number }, done: (frames: number) => void) => {
     const o = origin.current;
     return (
       <span
@@ -66,7 +69,7 @@ export const Timeline: FC<{
         }}
         onPointerMove={(e) => {
           if (!e.currentTarget.hasPointerCapture(e.pointerId)) return;
-          o.live = Math.max(1, Math.round(frames + (e.clientX - o.x) * o.perPx));
+          o.live = Math.min(range.max, Math.max(range.min, Math.round(frames + (e.clientX - o.x) * o.perPx)));
           setDrag({ kind, where, frames: o.live });
         }}
         onPointerUp={(e) => {
@@ -98,7 +101,7 @@ export const Timeline: FC<{
             return (
               <div key={c.where} data-caption={c.where} className="cap" style={{ left: pct(c.start), width: pct(frames) }} title={c.text}>
                 <span className="text">{drag?.kind === 'caption' && drag.where === c.where ? `${(captionMsFor(frames, t!.fps) / 1000).toFixed(1)} s` : c.text}</span>
-                {grip('caption', c.where, c.frames, (f) =>
+                {grip('caption', c.where, c.frames, { min: Math.ceil((200 * t!.fps) / 1000), max: Math.floor((60_000 * t!.fps) / 1000) }, (f) =>
                   onEdit({ where: c.where, step: steps.find((s) => s.where === c.where)?.id, show: { captionMs: captionMsFor(f, t!.fps) } } as Edit),
                 )}
               </div>
@@ -119,7 +122,12 @@ export const Timeline: FC<{
           const placed = t && start !== null && end !== null;
           const block = placed ? Math.max(1, end! - start!) : 0;
           const dragging = drag?.kind === 'step' && drag.where === s.where;
-          const span = placed && s.srcMs !== null && s.endFrame !== null ? { srcMs: s.srcMs, holdMs: s.holdMs, stepFrames: s.endFrame - start!, blockFrames: block } : null;
+          const freezeMs = typeof s.show.freezeMs === 'number' ? s.show.freezeMs : 0;
+          const span =
+            placed && s.srcMs !== null && s.endFrame !== null
+              ? { srcMs: s.srcMs, freezeMs, narrationMs: s.narrationMs, stepFrames: s.endFrame - start!, blockFrames: block }
+              : null;
+          const speed = dragging && span ? speedFor(span, drag.frames, t!.fps) : null;
           const style = placed ? { left: pct(start!), width: pct(dragging ? drag.frames : block) } : { position: 'relative' as const };
           return (
             <div
@@ -131,7 +139,7 @@ export const Timeline: FC<{
               onClick={() => onSelect(s.where, start)}
             >
               <span className="name">{s.where}</span>
-              <span className="do">{dragging && span ? `${speedFor(span, drag.frames, t!.fps)}×` : s.do}</span>
+              <span className="do">{dragging && span ? (speed === null ? 'held by narration' : `${speed}×`) : s.do}</span>
               <span className="icons">
                 {ICONS.filter(([k]) => s.show[k] !== undefined && s.show[k] !== false).map(([k, icon, label]) => (
                   <i key={k} data-icon={k} title={label}>
@@ -140,7 +148,12 @@ export const Timeline: FC<{
                 ))}
               </span>
               {/* A pause runs at real time whatever its speed. */}
-              {span && s.do !== 'pause' ? grip('step', s.where, block, (f) => onEdit({ where: s.where, step: s.id, show: { speed: speedFor(span, f, t!.fps) } } as Edit)) : null}
+              {span && s.do !== 'pause' && s.srcMs! > 0
+                ? grip('step', s.where, block, dragRange(span, t!.fps), (f) => {
+                    const next = speedFor(span, f, t!.fps);
+                    if (next !== null) onEdit({ where: s.where, step: s.id, show: { speed: next } } as Edit);
+                  })
+                : null}
             </div>
           );
         })}

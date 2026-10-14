@@ -109,19 +109,26 @@ const perLocale = (v: unknown, lang: Lang | null): v is Json => {
   return keys.length > 0 && keys.every((k) => lang.all.includes(k));
 };
 
+/** Text the viewer reads or hears: in a later locale, editing a shared one makes it per locale. */
+const TEXT = new Set(['caption', 'say', 'title', 'subtitle', 'text']);
+
 /**
  * `section` (at `at`) with `changes` applied (null removes a key); undefined when nothing is left. A
- * value written per locale changes only in the open locale, and is never removed from the page.
+ * value written per locale changes only in the open locale, and is never removed from the page. Shared
+ * text edited in a locale other than the first keeps its old value for the other locales.
  */
 function merge(section: unknown, changes: Json, lang: Lang | null = null, at = ''): Json | undefined {
   const out: Json = isObject(section) ? { ...section } : {};
   for (const [k, v] of Object.entries(changes)) {
     if (v === undefined) continue;
-    if (perLocale(out[k], lang)) {
-      if (v === null) throw new Error(`${at}${k} is written per locale (${Object.keys(out[k] as Json).join(', ')}); clear it in the file.`);
-      out[k] = { ...(out[k] as Json), [lang!.open]: v };
+    const old = out[k];
+    if (perLocale(old, lang)) {
+      if (v === null) throw new Error(`${at}${k} is written per locale (${Object.keys(old as Json).join(', ')}); clear it in the file.`);
+      out[k] = { ...(old as Json), [lang!.open]: v };
     } else if (v === null) delete out[k];
-    else out[k] = v;
+    else if (lang && lang.open !== lang.all[0] && TEXT.has(k) && typeof old === 'string' && old !== v) {
+      out[k] = Object.fromEntries(lang.all.map((l) => [l, l === lang.open ? v : old]));
+    } else out[k] = v;
   }
   return Object.keys(out).length ? out : undefined;
 }

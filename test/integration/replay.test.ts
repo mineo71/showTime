@@ -33,7 +33,8 @@ async function lab(texts: { count?: string; echo?: string; talk?: string } = {},
           { do: 'click', target: '#echo' },
           { do: 'wait', for: `#echo-out:has-text("${texts.echo ?? 'echo hello'}")` },
           { do: 'click', target: '#talk' },
-          { do: 'wait', for: `#talk-out[data-done="1"]:has-text("${texts.talk ?? 'final'}")` },
+          // The page closes the socket after the final answer and waits to see it closed.
+          { do: 'wait', for: `#talk-out[data-closed="1"]:has-text("${texts.talk ?? 'final'}")`, timeoutMs: 5000 },
           ...extra,
         ],
       },
@@ -51,14 +52,14 @@ describe('network replay', () => {
     const first = await check(await lab(recorded));
     expect(first.ok).toBe(true);
     expect(first.net).toMatchObject({ mode: 'record', file: netFile() });
-    expect(server.hits()).toBe(5);
+    expect(server.hits()).toBe(6);
     expect(existsSync(netFile())).toBe(true);
 
     // The server's counter would now say 6, 7, …: the recorded answers come back instead.
     const second = await check(await lab(recorded));
     expect(second.ok, second.failure?.error).toBe(true);
     expect(second.net).toMatchObject({ mode: 'replay', misses: 0 });
-    expect(server.hits()).toBe(5);
+    expect(server.hits()).toBe(6);
   });
 
   it('keeps credentials and request headers out of the file', async () => {
@@ -67,7 +68,9 @@ describe('network replay', () => {
     expect(text).not.toContain('secret123');
     expect(text).toContain('language=en');
     const file = JSON.parse(text);
-    expect(file.ws[0].frames.filter((f: { from: string }) => f.from === 'client').map((f: { size?: number; text?: string }) => f.size ?? f.text)).toEqual([100, 50, 'finalize']);
+    // Client text frames are kept as a hash and a shape (their JSON keys), never as text.
+    const client = file.ws[0].frames.filter((f: { from: string }) => f.from === 'client');
+    expect(client.map((f: { size?: number; shape?: string; text?: string }) => f.size ?? f.text ?? f.shape)).toEqual(['{api_key,language}', 100, 50, expect.stringMatching(/^=/)]);
   });
 
   it('goes live with --net live and re-records with --net record', async () => {
@@ -76,7 +79,7 @@ describe('network replay', () => {
     const live = await check(await lab({ count: 'count 6' }), { net: 'live' });
     expect(live.ok, live.failure?.error).toBe(true);
     expect(live.net).toBeNull();
-    expect(server.hits()).toBe(10);
+    expect(server.hits()).toBe(12);
     expect(await readFile(netFile(), 'utf8')).toBe(before);
 
     const again = await check(await lab({ count: 'count 11' }), { net: 'record' });
@@ -111,6 +114,24 @@ describe('network replay', () => {
   it('record replays what check recorded', async () => {
     expect((await check(await lab(recorded))).ok).toBe(true);
     await record(await lab(recorded));
-    expect(server.hits()).toBe(5);
+    expect(server.hits()).toBe(6);
+  }, 60_000);
+
+  it('lets event streams through live, unrecorded, even when a glob matches them', async () => {
+    const stream = [
+      { do: 'click', target: '#stream' },
+      { do: 'wait', for: '#stream-out:has-text("three events")', timeoutMs: 5000 },
+    ];
+    const withSse = async () => {
+      const loaded = await lab({}, stream);
+      loaded.script.replay!.match.push('**/sse');
+      return loaded;
+    };
+    const first = await check(await withSse());
+    expect(first.ok, first.failure?.error).toBe(true);
+    expect(await readFile(netFile(), 'utf8')).not.toContain('/sse');
+    const again = await check(await withSse());
+    expect(again.ok, again.failure?.error).toBe(true);
+    expect(again.net?.misses).toBe(0);
   }, 60_000);
 });

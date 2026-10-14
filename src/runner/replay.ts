@@ -4,9 +4,9 @@ import { createHash } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import type { BrowserContext, Route, WebSocketRoute } from 'playwright';
+import type { BrowserContext, Request, Route, WebSocketRoute } from 'playwright';
 import type { Script } from '../script/schema';
-import { HttpStore, stripSecrets, WsReplay, type HttpEntry, type WsRecording } from './replay-core';
+import { clientText, HttpStore, stripSecrets, WsReplay, type HttpEntry, type WsRecording } from './replay-core';
 import { sleep } from './time';
 
 export type NetMode = 'auto' | 'live' | 'record' | 'replay';
@@ -33,6 +33,8 @@ interface NetFile {
 }
 
 const isWs = (glob: string) => /^wss?:\/\//i.test(glob);
+/** Event streams never end: waiting for their whole body would stall them, so they stay live. */
+const isStream = (request: Request) => request.resourceType() === 'eventsource' || (request.headers().accept ?? '').includes('text/event-stream');
 const bodyHash = (body: Buffer | null) => (body?.length ? createHash('sha256').update(body).digest('hex').slice(0, 16) : '');
 const withoutQuery = (url: string) => url.split('?')[0];
 /** WebSocket close codes a page may be sent; the reserved ones (1005, 1006…) become a normal close. */
@@ -59,8 +61,9 @@ export async function attachNet(context: BrowserContext, script: Script, mode: N
   if (chosen === 'live' || !script.replay) return null;
   const { file, match } = script.replay;
   const timers = new Set<NodeJS.Timeout>();
+  const players: WsReplay[] = [];
   let misses = 0;
-  const report = (): NetReport => ({ mode: chosen, file, misses });
+  const report = (): NetReport => ({ mode: chosen, file, misses: misses + players.reduce((n, p) => n + p.misses, 0) });
   const dispose = () => {
     for (const t of timers) clearTimeout(t);
     timers.clear();
@@ -86,11 +89,12 @@ export async function attachNet(context: BrowserContext, script: Script, mode: N
             ws.connectToServer();
             return;
           }
-          playBack(ws, rec, timers);
+          players.push(playBack(ws, rec, timers));
         });
       } else {
         await context.route(glob, async (route) => {
           const request = route.request();
+          if (isStream(request)) return route.fallback();
           const entry = store.take(request.method(), request.url(), bodyHash(request.postDataBuffer()));
           if (!entry) {
             misses++;
@@ -111,6 +115,7 @@ export async function attachNet(context: BrowserContext, script: Script, mode: N
     else {
       await context.route(glob, async (route) => {
         const request = route.request();
+        if (isStream(request)) return route.fallback();
         const slot = http.push(null) - 1;
         const t0 = Date.now();
         const response = await route.fetch().catch(() => null);
@@ -161,7 +166,8 @@ function tap(route: WebSocketRoute): WsRecording {
   const rec: WsRecording = { url: stripSecrets(route.url()), frames: [] };
   const t = () => Date.now() - t0;
   route.onMessage((m) => {
-    rec.frames.push(typeof m === 'string' ? { from: 'client', t: t(), text: m } : { from: 'client', t: t(), size: m.length });
+    // Client text is kept as a hash and a shape: some APIs take the key in a message.
+    rec.frames.push(typeof m === 'string' ? { from: 'client', t: t(), ...clientText(m) } : { from: 'client', t: t(), size: m.length });
     server.send(m);
   });
   server.onMessage((m) => {
@@ -180,7 +186,7 @@ function tap(route: WebSocketRoute): WsRecording {
 }
 
 /** Act as the server of a recorded connection. */
-function playBack(route: WebSocketRoute, rec: WsRecording, timers: Set<NodeJS.Timeout>): void {
+function playBack(route: WebSocketRoute, rec: WsRecording, timers: Set<NodeJS.Timeout>): WsReplay {
   let closed = false;
   const player = new WsReplay(rec, {
     send: (m) => {
@@ -199,8 +205,13 @@ function playBack(route: WebSocketRoute, rec: WsRecording, timers: Set<NodeJS.Ti
     },
   });
   route.onMessage((m) => player.client(typeof m === 'string' ? m : new Uint8Array(m)));
-  route.onClose(() => {
+  // A close handler stops Playwright's own handling: the page's close must be answered here, or the
+  // socket stays CLOSING and the page never hears it closed.
+  route.onClose((code, reason) => {
+    if (closed) return;
     closed = true;
+    route.close({ code: closeCode(code), reason }).catch(() => undefined);
   });
   player.open();
+  return player;
 }

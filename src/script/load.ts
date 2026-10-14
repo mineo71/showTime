@@ -64,7 +64,15 @@ export async function parseLoaded(json: unknown, file: string, opts: LoadOptions
     if (own.audio && typeof own.audio === 'object') own.audio = withMusicFrom(own.audio as Record<string, unknown>, dir);
     if (own.style && typeof own.style === 'object') own.style = withStyleFrom(own.style as Record<string, unknown>, dir);
     if (own.replay && typeof own.replay === 'object' && typeof (own.replay as { file?: unknown }).file === 'string') {
-      own.replay = { ...(own.replay as object), file: path.resolve(dir, (own.replay as { file: string }).file) };
+      let file = path.resolve(dir, (own.replay as { file: string }).file);
+      // Each locale calls the API with its own words: one file each, unless the file names {locale}
+      // itself or is written per locale.
+      const written = (json as { replay?: { file?: unknown } }).replay?.file;
+      if (locale && typeof written === 'string' && !written.includes('{locale}')) {
+        const ext = path.extname(file);
+        file = `${file.slice(0, file.length - ext.length)}.${locale}${ext}`;
+      }
+      own.replay = { ...(own.replay as object), file };
     }
     if (config) raw = applyConfig(await readConfig(config, prepare), own);
   }

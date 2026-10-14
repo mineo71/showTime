@@ -87,6 +87,8 @@ describe('locales on the command line', () => {
       expect(state.error).toBeNull();
       expect(state.name).toBe('i18n.uk');
       expect(state.steps[0].label).toContain('Привітатися');
+      // The look panel shows the open locale's title, not the object holding every locale's.
+      expect(state.meta).toMatchObject({ title: 'Привіт' });
     } finally {
       await studio.close();
     }
